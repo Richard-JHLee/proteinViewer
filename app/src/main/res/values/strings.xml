@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Protein Viewer</string>
+    
+    <!-- Main UI -->
+    <string name="protein_viewer">Protein Viewer</string>
+    <string name="protein_library">Protein Library</string>
+    <string name="about">About</string>
+    <string name="user_guide">User Guide</string>
+    <string name="features">Features</string>
+    <string name="settings">Settings</string>
+    <string name="help">Help</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="license">License</string>
+    
+    <!-- 3D Viewer Controls -->
+    <string name="spheres">Spheres</string>
+    <string name="sticks">Sticks</string>
+    <string name="cartoon">Cartoon</string>
+    <string name="surface">Surface</string>
+    <string name="element">Element</string>
+    <string name="chain">Chain</string>
+    <string name="uniform">Uniform</string>
+    <string name="secondary_structure">Secondary Structure</string>
+    <string name="highlight_all">Highlight All</string>
+    <string name="clear_all">Clear All</string>
+    <string name="rotate">Rotate</string>
+    <string name="reset">Reset</string>
+    
+    <!-- Info Tabs -->
+    <string name="overview">Overview</string>
+    <string name="chains">Chains</string>
+    <string name="residues">Residues</string>
+    <string name="ligands">Ligands</string>
+    <string name="pockets">Pockets</string>
+    <string name="sequence">Sequence</string>
+    <string name="annotations">Annotations</string>
+    
+    <!-- Loading States -->
+    <string name="loading_protein">Loading protein structure...</string>
+    <string name="loading_progress">Loading progress: %1$s</string>
+    <string name="error_loading">Error loading protein structure</string>
+    <string name="retry">Retry</string>
+    
+    <!-- Default Messages -->
+    <string name="welcome_message">Welcome to Protein Viewer</string>
+    <string name="select_protein">Select a protein from the library to view its 3D structure</string>
+    <string name="no_protein_selected">No protein selected</string>
+    
+    <!-- Error Messages -->
+    <string name="network_error">Network error. Please check your connection.</string>
+    <string name="parsing_error">Error parsing protein data</string>
+    <string name="unknown_error">An unknown error occurred</string>
+</resources>
