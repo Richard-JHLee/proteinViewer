@@ -1,311 +1,191 @@
 package com.avas.proteinviewer.ui.protein
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LocalPharmacy
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.data.model.PDBStructure
-import com.avas.proteinviewer.ui.protein.RendererBackend
+import com.avas.proteinviewer.ui.protein.InfoTab
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProteinInfoBottomSheet(
     structure: PDBStructure?,
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    onDismiss: () -> Unit
+    proteinId: String = "",
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val bottomSheetState = rememberBottomSheetScaffoldState()
-    
-    var backend by remember { mutableStateOf(RendererBackend.OpenGL) }
+    val tabs = remember { InfoTab.values().toList() }
+    var selectedTab by remember { mutableStateOf(InfoTab.Overview) }
 
-    BottomSheetScaffold(
-        scaffoldState = bottomSheetState,
-        sheetContent = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-                    .padding(16.dp)
-            ) {
-                // Backend toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Renderer:", style = MaterialTheme.typography.bodyMedium)
-                    FilterChip(
-                        selected = backend == RendererBackend.Filament,
-                        onClick = { backend = RendererBackend.Filament },
-                        label = { Text("Filament") }
-                    )
-                    FilterChip(
-                        selected = backend == RendererBackend.OpenGL,
-                        onClick = { backend = RendererBackend.OpenGL },
-                        label = { Text("OpenGL") }
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                // Handle
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                            RoundedCornerShape(2.dp)
-                        )
-                        .align(Alignment.CenterHorizontally)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Tab Row
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    listOf("Overview", "Chains", "Residues", "Ligands").forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { onTabSelected(index) },
-                            text = { Text(title) }
-                        )
+    Surface(
+        modifier = modifier,
+        tonalElevation = 8.dp,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
+        ) {
+            SheetHeader(onDismiss = onDismiss, structure = structure, proteinId = proteinId)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when (selectedTab) {
+                InfoTab.Overview -> OverviewSection(structure, proteinId)
+                InfoTab.Chains -> ChainsSection(structure)
+                InfoTab.Residues -> ResiduesSection(structure)
+                InfoTab.Ligands -> LigandsSection(structure)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TabBar(tabs = tabs, selected = selectedTab, onSelect = { selectedTab = it })
+        }
+    }
+}
+
+// InfoTab은 ProteinViewerView.kt에서 import하여 사용
+
+@Composable
+private fun SheetHeader(onDismiss: () -> Unit, structure: PDBStructure?, proteinId: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = proteinId.ifBlank { "Protein" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Structure Details",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(imageVector = Icons.Filled.Close, contentDescription = "Close")
+        }
+    }
+}
+
+@Composable
+private fun TabBar(tabs: List<InfoTab>, selected: InfoTab, onSelect: (InfoTab) -> Unit) {
+    NavigationBar {
+        tabs.forEach { tab ->
+            NavigationBarItem(
+                selected = tab == selected,
+                onClick = { onSelect(tab) },
+                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                label = { Text(tab.label) }
+            )
+        }
+    }
+}
+
+
+
+@Composable
+private fun OverviewSection(structure: PDBStructure?, proteinId: String) {
+    structure ?: return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        SheetInfoCard(
+            title = "Structure Information",
+            rows = listOf(
+                SheetInfoItem("PDB ID", proteinId.ifBlank { "Unknown" }),
+                SheetInfoItem("Total Atoms", structure.atoms.size.toString()),
+                SheetInfoItem("Total Bonds", structure.bonds.size.toString()),
+                SheetInfoItem("Chains", structure.chains.joinToString()),
+                SheetInfoItem("Residues", structure.residues.size.toString())
+            )
+        )
+    }
+}
+
+@Composable
+private fun SheetInfoCard(title: String, rows: List<SheetInfoItem>) {
+    Surface(shape = RoundedCornerShape(16.dp), tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            rows.forEach { item ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = item.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(text = item.value, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    item.description?.let {
+                        Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Content
-                when (selectedTab) {
-                    0 -> OverviewContent(structure = structure)
-                    1 -> ChainsContent(structure = structure)
-                    2 -> ResiduesContent(structure = structure)
-                    3 -> LigandsContent()
-                }
             }
-        },
-        sheetPeekHeight = 80.dp,
-        content = {
-            // 3D Viewer 영역
-            ProteinViewerView(
-                structure = structure,
-                proteinId = "",
-                modifier = Modifier.fillMaxSize(),
-                backend = backend
-            )
+        }
+    }
+}
+
+private data class SheetInfoItem(val title: String, val value: String, val description: String? = null)
+
+@Composable
+private fun ChainsSection(structure: PDBStructure?) {
+    structure ?: return
+    SheetInfoCard(
+        title = "Protein Chains",
+        rows = structure.chains.sorted().map { chain ->
+            val residueCount = structure.residues.count { it.chain == chain }
+            SheetInfoItem("Chain $chain", "$residueCount residues")
         }
     )
 }
 
 @Composable
-private fun OverviewContent(structure: PDBStructure?) {
-    structure?.let { proteinStructure ->
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 통계 정보 카드
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Structure Statistics",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        StatCard(
-                            value = proteinStructure.atoms.size.toString(),
-                            label = "Atoms",
-                            color = androidx.compose.ui.graphics.Color(0xFF2196F3)
-                        )
-                        StatCard(
-                            value = proteinStructure.bonds.size.toString(),
-                            label = "Bonds",
-                            color = androidx.compose.ui.graphics.Color(0xFF4CAF50)
-                        )
-                        StatCard(
-                            value = proteinStructure.chains.size.toString(),
-                            label = "Chains",
-                            color = androidx.compose.ui.graphics.Color(0xFFFF9800)
-                        )
-                        StatCard(
-                            value = proteinStructure.residues.size.toString(),
-                            label = "Residues",
-                            color = androidx.compose.ui.graphics.Color(0xFF9C27B0)
-                        )
-                    }
-                }
-            }
+private fun ResiduesSection(structure: PDBStructure?) {
+    structure ?: return
+    val residueTypes = structure.residues.map { it.residueName }.groupingBy { it }.eachCount()
+    SheetInfoCard(
+        title = "Residue Types",
+        rows = residueTypes.entries.sortedByDescending { it.value }.map { (name, count) ->
+            SheetInfoItem(name, "$count occurrences")
         }
-    }
+    )
 }
 
 @Composable
-private fun ChainsContent(structure: PDBStructure?) {
-    structure?.let { proteinStructure ->
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Protein Chains",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(proteinStructure.chains) { chain ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Chain $chain",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "${proteinStructure.residues.count { it.chain == chain }} residues",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ResiduesContent(structure: PDBStructure?) {
-    structure?.let { proteinStructure ->
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Residues (First 10)",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(proteinStructure.residues.take(10)) { residue ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "${residue.residueName} ${residue.residueNumber}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "Chain ${residue.chain}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LigandsContent() {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Ligands",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+private fun LigandsSection(structure: PDBStructure?) {
+    structure ?: return
+    val ligands = structure.atoms.filter { it.isLigand }
+    SheetInfoCard(
+        title = "Ligands",
+        rows = listOf(
+            SheetInfoItem("Ligand Atoms", ligands.size.toString(), "Atoms classified as ligands in this structure"),
+            SheetInfoItem("Presence", if (ligands.isNotEmpty()) "Present" else "None")
         )
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    Icons.Default.LocalPharmacy,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "No ligands found",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatCard(
-    value: String,
-    label: String,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    )
 }

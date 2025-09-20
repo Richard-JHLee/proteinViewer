@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,9 +21,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.avas.proteinviewer.ui.protein.ProteinViewerView
-import com.avas.proteinviewer.ui.protein.BasicFilamentComposeView
-import com.avas.proteinviewer.data.model.FilamentStructure
-import com.avas.proteinviewer.ui.protein.ProteinInfoPanel
 import com.avas.proteinviewer.ui.layout.ResponsiveMainContent
 import com.avas.proteinviewer.ui.navigation.ProteinViewerNavigationDrawer
 // import com.avas.proteinviewer.ui.accessibility.AccessibilityHelper
@@ -47,7 +42,6 @@ fun MainScreen(
     val structure by viewModel.structure.collectAsState()
     val appState by viewModel.appState.collectAsState()
     
-    var selectedTab by remember { mutableStateOf(0) }
     var showDrawer by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
@@ -69,77 +63,13 @@ fun MainScreen(
     
     Box {
         Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { 
-                            Text(
-                                text = if (currentProteinId.isNotEmpty()) {
-                                    // 이름과 ID가 같으면 중복 방지
-                                    if (currentProteinName == currentProteinId || currentProteinName.isNullOrEmpty()) {
-                                        currentProteinId
-                                    } else {
-                                        "${currentProteinName} ($currentProteinId)"
-                                    }
-                                } else {
-                                    "Protein Viewer"
-                                },
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { showDrawer = true }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = onNavigateToSearch) {
-                                Icon(Icons.Default.Search, contentDescription = "Search")
-                            }
-                            IconButton(onClick = onNavigateToLibrary) {
-                                Icon(Icons.Default.LibraryBooks, contentDescription = "Library")
-                            }
-                        }
-                    )
-                },
-            bottomBar = {
-                if (structure != null) {
-                    // 스크롤 가능한 하단 네비게이션
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(7) { index ->
-                            val (icon, label) = when (index) {
-                                0 -> Icons.Default.Info to "Overview"
-                                1 -> Icons.Default.List to "Chains"
-                                2 -> Icons.Default.Science to "Residues"
-                                3 -> Icons.Default.LocalPharmacy to "Ligands"
-                                4 -> Icons.Default.Circle to "Pockets"
-                                5 -> Icons.Default.List to "Sequence"
-                                6 -> Icons.Default.Label to "Annotations"
-                                else -> Icons.Default.Info to "Unknown"
-                            }
-                            
-                            FilterChip(
-                                onClick = { selectedTab = index },
-                                label = { Text(label) },
-                                leadingIcon = { Icon(icon, contentDescription = label) },
-                                selected = selectedTab == index,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            bottomBar = {}
         ) { paddingValues ->
             // 반응형 레이아웃 적용
             if (structure != null) {
                 ResponsiveMainContent(
                     structure = structure,
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
+                    proteinId = currentProteinId,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
