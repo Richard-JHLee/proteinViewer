@@ -1,0 +1,83 @@
+HEADER    CRAMBIN                                   01-JAN-24   1CRN              
+TITLE     CRAMBIN - A SMALL WATER-SOLUBLE PROTEIN FROM CABBAGE SEEDS              
+COMPND    MOL_ID: 1;                                                 
+COMPND   2 MOLECULE: CRAMBIN;                                        
+COMPND   3 CHAIN: A;                                                
+SOURCE    MOL_ID: 1;                                                 
+KEYWDS    CRAMBIN, PROTEIN, 3D VIEWER                                
+EXPDTA    X-RAY DIFFRACTION                                         
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 10.00           N  
+ATOM      2  CA  ALA A   1       1.500   0.000   0.000  1.00 10.00           C  
+ATOM      3  C   ALA A   1       3.000   0.000   0.000  1.00 10.00           C  
+ATOM      4  O   ALA A   1       4.500   0.000   0.000  1.00 10.00           O  
+ATOM      5  CB  ALA A   1       1.500   1.500   0.000  1.00 10.00           C  
+ATOM      6  N   GLY A   2       6.000   0.000   0.000  1.00 10.00           N  
+ATOM      7  CA  GLY A   2       7.500   0.000   0.000  1.00 10.00           C  
+ATOM      8  C   GLY A   2       9.000   0.000   0.000  1.00 10.00           C  
+ATOM      9  O   GLY A   2      10.500   0.000   0.000  1.00 10.00           O  
+ATOM     10  N   ALA A   3      12.000   0.000   0.000  1.00 10.00           N  
+ATOM     11  CA  ALA A   3      13.500   0.000   0.000  1.00 10.00           C  
+ATOM     12  C   ALA A   3      15.000   0.000   0.000  1.00 10.00           C  
+ATOM     13  O   ALA A   3      16.500   0.000   0.000  1.00 10.00           O  
+ATOM     14  CB  ALA A   3      13.500   1.500   0.000  1.00 10.00           C  
+ATOM     15  N   ALA A   4      18.000   0.000   0.000  1.00 10.00           N  
+ATOM     16  CA  ALA A   4      19.500   0.000   0.000  1.00 10.00           C  
+ATOM     17  C   ALA A   4      21.000   0.000   0.000  1.00 10.00           C  
+ATOM     18  O   ALA A   4      22.500   0.000   0.000  1.00 10.00           O  
+ATOM     19  CB  ALA A   4      19.500   1.500   0.000  1.00 10.00           C  
+ATOM     20  N   ALA A   5      24.000   0.000   0.000  1.00 10.00           N  
+ATOM     21  CA  ALA A   5      25.500   0.000   0.000  1.00 10.00           C  
+ATOM     22  C   ALA A   5      27.000   0.000   0.000  1.00 10.00           C  
+ATOM     23  O   ALA A   5      28.500   0.000   0.000  1.00 10.00           O  
+ATOM     24  CB  ALA A   5      25.500   1.500   0.000  1.00 10.00           C  
+ATOM     25  N   ALA A   6      30.000   0.000   0.000  1.00 10.00           N  
+ATOM     26  CA  ALA A   6      31.500   0.000   0.000  1.00 10.00           C  
+ATOM     27  C   ALA A   6      33.000   0.000   0.000  1.00 10.00           C  
+ATOM     28  O   ALA A   6      34.500   0.000   0.000  1.00 10.00           O  
+ATOM     29  CB  ALA A   6      31.500   1.500   0.000  1.00 10.00           C  
+ATOM     30  N   ALA A   7      36.000   0.000   0.000  1.00 10.00           N  
+ATOM     31  CA  ALA A   7      37.500   0.000   0.000  1.00 10.00           C  
+ATOM     32  C   ALA A   7      39.000   0.000   0.000  1.00 10.00           C  
+ATOM     33  O   ALA A   7      40.500   0.000   0.000  1.00 10.00           O  
+ATOM     34  CB  ALA A   7      37.500   1.500   0.000  1.00 10.00           C  
+ATOM     35  N   ALA A   8      42.000   0.000   0.000  1.00 10.00           N  
+ATOM     36  CA  ALA A   8      43.500   0.000   0.000  1.00 10.00           C  
+ATOM     37  C   ALA A   8      45.000   0.000   0.000  1.00 10.00           C  
+ATOM     38  O   ALA A   8      46.500   0.000   0.000  1.00 10.00           O  
+ATOM     39  CB  ALA A   8      43.500   1.500   0.000  1.00 10.00           C  
+ATOM     40  N   ALA A   9      48.000   0.000   0.000  1.00 10.00           N  
+ATOM     41  CA  ALA A   9      49.500   0.000   0.000  1.00 10.00           C  
+ATOM     42  C   ALA A   9      51.000   0.000   0.000  1.00 10.00           C  
+ATOM     43  O   ALA A   9      52.500   0.000   0.000  1.00 10.00           O  
+ATOM     44  CB  ALA A   9      49.500   1.500   0.000  1.00 10.00           C  
+ATOM     45  N   ALA A  10      54.000   0.000   0.000  1.00 10.00           N  
+ATOM     46  CA  ALA A  10      55.500   0.000   0.000  1.00 10.00           C  
+ATOM     47  C   ALA A  10      57.000   0.000   0.000  1.00 10.00           C  
+ATOM     48  O   ALA A  10      58.500   0.000   0.000  1.00 10.00           O  
+ATOM     49  CB  ALA A  10      55.500   1.500   0.000  1.00 10.00           C  
+ATOM     50  N   ALA A  11      60.000   0.000   0.000  1.00 10.00           N  
+ATOM     51  CA  ALA A  11      61.500   0.000   0.000  1.00 10.00           C  
+ATOM     52  C   ALA A  11      63.000   0.000   0.000  1.00 10.00           C  
+ATOM     53  O   ALA A  11      64.500   0.000   0.000  1.00 10.00           O  
+ATOM     54  CB  ALA A  11      61.500   1.500   0.000  1.00 10.00           C  
+ATOM     55  N   ALA A  12      66.000   0.000   0.000  1.00 10.00           N  
+ATOM     56  CA  ALA A  12      67.500   0.000   0.000  1.00 10.00           C  
+ATOM     57  C   ALA A  12      69.000   0.000   0.000  1.00 10.00           C  
+ATOM     58  O   ALA A  12      70.500   0.000   0.000  1.00 10.00           O  
+ATOM     59  CB  ALA A  12      67.500   1.500   0.000  1.00 10.00           C  
+ATOM     60  N   ALA A  13      72.000   0.000   0.000  1.00 10.00           N  
+ATOM     61  CA  ALA A  13      73.500   0.000   0.000  1.00 10.00           C  
+ATOM     62  C   ALA A  13      75.000   0.000   0.000  1.00 10.00           C  
+ATOM     63  O   ALA A  13      76.500   0.000   0.000  1.00 10.00           O  
+ATOM     64  CB  ALA A  13      73.500   1.500   0.000  1.00 10.00           C  
+ATOM     65  N   ALA A  14      78.000   0.000   0.000  1.00 10.00           N  
+ATOM     66  CA  ALA A  14      79.500   0.000   0.000  1.00 10.00           C  
+ATOM     67  C   ALA A  14      81.000   0.000   0.000  1.00 10.00           C  
+ATOM     68  O   ALA A  14      82.500   0.000   0.000  1.00 10.00           O  
+ATOM     69  CB  ALA A  14      79.500   1.500   0.000  1.00 10.00           C  
+ATOM     70  N   ALA A  15      84.000   0.000   0.000  1.00 10.00           N  
+ATOM     71  CA  ALA A  15      85.500   0.000   0.000  1.00 10.00           C  
+ATOM     72  C   ALA A  15      87.000   0.000   0.000  1.00 10.00           C  
+ATOM     73  O   ALA A  15      88.500   0.000   0.000  1.00 10.00           O  
+ATOM     74  CB  ALA A  15      85.500   1.500   0.000  1.00 10.00           C  
+END

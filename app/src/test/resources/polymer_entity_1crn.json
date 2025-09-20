@@ -1,0 +1,27 @@
+{
+  "entity_poly": {
+    "pdbx_seq_one_letter_code": "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN",
+    "rcsb_sample_sequence_length": 46,
+    "rcsb_entity_polymer_type": "Protein",
+    "type": "polypeptide(L)",
+    "pdbx_strand_id": "A"
+  },
+  "rcsb_polymer_entity": {
+    "pdbx_description": "CRAMBIN",
+    "formula_weight": 4.738,
+    "rcsb_macromolecular_names_combined": [
+      { "name": "Crambin" }
+    ]
+  },
+  "rcsb_entity_source_organism": [
+    {
+      "scientific_name": "Crambe hispanica subsp. abyssinica",
+      "ncbi_common_names": ["Abyssinian crambe"],
+      "ncbi_taxonomy_id": 3721
+    }
+  ],
+  "rcsb_polymer_entity_annotation": [
+    { "annotation_id": "PF00321", "name": "Plant thionin (Thionin)", "type": "Pfam" },
+    { "annotation_id": "GO:0006952", "name": "defense response", "type": "GO" }
+  ]
+}
