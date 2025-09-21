@@ -43,6 +43,25 @@ class ArcballCamera {
         targetZ = z
     }
 
+    fun focusOnTarget(targetX: Float, targetY: Float, targetZ: Float, targetRadius: Float) {
+        // Calculate appropriate distance based on target radius and FOV
+        val fovRad = Math.toRadians(fovDeg.toDouble()).toFloat()
+        val halfFov = fovRad / 2f
+        val optimalDistance = targetRadius / kotlin.math.sin(halfFov) * 1.2f // 1.2x for padding
+        
+        // Set new target
+        this.targetX = targetX
+        this.targetY = targetY
+        this.targetZ = targetZ
+        
+        // Adjust distance to focus on the target
+        distance = optimalDistance.coerceIn(minDistance, maxDistance)
+        
+        // Reset rotation to face the target directly
+        yawRad = 0f
+        pitchRad = 0f
+    }
+
     fun orbit(deltaYawDeg: Float, deltaPitchDeg: Float) {
         val sensitivity = 0.005f
         yawRad -= deltaYawDeg * sensitivity

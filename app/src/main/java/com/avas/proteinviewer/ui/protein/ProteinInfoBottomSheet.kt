@@ -55,6 +55,9 @@ fun ProteinInfoBottomSheet(
                 InfoTab.Chains -> ChainsSection(structure)
                 InfoTab.Residues -> ResiduesSection(structure)
                 InfoTab.Ligands -> LigandsSection(structure)
+                InfoTab.Pockets -> PocketsSection(structure)
+                InfoTab.Sequence -> SequenceSection(structure)
+                InfoTab.Annotations -> AnnotationsSection(structure)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -188,4 +191,55 @@ private fun LigandsSection(structure: PDBStructure?) {
             SheetInfoItem("Presence", if (ligands.isNotEmpty()) "Present" else "None")
         )
     )
+}
+
+@Composable
+private fun PocketsSection(structure: PDBStructure?) {
+    structure ?: return
+    val pocketAtoms = structure.atoms.filter { it.isPocket }
+    SheetInfoCard(
+        title = "Binding Pockets",
+        rows = listOf(
+            SheetInfoItem("Pocket Atoms", pocketAtoms.size.toString(), "Atoms classified as binding pockets"),
+            SheetInfoItem("Presence", if (pocketAtoms.isNotEmpty()) "Present" else "None")
+        )
+    )
+}
+
+@Composable
+private fun SequenceSection(structure: PDBStructure?) {
+    structure ?: return
+    val chains = structure.atoms.map { it.chain }.distinct().sorted()
+    SheetInfoCard(
+        title = "Sequence Information",
+        rows = listOf(
+            SheetInfoItem("Chains", chains.size.toString(), "Number of polypeptide chains"),
+            SheetInfoItem("Total Residues", structure.residues.size.toString(), "Total number of residues")
+        )
+    )
+}
+
+@Composable
+private fun AnnotationsSection(structure: PDBStructure?) {
+    structure ?: return
+    val annotations = structure.annotations
+    if (annotations.isEmpty()) {
+        SheetInfoCard(
+            title = "Annotations",
+            rows = listOf(
+                SheetInfoItem("Status", "No annotations", "Supplementary annotation data was not provided")
+            )
+        )
+    } else {
+        SheetInfoCard(
+            title = "Annotations",
+            rows = annotations.map { annotation ->
+                SheetInfoItem(
+                    title = annotation.type.displayName,
+                    value = annotation.value,
+                    description = annotation.description.takeIf { it.isNotBlank() }
+                )
+            }
+        )
+    }
 }

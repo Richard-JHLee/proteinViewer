@@ -66,9 +66,17 @@ class ProteinViewModel @Inject constructor(
     fun updateRenderMode(mode: com.avas.proteinviewer.ui.state.RenderMode) {
         _appState.value = _appState.value.copy(renderMode = mode)
     }
-    
+
     fun updateColorMode(mode: com.avas.proteinviewer.ui.state.ColorMode) {
         _appState.value = _appState.value.copy(colorMode = mode)
+    }
+
+    fun updateHighlightedPockets(pockets: Set<String>) {
+        _appState.value = _appState.value.copy(highlightedPockets = pockets)
+    }
+
+    fun updateFocusedPocket(pocket: String?) {
+        _appState.value = _appState.value.copy(focusedPocket = pocket)
     }
     
     fun toggleBonds() {

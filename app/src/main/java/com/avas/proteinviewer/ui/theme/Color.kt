@@ -19,3 +19,8 @@ val Green40 = Color(0xFF006A6B)
 val Green80 = Color(0xFF4FD8D9)
 val Blue40 = Color(0xFF1565C0)
 val Blue80 = Color(0xFF90CAF9)
+
+// Secondary structure palette (align with existing iOS release)
+val HelixColor = Color(0xFFE53935)
+val SheetColor = Color(0xFFF57C00)
+val CoilColor = Color(0xFF9E9E9E)

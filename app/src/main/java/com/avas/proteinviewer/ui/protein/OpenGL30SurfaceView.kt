@@ -67,6 +67,20 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         requestRender()
     }
 
+    fun updateHighlights(highlightedChains: Set<String>, focusedChain: String?) {
+        queueEvent {
+            renderer.setHighlights(highlightedChains, focusedChain)
+        }
+        requestRender()
+    }
+
+    fun updatePocketHighlights(highlightedPockets: Set<String>, focusedPocket: String?) {
+        queueEvent {
+            renderer.setPocketHighlights(highlightedPockets, focusedPocket)
+        }
+        requestRender()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val pointerCount = event.pointerCount
         

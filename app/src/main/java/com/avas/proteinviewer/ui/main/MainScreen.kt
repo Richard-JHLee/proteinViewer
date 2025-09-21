@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.avas.proteinviewer.ui.protein.ProteinViewerView
 import com.avas.proteinviewer.ui.layout.ResponsiveMainContent
+import com.avas.proteinviewer.ui.navigation.DrawerItemType
 import com.avas.proteinviewer.ui.navigation.ProteinViewerNavigationDrawer
 // import com.avas.proteinviewer.ui.accessibility.AccessibilityHelper
 import com.avas.proteinviewer.viewmodel.ProteinViewModel
@@ -72,7 +73,10 @@ fun MainScreen(
                     proteinId = currentProteinId,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(paddingValues),
+                    onMenuClick = { showDrawer = true },
+                    onLibraryClick = onNavigateToLibrary,
+                    onSwitchToViewer = onNavigateToInfo
                 )
             } else {
                 // Show loading/error screen when no protein is loaded
@@ -153,38 +157,33 @@ fun MainScreen(
         
         // 사이드바 표시 (오버레이)
         if (showDrawer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { showDrawer = false } // 외부 클릭 시 닫기
+            Row(
+                modifier = Modifier.fillMaxSize()
             ) {
-                // 반투명 배경
+                ProteinViewerNavigationDrawer(
+                    onItemSelected = { item ->
+                        when (item) {
+                            DrawerItemType.About -> onNavigateToInfo()
+                            DrawerItemType.UserGuide -> onNavigateToInfo()
+                            DrawerItemType.Features -> onNavigateToInfo()
+                            DrawerItemType.Settings -> { /* TODO: Settings screen */ }
+                            DrawerItemType.Help -> { /* TODO: Help screen */ }
+                            DrawerItemType.Privacy -> { /* TODO: Privacy policy */ }
+                            DrawerItemType.Terms -> { /* TODO: Terms of service */ }
+                            DrawerItemType.License -> { /* TODO: License info */ }
+                        }
+                        showDrawer = false
+                    },
+                    onDismiss = { showDrawer = false }
+                )
+
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
+                        .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        .clickable { showDrawer = false }
                 )
-                
-                // 사이드바
-                Row(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    ProteinViewerNavigationDrawer(
-                        onNavigateToSearch = onNavigateToSearch,
-                        onNavigateToLibrary = onNavigateToLibrary,
-                        onNavigateToSettings = { /* TODO: Settings 구현 */ },
-                        onNavigateToAbout = onNavigateToInfo,
-                        onDismiss = { showDrawer = false }
-                    )
-                    
-                    // 나머지 공간 (클릭 시 닫기)
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable { showDrawer = false }
-                    )
-                }
             }
         }
     }

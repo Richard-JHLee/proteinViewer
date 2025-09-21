@@ -1,6 +1,7 @@
 package com.avas.proteinviewer.rendering
 
 import android.graphics.Color
+import com.avas.proteinviewer.data.model.SecondaryStructure
 
 object ColorMaps {
     // 매우 간단한 CPK 일부 (필요시 확장)
@@ -21,8 +22,11 @@ object ColorMaps {
         "MG" -> Color.rgb(0,255,255)
         else -> Color.rgb(200,200,200)
     }
+
+    fun secondary(structure: SecondaryStructure): Int = when (structure) {
+        SecondaryStructure.HELIX -> Color.rgb(229, 57, 53)      // red
+        SecondaryStructure.SHEET -> Color.rgb(245, 124, 0)      // dark orange/yellow
+        SecondaryStructure.COIL -> Color.rgb(158, 158, 158)     // gray
+        SecondaryStructure.UNKNOWN -> Color.rgb(200, 200, 200)
+    }
 }
-
-
-
-

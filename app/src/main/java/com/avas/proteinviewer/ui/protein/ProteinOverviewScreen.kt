@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.data.model.PDBStructure
+import com.avas.proteinviewer.ui.theme.CoilColor
+import com.avas.proteinviewer.ui.theme.HelixColor
+import com.avas.proteinviewer.ui.theme.SheetColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,21 +292,21 @@ fun ProteinOverviewScreen(
                             StatCard(
                                 value = helixCount.toString(),
                                 label = "α-Helix",
-                                color = Color(0xFFE91E63)
+                                color = HelixColor
                             )
                         }
                         item {
                             StatCard(
                                 value = sheetCount.toString(),
                                 label = "β-Sheet",
-                                color = Color(0xFF9C27B0)
+                                color = SheetColor
                             )
                         }
                         item {
                             StatCard(
                                 value = coilCount.toString(),
                                 label = "Coil",
-                                color = Color(0xFF607D8B)
+                                color = CoilColor
                             )
                         }
                     }

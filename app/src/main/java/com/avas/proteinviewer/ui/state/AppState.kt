@@ -14,7 +14,9 @@ data class AppState(
     val renderMode: RenderMode = RenderMode.SOLID,
     val colorMode: ColorMode = ColorMode.ELEMENT,
     val showBonds: Boolean = true,
-    val isDarkTheme: Boolean = false
+    val isDarkTheme: Boolean = false,
+    val highlightedPockets: Set<String> = emptySet(),
+    val focusedPocket: String? = null
 ) : Parcelable
 
 @Parcelize

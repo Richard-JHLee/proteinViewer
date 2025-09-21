@@ -25,11 +25,17 @@ fun ResponsiveProteinViewer(
 fun ResponsiveMainContent(
     structure: PDBStructure?,
     proteinId: String = "",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMenuClick: () -> Unit = {},
+    onLibraryClick: () -> Unit = {},
+    onSwitchToViewer: () -> Unit = {}
 ) {
     ProteinViewerView(
         structure = structure,
         proteinId = proteinId,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
+        onMenuClick = onMenuClick,
+        onLibraryClick = onLibraryClick,
+        onSwitchToViewer = onSwitchToViewer
     )
 }
