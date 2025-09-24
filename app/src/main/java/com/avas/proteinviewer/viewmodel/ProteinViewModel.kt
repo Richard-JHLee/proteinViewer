@@ -359,8 +359,8 @@ class ProteinViewModel @Inject constructor(
                 
                 if (structureResult.isSuccess) {
                     val loadedStructure = structureResult.getOrThrow()
-                    val nameResult = repository.getProteinName("1CRN")
-                    val proteinName = nameResult.getOrElse { "Crambin" }
+                    // PDB 파일에서 직접 제목 추출 (API 호출 제거)
+                    val proteinName = loadedStructure.title ?: "Crambin"
                     val metadataResult = repository.getProteinMetadata("1CRN")
                     
                     _structure.value = loadedStructure
@@ -542,9 +542,8 @@ class ProteinViewModel @Inject constructor(
                 
                 val loadedStructure = structureResult.getOrThrow()
                 
-                // Load protein name
-                val nameResult = repository.getProteinName(pdbId)
-                val proteinName = nameResult.getOrElse { "Protein $pdbId" }
+                // PDB 파일에서 직접 제목 추출 (API 호출 제거)
+                val proteinName = loadedStructure.title ?: "Protein $pdbId"
                 val metadataResult = repository.getProteinMetadata(pdbId)
                 
                 _structure.value = loadedStructure

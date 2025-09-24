@@ -26,6 +26,7 @@ object PDBParser {
         val annotations = mutableListOf<com.avas.proteinviewer.data.model.Annotation>()
         
         // Parse header information and annotations
+        val title = parseTitle(lines)
         parseHeaderInformation(lines, annotations)
         
         // First pass: Parse secondary structure information
@@ -53,8 +54,35 @@ object PDBParser {
             bonds = bonds,
             annotations = annotations,
             boundingBox = boundingBox,
-            centerOfMass = centerOfMass
+            centerOfMass = centerOfMass,
+            title = title
         )
+    }
+    
+    private fun parseTitle(lines: List<String>): String? {
+        val titleLines = mutableListOf<String>()
+        
+        for (line in lines) {
+            if (line.startsWith("TITLE")) {
+                val titleContent = safeSubstring(line, 10, 80).trim()
+                if (titleContent.isNotEmpty()) {
+                    titleLines.add(titleContent)
+                }
+            }
+        }
+        
+        if (titleLines.isEmpty()) {
+            return null
+        }
+        
+        val fullTitle = titleLines.joinToString(" ")
+        val cleanTitle = fullTitle
+            .replace(Regex("CRYSTAL STRUCTURE OF", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("X-RAY STRUCTURE OF", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("NMR STRUCTURE OF", RegexOption.IGNORE_CASE), "")
+            .trim()
+        
+        return if (cleanTitle.isEmpty()) null else cleanTitle
     }
     
     private fun parseHeaderInformation(lines: List<String>, annotations: MutableList<com.avas.proteinviewer.data.model.Annotation>) {

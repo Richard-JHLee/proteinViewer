@@ -38,4 +38,12 @@ interface PDBApiService {
     suspend fun searchByPDBId(
         @Body query: @JvmSuppressWildcards Map<String, Any>
     ): Response<@JvmSuppressWildcards Map<String, Any>>
+
+    /**
+     * PDB 메타데이터 API (struct.title 등 가져오기)
+     */
+    @GET("core/entry/{pdbId}")
+    suspend fun getProteinMetadata(
+        @Path("pdbId") pdbId: String
+    ): Response<@JvmSuppressWildcards Map<String, Any>>
 }

@@ -287,22 +287,29 @@ private fun HeaderSection(
                 Icon(Icons.Filled.Menu, contentDescription = "Menu")
             }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // iPhone과 동일: 단백질 이름이 메인 타이틀
-                Text(
-                    text = proteinName?.ifBlank { "Protein" } ?: "Protein",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                // iPhone과 동일: PDB ID는 서브타이틀로 괄호 안에 표시
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                // iPhone과 동일: PDB ID가 메인 타이틀 (.title3, .fontWeight(.semibold))
                 if (proteinId.isNotBlank()) {
                     Text(
-                        text = "($proteinId)",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = proteinId,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                // iPhone과 동일: 단백질 이름이 서브타이틀 (.callout, .foregroundColor(.secondary))
+                if (proteinName?.isNotBlank() == true) {
+                    Text(
+                        text = proteinName ?: "",
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

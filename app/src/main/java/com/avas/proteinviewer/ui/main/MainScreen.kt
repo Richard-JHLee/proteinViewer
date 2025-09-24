@@ -67,8 +67,12 @@ fun MainScreen(
     
     // iPhone과 동일: 앱 시작 시 자동으로 1CRN 데이터 로드 (한 번만)
     LaunchedEffect(Unit) {
+        Log.d("MainScreen", "LaunchedEffect triggered - structure: $structure, currentProteinId: $currentProteinId")
         if (structure == null && currentProteinId.isEmpty()) {
+            Log.d("MainScreen", "Calling loadDefaultProtein()")
             viewModel.loadDefaultProtein()
+        } else {
+            Log.d("MainScreen", "Skipping loadDefaultProtein - structure: $structure, currentProteinId: $currentProteinId")
         }
     }
     

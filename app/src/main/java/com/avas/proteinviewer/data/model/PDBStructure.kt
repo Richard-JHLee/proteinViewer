@@ -9,7 +9,8 @@ data class PDBStructure(
     val bonds: List<Bond>,
     val annotations: List<Annotation>,
     val boundingBox: BoundingBox,
-    val centerOfMass: Vector3
+    val centerOfMass: Vector3,
+    val title: String? = null
 ) : Parcelable {
     
     // 통계 정보

@@ -10,6 +10,7 @@ import com.avas.proteinviewer.ui.library.ProteinInfo
 import com.avas.proteinviewer.data.parser.PDBParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
 import android.util.Log
@@ -161,20 +162,30 @@ class ProteinRepository @Inject constructor(
     suspend fun getProteinName(pdbId: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("ProteinRepository", "getProteinName called for PDB ID: $pdbId")
                 val response = apiService.getEntry(pdbId.uppercase())
+                Log.d("ProteinRepository", "API response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
 
                 if (!response.isSuccessful) {
+                    Log.w("ProteinRepository", "API call failed with code: ${response.code()}")
                     return@withContext Result.success("Protein $pdbId")
                 }
 
-                val title = response.body()?.struct?.title
+                val responseBody = response.body()
+                Log.d("ProteinRepository", "Response body: $responseBody")
+                val title = responseBody?.struct?.title
+                Log.d("ProteinRepository", "Extracted title: $title")
+                
                 if (title.isNullOrEmpty()) {
+                    Log.w("ProteinRepository", "Title is null or empty")
                     return@withContext Result.success("Protein $pdbId")
                 }
 
                 val cleanTitle = cleanEntryTitle(title)
+                Log.d("ProteinRepository", "Clean title: $cleanTitle")
                 Result.success(if (cleanTitle.isEmpty()) "Protein $pdbId" else cleanTitle)
             } catch (e: Exception) {
+                Log.e("ProteinRepository", "Exception in getProteinName: ${e.message}", e)
                 Result.success("Protein $pdbId")
             }
         }
@@ -267,8 +278,8 @@ class ProteinRepository @Inject constructor(
                             val score = entry["score"] as? Double ?: 0.0
                             
                             if (!identifier.isNullOrEmpty() && identifier != "UNKNOWN") {
-                                // iOS와 동일한 상세 정보 생성
-                                val proteinName = generateProteinName(identifier, category)
+                                // iOS와 동일한 상세 정보 생성 (struct.title 사용)
+                                val proteinName = runBlocking { generateProteinName(identifier, category) }
                                 val proteinDescription = generateProteinDescription(identifier, category, score)
                                 
                                 ProteinInfo(
@@ -2487,51 +2498,84 @@ class ProteinRepository @Inject constructor(
     }
     
     /**
-     * iOS와 동일한 단백질 이름 생성
+     * iOS와 동일한 단백질 이름 생성 (struct.title 사용)
      */
-    private fun generateProteinName(pdbId: String, category: String): String {
-        return when (category.lowercase()) {
-            "enzymes" -> {
-                when {
-                    pdbId == "4KPN" -> "Plant Nucleoside Hydrolase - Ppnrh1 Enz..."
-                    pdbId == "4KPO" -> "Plant Nucleoside Hydrolase - Zmnrh3 En..."
-                    pdbId == "6ZK1" -> "Plant Nucleoside Hydrolase - Zmnrh2B E..."
-                    pdbId == "6L90" -> "Plant Nucleoside Hydrolase - Zmnrh2A E..."
-                    pdbId.startsWith("4K") -> "Plant Nucleoside Hydrolase - ${pdbId} Enz..."
-                    pdbId.startsWith("6Z") -> "Plant Nucleoside Hydrolase - ${pdbId} E..."
-                    pdbId.startsWith("1LY") -> "Lysozyme C - ${pdbId}"
-                    pdbId.startsWith("1TIM") -> "Triosephosphate Isomerase - ${pdbId}"
-                    pdbId.startsWith("1AKE") -> "Adenylate Kinase - ${pdbId}"
-                    else -> "Enzyme Protein - ${pdbId}"
+    private suspend fun generateProteinName(pdbId: String, category: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ProteinRepository", "generateProteinName called for PDB ID: $pdbId, category: $category")
+                
+                // API에서 struct.title 가져오기
+                val response = apiService.getProteinMetadata(pdbId)
+                Log.d("ProteinRepository", "API response for $pdbId - Success: ${response.isSuccessful}, Code: ${response.code()}")
+                
+                if (response.isSuccessful) {
+                    val metadata = response.body()
+                    Log.d("ProteinRepository", "Metadata received for $pdbId: ${metadata?.keys}")
+                    
+                    val struct = metadata?.get("struct") as? Map<String, Any>
+                    Log.d("ProteinRepository", "Struct data for $pdbId: $struct")
+                    
+                    val structTitle = struct?.get("title") as? String
+                    Log.d("ProteinRepository", "Struct title for $pdbId: $structTitle")
+                    
+                    if (!structTitle.isNullOrEmpty()) {
+                        // struct.title이 있으면 사용, 없으면 기본값
+                        Log.d("ProteinRepository", "Using struct.title for $pdbId: $structTitle")
+                        return@withContext structTitle
+                    }
+                } else {
+                    Log.e("ProteinRepository", "API call failed for $pdbId: ${response.code()} - ${response.message()}")
                 }
-            }
-            "structural" -> {
-                when {
-                    pdbId.startsWith("1TUB") -> "Tubulin - ${pdbId}"
-                    pdbId.startsWith("1PGA") -> "Protein G - ${pdbId}"
-                    else -> "Structural Protein - ${pdbId}"
+                
+                // API 호출 실패 시 기본값 사용
+                when (category.lowercase()) {
+                    "enzymes" -> {
+                        when {
+                            pdbId == "4KPN" -> "Plant Nucleoside Hydrolase - Ppnrh1 Enz..."
+                            pdbId == "4KPO" -> "Plant Nucleoside Hydrolase - Zmnrh3 En..."
+                            pdbId == "6ZK1" -> "Plant Nucleoside Hydrolase - Zmnrh2B E..."
+                            pdbId == "6L90" -> "Plant Nucleoside Hydrolase - Zmnrh2A E..."
+                            pdbId.startsWith("4K") -> "Plant Nucleoside Hydrolase - ${pdbId} Enz..."
+                            pdbId.startsWith("6Z") -> "Plant Nucleoside Hydrolase - ${pdbId} E..."
+                            pdbId.startsWith("1LY") -> "Lysozyme C - ${pdbId}"
+                            pdbId.startsWith("1TIM") -> "Triosephosphate Isomerase - ${pdbId}"
+                            pdbId.startsWith("1AKE") -> "Adenylate Kinase - ${pdbId}"
+                            else -> "Enzyme Protein - ${pdbId}"
+                        }
+                    }
+                    "structural" -> {
+                        when {
+                            pdbId.startsWith("1TUB") -> "Tubulin - ${pdbId}"
+                            pdbId.startsWith("1PGA") -> "Protein G - ${pdbId}"
+                            else -> "Structural Protein - ${pdbId}"
+                        }
+                    }
+                    "defense" -> {
+                        when {
+                            pdbId.startsWith("1IGY") -> "Immunoglobulin - ${pdbId}"
+                            else -> "Defense Protein - ${pdbId}"
+                        }
+                    }
+                    "transport" -> {
+                        when {
+                            pdbId.startsWith("1HHO") -> "Hemoglobin - ${pdbId}"
+                            pdbId.startsWith("1UBQ") -> "Ubiquitin - ${pdbId}"
+                            else -> "Transport Protein - ${pdbId}"
+                        }
+                    }
+                    "hormones" -> {
+                        when {
+                            pdbId.startsWith("1INS") -> "Insulin - ${pdbId}"
+                            else -> "Hormone Protein - ${pdbId}"
+                        }
+                    }
+                    else -> "Protein - ${pdbId}"
                 }
+            } catch (e: Exception) {
+                Log.e("ProteinRepository", "Error getting struct.title for $pdbId: ${e.message}")
+                "Protein - ${pdbId}"
             }
-            "defense" -> {
-                when {
-                    pdbId.startsWith("1IGY") -> "Immunoglobulin - ${pdbId}"
-                    else -> "Defense Protein - ${pdbId}"
-                }
-            }
-            "transport" -> {
-                when {
-                    pdbId.startsWith("1HHO") -> "Hemoglobin - ${pdbId}"
-                    pdbId.startsWith("1UBQ") -> "Ubiquitin - ${pdbId}"
-                    else -> "Transport Protein - ${pdbId}"
-                }
-            }
-            "hormones" -> {
-                when {
-                    pdbId.startsWith("1INS") -> "Insulin - ${pdbId}"
-                    else -> "Hormone Protein - ${pdbId}"
-                }
-            }
-            else -> "Protein - ${pdbId}"
         }
     }
     
