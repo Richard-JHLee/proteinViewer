@@ -1228,15 +1228,15 @@ private fun InfoTabBar(selectedTab: InfoTab, onTabSelected: (InfoTab) -> Unit) {
                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = tab.label,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(40.dp),
                             tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
