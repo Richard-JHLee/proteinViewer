@@ -226,6 +226,26 @@ fun LibraryScreen(
         }
     }
 
+    // Protein Detail Sheet - 아이폰과 동일한 상세 정보 화면
+    if (showingInfoSheet && selectedProtein != null) {
+        ProteinDetailSheet(
+            protein = selectedProtein!!,
+            onDismiss = {
+                showingInfoSheet = false
+                selectedProtein = null
+            },
+            onView3D = { proteinId ->
+                // 3D 구조 보기 - 메인 화면으로 돌아가서 단백질 로드
+                onNavigateBack()
+                // TODO: ViewModel을 통해 단백질 로드
+            },
+            onFavorite = { proteinId ->
+                // 즐겨찾기 토글
+                // TODO: ViewModel을 통해 즐겨찾기 토글
+            }
+        )
+    }
+
     // Loading Overlay - 아이폰과 동일한 스타일
     if (showingLoadingPopup || isProteinLoading) {
         Box(
