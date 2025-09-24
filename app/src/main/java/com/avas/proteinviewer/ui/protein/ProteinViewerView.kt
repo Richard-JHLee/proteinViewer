@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.ViewList
@@ -287,14 +288,18 @@ private fun HeaderSection(
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // iPhone과 동일: 단백질 이름이 메인 타이틀
                 Text(
-                    text = proteinId.ifBlank { "Protein" },
+                    text = proteinName?.ifBlank { "Protein" } ?: "Protein",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-                proteinName?.let {
+                // iPhone과 동일: PDB ID는 서브타이틀로 괄호 안에 표시
+                if (proteinId.isNotBlank()) {
                     Text(
-                        text = it,
+                        text = "($proteinId)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -303,9 +308,11 @@ private fun HeaderSection(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // iPhone과 동일: books.vertical 아이콘 (라이브러리)
                 IconButton(onClick = onLibraryClick) {
-                    Icon(Icons.Filled.Info, contentDescription = "Info")
+                    Icon(Icons.Filled.MenuBook, contentDescription = "Protein Library")
                 }
+                // iPhone과 동일: eye 아이콘 (뷰어)
                 IconButton(onClick = onSwitchToViewer) {
                     Icon(Icons.Filled.RemoveRedEye, contentDescription = "Viewer")
                 }

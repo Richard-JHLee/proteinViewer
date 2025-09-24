@@ -21,11 +21,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.avas.proteinviewer.ui.protein.ProteinViewerView
-import com.avas.proteinviewer.ui.layout.ResponsiveMainContent
 import com.avas.proteinviewer.ui.navigation.DrawerItemType
 import com.avas.proteinviewer.ui.navigation.ProteinViewerNavigationDrawer
 // import com.avas.proteinviewer.ui.accessibility.AccessibilityHelper
 import com.avas.proteinviewer.viewmodel.ProteinViewModel
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +33,15 @@ fun MainScreen(
     onNavigateToSearch: () -> Unit,
     onNavigateToLibrary: () -> Unit,
     onNavigateToInfo: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onNavigateToUserGuide: () -> Unit,
+    onNavigateToFeatures: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToHelp: () -> Unit,
+    onNavigateToPrivacy: () -> Unit,
+    onNavigateToTerms: () -> Unit,
+    onNavigateToLicense: () -> Unit,
+    shouldShowDrawer: Boolean = false,
     viewModel: ProteinViewModel = hiltViewModel()
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
@@ -43,15 +52,22 @@ fun MainScreen(
     val structure by viewModel.structure.collectAsState()
     val appState by viewModel.appState.collectAsState()
     
-    var showDrawer by remember { mutableStateOf(false) }
+    var showDrawer by remember { mutableStateOf(shouldShowDrawer) }
     val coroutineScope = rememberCoroutineScope()
+    
+    // 네비게이션에서 돌아올 때 사이드바 열기
+    LaunchedEffect(shouldShowDrawer) {
+        if (shouldShowDrawer) {
+            showDrawer = true
+        }
+    }
     
     // 다크 테마 상태 관리
     val isDarkTheme = appState.isDarkTheme
     
-    // iPhone과 동일: 앱 시작 시 자동으로 1CRN 데이터 로드
+    // iPhone과 동일: 앱 시작 시 자동으로 1CRN 데이터 로드 (한 번만)
     LaunchedEffect(Unit) {
-        if (structure == null) {
+        if (structure == null && currentProteinId.isEmpty()) {
             viewModel.loadDefaultProtein()
         }
     }
@@ -68,15 +84,25 @@ fun MainScreen(
         ) { paddingValues ->
             // 반응형 레이아웃 적용
             if (structure != null) {
-                ResponsiveMainContent(
+                ProteinViewerView(
                     structure = structure,
                     proteinId = currentProteinId,
+                    proteinName = currentProteinName,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    onMenuClick = { showDrawer = true },
-                    onLibraryClick = onNavigateToLibrary,
-                    onSwitchToViewer = onNavigateToInfo
+                    onMenuClick = { 
+                        Log.d("MainScreen", "Menu clicked")
+                        showDrawer = true 
+                    },
+                    onLibraryClick = { 
+                        Log.d("MainScreen", "Library clicked - navigating to library")
+                        onNavigateToLibrary() 
+                    },
+                    onSwitchToViewer = { 
+                        Log.d("MainScreen", "Switch to viewer clicked")
+                        onNavigateToInfo() 
+                    }
                 )
             } else {
                 // Show loading/error screen when no protein is loaded
@@ -160,22 +186,22 @@ fun MainScreen(
             Row(
                 modifier = Modifier.fillMaxSize()
             ) {
-                ProteinViewerNavigationDrawer(
-                    onItemSelected = { item ->
-                        when (item) {
-                            DrawerItemType.About -> onNavigateToInfo()
-                            DrawerItemType.UserGuide -> onNavigateToInfo()
-                            DrawerItemType.Features -> onNavigateToInfo()
-                            DrawerItemType.Settings -> { /* TODO: Settings screen */ }
-                            DrawerItemType.Help -> { /* TODO: Help screen */ }
-                            DrawerItemType.Privacy -> { /* TODO: Privacy policy */ }
-                            DrawerItemType.Terms -> { /* TODO: Terms of service */ }
-                            DrawerItemType.License -> { /* TODO: License info */ }
-                        }
-                        showDrawer = false
-                    },
-                    onDismiss = { showDrawer = false }
-                )
+                    ProteinViewerNavigationDrawer(
+                        onItemSelected = { item ->
+                            when (item) {
+                                DrawerItemType.About -> onNavigateToAbout()
+                                DrawerItemType.UserGuide -> onNavigateToUserGuide()
+                                DrawerItemType.Features -> onNavigateToFeatures()
+                                DrawerItemType.Settings -> onNavigateToSettings()
+                                DrawerItemType.Help -> onNavigateToHelp()
+                                DrawerItemType.Privacy -> onNavigateToPrivacy()
+                                DrawerItemType.Terms -> onNavigateToTerms()
+                                DrawerItemType.License -> onNavigateToLicense()
+                            }
+                            showDrawer = false
+                        },
+                        onDismiss = { showDrawer = false }
+                    )
 
                 Box(
                     modifier = Modifier

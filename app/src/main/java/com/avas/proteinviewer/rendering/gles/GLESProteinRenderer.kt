@@ -87,7 +87,7 @@ class GLESProteinRenderer : GLSurfaceView.Renderer {
         GLES30.glClearColor(1f, 1f, 1f, 1f)
 
         try {
-            program = createProgram(VERT_SHADER, FRAG_SHADER)
+        program = createProgram(VERT_SHADER, FRAG_SHADER)
             bondProgram = createProgram(BOND_VERT_SHADER, BOND_FRAG_SHADER)
         } catch (ex: RuntimeException) {
             Log.e(TAG, "Failed to create shader program", ex)
@@ -727,22 +727,22 @@ class GLESProteinRenderer : GLSurfaceView.Renderer {
         private const val HIGHLIGHT_LIFT = 0.05f
 
         private const val VERT_SHADER = """#version 300 es
-layout (location = 0) in vec3 aPosition;
-layout (location = 1) in vec3 aColor;
-uniform mat4 uMvp;
-uniform float uPointSize;
-out vec3 vColor;
-void main() {
-    gl_Position = uMvp * vec4(aPosition, 1.0);
-    gl_PointSize = uPointSize;
-    vColor = aColor;
+            layout (location = 0) in vec3 aPosition;
+            layout (location = 1) in vec3 aColor;
+            uniform mat4 uMvp;
+            uniform float uPointSize;
+            out vec3 vColor;
+            void main() {
+                gl_Position = uMvp * vec4(aPosition, 1.0);
+                gl_PointSize = uPointSize;
+                vColor = aColor;
 }"""
 
         private const val FRAG_SHADER = """#version 300 es
-precision mediump float;
-in vec3 vColor;
-out vec4 fragColor;
-void main() {
+            precision mediump float;
+            in vec3 vColor;
+            out vec4 fragColor;
+            void main() {
     vec2 coord = gl_PointCoord * 2.0 - 1.0;
     float r2 = dot(coord, coord);
     if (r2 > 1.0) {

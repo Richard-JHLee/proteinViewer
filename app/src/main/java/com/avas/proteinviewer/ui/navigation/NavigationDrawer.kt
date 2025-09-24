@@ -1,13 +1,19 @@
 package com.avas.proteinviewer.ui.navigation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import com.avas.proteinviewer.util.LanguageHelper
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.avas.proteinviewer.R
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,8 +57,6 @@ fun ProteinViewerNavigationDrawer(
     }
 }
 
-private val HeaderIcon = Icons.Default.Science
-
 @Composable
 private fun DrawerHeader(onDismiss: () -> Unit) {
     Column {
@@ -62,11 +66,12 @@ private fun DrawerHeader(onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                HeaderIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "App Logo",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -153,13 +158,37 @@ private fun DrawerFooter() {
     }
 }
 
-enum class DrawerItemType(val title: String, val subtitle: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    About("About", "App information and version", Icons.Default.Info),
-    UserGuide("User Guide", "Step-by-step guidance", Icons.Default.MenuBook),
-    Features("Features", "Key capabilities of the app", Icons.Default.Star),
-    Settings("Settings", "Configure preferences", Icons.Default.Settings),
-    Help("Help", "FAQ and troubleshooting", Icons.Default.HelpOutline),
-    Privacy("Privacy Policy", "How we handle your data", Icons.Default.PrivacyTip),
-    Terms("Terms of Service", "Usage agreement", Icons.Default.Description),
-    License("License", "Open-source licenses", Icons.Default.Article)
+enum class DrawerItemType(val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    About(Icons.Default.Info),
+    UserGuide(Icons.Default.MenuBook),
+    Features(Icons.Default.Star),
+    Settings(Icons.Default.Settings),
+    Help(Icons.Default.HelpOutline),
+    Privacy(Icons.Default.PrivacyTip),
+    Terms(Icons.Default.Description),
+    License(Icons.Default.Article);
+    
+    val title: String
+        get() = when (this) {
+            About -> LanguageHelper.localizedText("정보", "About")
+            UserGuide -> LanguageHelper.localizedText("사용자 가이드", "User Guide")
+            Features -> LanguageHelper.localizedText("기능", "Features")
+            Settings -> LanguageHelper.localizedText("설정", "Settings")
+            Help -> LanguageHelper.localizedText("도움말", "Help")
+            Privacy -> LanguageHelper.localizedText("개인정보 처리방침", "Privacy Policy")
+            Terms -> LanguageHelper.localizedText("이용약관", "Terms of Service")
+            License -> LanguageHelper.localizedText("라이선스", "License")
+        }
+    
+    val subtitle: String
+        get() = when (this) {
+            About -> LanguageHelper.localizedText("앱 정보 및 버전", "App information and version")
+            UserGuide -> LanguageHelper.localizedText("사용자 가이드", "Step-by-step guidance")
+            Features -> LanguageHelper.localizedText("주요 기능", "Key capabilities of the app")
+            Settings -> LanguageHelper.localizedText("앱 설정", "Configure preferences")
+            Help -> LanguageHelper.localizedText("도움말 및 FAQ", "FAQ and troubleshooting")
+            Privacy -> LanguageHelper.localizedText("개인정보 처리방침", "How we handle your data")
+            Terms -> LanguageHelper.localizedText("이용약관", "Usage agreement")
+            License -> LanguageHelper.localizedText("라이선스 정보", "Open-source licenses")
+        }
 }

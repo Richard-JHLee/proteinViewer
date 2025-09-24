@@ -18,6 +18,7 @@ object NetworkModule {
 
     private const val CORE_BASE_URL = "https://data.rcsb.org/rest/v1/core/"
     private const val FILE_BASE_URL = "https://files.rcsb.org/"
+    private const val SEARCH_BASE_URL = "https://search.rcsb.org/"
 
     @Provides
     @Singleton
@@ -53,4 +54,21 @@ object NetworkModule {
     @Singleton
     fun providePdbFileService(@Named("file") retrofit: Retrofit): PDBFileService =
         retrofit.create(PDBFileService::class.java)
+
+    @Provides
+    @Singleton
+    @Named("search")
+    fun provideSearchRetrofit(client: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(SEARCH_BASE_URL)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("search")
+    fun provideSearchApiService(@Named("search") retrofit: Retrofit): PDBApiService =
+        retrofit.create(PDBApiService::class.java)
 }

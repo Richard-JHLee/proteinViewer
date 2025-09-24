@@ -7,6 +7,7 @@ import com.avas.proteinviewer.data.model.ProteinMetadata
 import com.avas.proteinviewer.data.repository.ProteinRepository
 import com.avas.proteinviewer.data.local.SampleData
 import com.avas.proteinviewer.ui.state.AppState
+import com.avas.proteinviewer.ui.library.ProteinInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,12 +42,23 @@ class ProteinViewModel @Inject constructor(
     private val _metadata = MutableStateFlow<ProteinMetadata?>(null)
     val metadata: StateFlow<ProteinMetadata?> = _metadata.asStateFlow()
     
+    private val _searchResults = MutableStateFlow<List<ProteinInfo>>(emptyList())
+    val searchResults: StateFlow<List<ProteinInfo>> = _searchResults.asStateFlow()
+    
     private val _appState = MutableStateFlow(AppState())
     val appState: StateFlow<AppState> = _appState.asStateFlow()
     
     // 현재 선택된 카테고리
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
+    
+    // Load More 기능을 위한 상태
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+    
+    // 각 카테고리별 페이지네이션 상태
+    private val categoryPages = mutableMapOf<String, Int>()
+    private val categoryHasMore = mutableMapOf<String, Boolean>()
     
     // 카테고리별 단백질 개수 (PDB 실제 데이터 기반)
     private val _categoryProteinCounts = MutableStateFlow<Map<String, Int>>(
@@ -67,6 +79,10 @@ class ProteinViewModel @Inject constructor(
     )
     val categoryProteinCounts: StateFlow<Map<String, Int>> = _categoryProteinCounts.asStateFlow()
     
+    // 카테고리별 실제 단백질 데이터 (아이폰과 동일한 기능)
+    private val _categoryProteins = MutableStateFlow<Map<String, List<ProteinInfo>>>(emptyMap())
+    val categoryProteins: StateFlow<Map<String, List<ProteinInfo>>> = _categoryProteins.asStateFlow()
+    
     // 카테고리 로딩 상태
     private val _isLoadingCategoryCounts = MutableStateFlow(true)
     val isLoadingCategoryCounts: StateFlow<Boolean> = _isLoadingCategoryCounts.asStateFlow()
@@ -74,6 +90,15 @@ class ProteinViewModel @Inject constructor(
     init {
         // ViewModel 초기화 시 모든 카테고리 개수 병렬 로드
         Log.d("ProteinViewModel", "ViewModel init - starting loadAllCategoryCounts()")
+        loadAllCategoryCounts()
+    }
+    
+    /**
+     * Load Data 버튼 클릭 시 모든 카테고리 개수 새로고침 (아이폰과 동일한 기능)
+     */
+    fun refreshAllCategoryCounts() {
+        Log.d("ProteinViewModel", "refreshAllCategoryCounts() called - Load Data button clicked")
+        _isLoadingCategoryCounts.value = true
         loadAllCategoryCounts()
     }
     
@@ -116,6 +141,9 @@ class ProteinViewModel @Inject constructor(
                             _categoryProteinCounts.value = currentCounts
                             Log.d("ProteinViewModel", "📊 $category: Using sample count $sampleCount")
                         }
+                        
+                        // 아이폰과 동일: API 부하 방지를 위한 짧은 지연
+                        kotlinx.coroutines.delay(200) // 0.2초
                     } catch (e: Exception) {
                         Log.e("ProteinViewModel", "Error loading count for $category: ${e.message}")
                         // 에러 시 샘플 데이터 개수 사용
@@ -166,6 +194,70 @@ class ProteinViewModel @Inject constructor(
         return mapping[category] ?: category.lowercase()
     }
     
+    /**
+     * 카테고리 선택 시 실제 단백질 데이터 로드 (아이폰과 동일한 기능)
+     */
+    fun loadCategoryProteins(category: String) {
+        Log.d("ProteinViewModel", "loadCategoryProteins() called for: $category")
+        viewModelScope.launch {
+            Log.d("ProteinViewModel", "Starting category proteins loading for: $category")
+            
+            // UI 카테고리 이름을 Repository 매핑용 이름으로 변환
+            val repositoryCategory = mapUICategoryToRepository(category)
+            Log.d("ProteinViewModel", "Processing category: $category -> $repositoryCategory")
+            
+            try {
+                // 아이폰과 동일: 실제 단백질 데이터 로드 (30개씩)
+                Log.d("ProteinViewModel", "$category: Loading actual protein data from API")
+                
+                val response = repository.searchProteinsByCategory(repositoryCategory, 30, 0)
+                
+                Log.d("ProteinViewModel", "$category: API response received - Success: ${response.isSuccess}")
+                
+                if (response.isSuccess) {
+                    val proteins = response.getOrNull() ?: emptyList()
+                    Log.d("ProteinViewModel", "$category: Retrieved ${proteins.size} proteins from API")
+                    
+                    // 단백질 정보 로그 출력
+                    proteins.take(5).forEach { protein ->
+                        Log.d("ProteinViewModel", "$category: Protein - PDB: ${protein.pdbId}, Name: ${protein.name}")
+                    }
+                    
+                    // 현재 단백질 리스트를 업데이트
+                    val currentMap = _categoryProteins.value.toMutableMap()
+                    currentMap[category] = proteins
+                    _categoryProteins.value = currentMap
+                    
+                    // 페이지네이션 상태 초기화
+                    categoryPages[category] = 0
+                    categoryHasMore[category] = proteins.size >= 30
+                    
+                    Log.d("ProteinViewModel", "$category: ${proteins.size}개 단백질 로드 완료")
+                    Log.d("ProteinViewModel", "Current categoryProteins map: ${_categoryProteins.value}")
+                } else {
+                    val exception = response.exceptionOrNull()
+                    Log.w("ProteinViewModel", "$category: 단백질 데이터 로드 실패 - ${exception?.message}")
+                    
+                    // 실패 시 빈 리스트로 설정
+                    val currentMap = _categoryProteins.value.toMutableMap()
+                    currentMap[category] = emptyList()
+                    _categoryProteins.value = currentMap
+                    
+                    Log.d("ProteinViewModel", "$category: Set empty list due to failure")
+                }
+            } catch (e: Exception) {
+                Log.e("ProteinViewModel", "$category: 예외 발생", e)
+                
+                // 예외 시 빈 리스트로 설정
+                val currentMap = _categoryProteins.value.toMutableMap()
+                currentMap[category] = emptyList()
+                _categoryProteins.value = currentMap
+                
+                Log.d("ProteinViewModel", "$category: Set empty list due to exception")
+            }
+        }
+    }
+
     /**
      * 선택된 카테고리의 단백질 개수만 로드
      */
@@ -319,7 +411,115 @@ class ProteinViewModel @Inject constructor(
         }
     }
     
+    /**
+     * PDB ID로 검색하여 단백질 리스트에 추가
+     */
+    fun searchProteinByPDBId(pdbId: String) {
+        Log.d("ProteinViewModel", "searchProteinByPDBId called with PDB ID: $pdbId")
+        viewModelScope.launch {
+            _isLoading.value = true
+            _loadingProgress.value = "Searching for protein $pdbId..."
+            _error.value = null
+            
+            try {
+                // Step 1: Search for PDB ID existence
+                val searchResult = repository.searchByPDBId(pdbId)
+                
+                if (searchResult.isFailure) {
+                    val error = searchResult.exceptionOrNull()
+                    _error.value = when (error) {
+                        is com.avas.proteinviewer.data.error.PDBError -> error.userFriendlyMessage
+                        else -> "Failed to search protein: ${error?.message}"
+                    }
+                    _isLoading.value = false
+                    _loadingProgress.value = ""
+                    return@launch
+                }
+                
+                val exists = searchResult.getOrThrow()
+                if (!exists) {
+                    _error.value = "Protein '$pdbId' not found in the database. Please try a different protein."
+                    _isLoading.value = false
+                    _loadingProgress.value = ""
+                    return@launch
+                }
+                
+                Log.d("ProteinViewModel", "PDB ID $pdbId found, adding to protein list...")
+                _loadingProgress.value = "Adding protein $pdbId to list..."
+                
+                // Step 2: Create ProteinInfo for the found PDB ID
+                val proteinInfo = createProteinInfoFromPDBId(pdbId)
+                
+                // Step 3: Add to search results (check for duplicates)
+                val currentSearchResults = _searchResults.value.toMutableList()
+                
+                // Check if protein already exists in search results
+                val alreadyExists = currentSearchResults.any { it.pdbId.equals(pdbId, ignoreCase = true) }
+                
+                if (!alreadyExists) {
+                    currentSearchResults.add(proteinInfo)
+                    _searchResults.value = currentSearchResults
+                    Log.d("ProteinViewModel", "Successfully added protein $pdbId to search results")
+                } else {
+                    Log.d("ProteinViewModel", "Protein $pdbId already exists in search results, skipping duplicate")
+                }
+                
+                _isLoading.value = false
+                _loadingProgress.value = ""
+                
+            } catch (e: Exception) {
+                Log.e("ProteinViewModel", "Error searching protein $pdbId", e)
+                _error.value = "Failed to search protein $pdbId: ${e.message}"
+                _isLoading.value = false
+                _loadingProgress.value = ""
+            }
+        }
+    }
+
+    /**
+     * PDB ID로부터 ProteinInfo 생성
+     */
+    private fun createProteinInfoFromPDBId(pdbId: String): ProteinInfo {
+        return ProteinInfo(
+            pdbId = pdbId.uppercase(),
+            name = generateProteinName(pdbId, "Search"),
+            description = generateProteinDescription(pdbId, "Search", 1.0),
+            categoryName = "Search Results"
+        )
+    }
+
+    /**
+     * 단백질 이름 생성 (검색 결과용)
+     */
+    private fun generateProteinName(pdbId: String, category: String): String {
+        return when {
+            pdbId == "1AOR" -> "Aldehyde Ferredoxin Oxidoreductase - 1AOR"
+            pdbId == "1CRN" -> "Crambin - 1CRN"
+            pdbId == "1HHO" -> "Hemoglobin - 1HHO"
+            pdbId == "1LYZ" -> "Lysozyme C - 1LYZ"
+            pdbId == "1TIM" -> "Triosephosphate Isomerase - 1TIM"
+            pdbId == "1AKE" -> "Adenylate Kinase - 1AKE"
+            else -> "Protein $pdbId"
+        }
+    }
+
+    /**
+     * 단백질 설명 생성 (검색 결과용)
+     */
+    private fun generateProteinDescription(pdbId: String, category: String, score: Double): String {
+        return when {
+            pdbId == "1AOR" -> "Structure of a hyperthermophilic tungstopterin enzyme, aldehyde ferredoxin oxidoreductase | Method: X-RAY DIFFRACTION | Resolution: 2.30Å | Organism: Pyrococcus furiosus"
+            pdbId == "1CRN" -> "Crambin protein | Method: X-RAY DIFFRACTION | Resolution: 0.54Å | Organism: Crambe abyssinica"
+            pdbId == "1HHO" -> "Human deoxyhemoglobin | Method: X-RAY DIFFRACTION | Resolution: 1.74Å | Organism: Homo sapiens"
+            pdbId == "1LYZ" -> "Lysozyme C enzyme | Method: X-RAY DIFFRACTION | Resolution: 1.65Å | Organism: Gallus gallus"
+            pdbId == "1TIM" -> "Triosephosphate isomerase enzyme | Method: X-RAY DIFFRACTION | Resolution: 1.20Å | Organism: Gallus gallus"
+            pdbId == "1AKE" -> "Adenylate kinase enzyme | Method: X-RAY DIFFRACTION | Resolution: 1.50Å | Organism: Escherichia coli"
+            else -> "Protein from $category category | Method: X-RAY DIFFRACTION | Resolution: 2.00Å | Organism: Unknown"
+        }
+    }
+
     fun loadSelectedProtein(pdbId: String) {
+        Log.d("ProteinViewModel", "loadSelectedProtein called with PDB ID: $pdbId")
         viewModelScope.launch {
             _isLoading.value = true
             _loadingProgress.value = "Loading protein $pdbId..."
@@ -425,6 +625,81 @@ class ProteinViewModel @Inject constructor(
             
             _categoryProteinCounts.value = counts
         }
+    }
+    
+    /**
+     * Load More 기능 - iOS와 동일한 페이지네이션
+     */
+    fun loadMoreProteins() {
+        val currentCategory = _selectedCategory.value
+        if (currentCategory == null) {
+            Log.w("ProteinViewModel", "Load More: No category selected")
+            return
+        }
+        
+        if (_isLoadingMore.value) {
+            Log.w("ProteinViewModel", "Load More: Already loading, ignoring request")
+            return
+        }
+        
+        Log.d("ProteinViewModel", "Load More: Starting for category $currentCategory")
+        _isLoadingMore.value = true
+        
+        viewModelScope.launch {
+            try {
+                val repositoryCategory = mapUICategoryToRepository(currentCategory)
+                val currentPage = categoryPages[currentCategory] ?: 0
+                val nextPage = currentPage + 1
+                val skip = nextPage * 30
+                
+                Log.d("ProteinViewModel", "Load More: Loading page $nextPage (skip: $skip)")
+                
+                val response = repository.searchProteinsByCategory(repositoryCategory, 30, skip)
+                
+                if (response.isSuccess) {
+                    val newProteins = response.getOrNull() ?: emptyList()
+                    Log.d("ProteinViewModel", "Load More: Retrieved ${newProteins.size} new proteins")
+                    
+                    if (newProteins.isNotEmpty()) {
+                        // 기존 단백질 리스트에 추가
+                        val currentMap = _categoryProteins.value.toMutableMap()
+                        val existingProteins = currentMap[currentCategory] ?: emptyList()
+                        val updatedProteins = existingProteins + newProteins
+                        currentMap[currentCategory] = updatedProteins
+                        _categoryProteins.value = currentMap
+                        
+                        // 페이지 상태 업데이트
+                        categoryPages[currentCategory] = nextPage
+                        categoryHasMore[currentCategory] = newProteins.size >= 30
+                        
+                        Log.d("ProteinViewModel", "Load More: Updated total proteins to ${updatedProteins.size}")
+                    } else {
+                        // 더 이상 데이터가 없음
+                        categoryHasMore[currentCategory] = false
+                        Log.d("ProteinViewModel", "Load More: No more proteins available")
+                    }
+                } else {
+                    Log.w("ProteinViewModel", "Load More: Failed to load more proteins")
+                }
+            } catch (e: Exception) {
+                Log.e("ProteinViewModel", "Load More: Exception occurred", e)
+            } finally {
+                _isLoadingMore.value = false
+            }
+        }
+    }
+    
+    /**
+     * Load More 버튼 표시 여부 확인
+     */
+    fun shouldShowLoadMore(): Boolean {
+        val currentCategory = _selectedCategory.value ?: return false
+        val currentProteins = _categoryProteins.value[currentCategory] ?: emptyList()
+        val totalCount = _categoryProteinCounts.value[currentCategory] ?: 0
+        val hasMore = categoryHasMore[currentCategory] ?: true
+        
+        // iOS와 동일한 로직: 30개 미만이거나 더 가져올 수 있는 경우
+        return currentProteins.size < totalCount && hasMore
     }
     
     /**

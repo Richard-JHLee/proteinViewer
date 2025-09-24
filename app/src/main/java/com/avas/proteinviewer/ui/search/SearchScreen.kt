@@ -81,6 +81,7 @@ fun SearchScreen(
             Button(
                 onClick = { 
                     if (searchQuery.isNotEmpty()) {
+                        android.util.Log.d("SearchScreen", "Searching for PDB ID: $searchQuery")
                         viewModel.loadSelectedProtein(searchQuery)
                         onNavigateBack()
                     }
