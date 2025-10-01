@@ -1,172 +1,135 @@
 package com.avas.proteinviewer.data.parser
 
-import com.avas.proteinviewer.data.error.PDBParseError
-import com.avas.proteinviewer.data.model.*
+import com.avas.proteinviewer.domain.model.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
 
 object PDBParser {
     
-    // 표준 아미노산 잔기들
     private val standardResidues = setOf(
         "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
         "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"
     )
     
-    // 백본 원자들
     private val backboneAtoms = setOf("CA", "C", "N", "O", "P", "O5'", "C5'", "C4'", "C3'", "O3'")
     
-    fun parse(pdbText: String): PDBStructure {
+    suspend fun parse(pdbText: String): PDBStructure = withContext(Dispatchers.Default) {
         if (pdbText.trim().isEmpty()) {
-            throw PDBParseError.InvalidFormat("Empty PDB content")
+            throw PDBParseException("Empty PDB content")
         }
         
-        val lines = pdbText.split('\n')
+        val lines = pdbText.lines()
         val atoms = mutableListOf<Atom>()
         val secondaryStructureMap = mutableMapOf<String, SecondaryStructure>()
-        val annotations = mutableListOf<com.avas.proteinviewer.data.model.Annotation>()
+        val annotations = mutableListOf<com.avas.proteinviewer.domain.model.Annotation>()
         
-        // Parse header information and annotations
-        val title = parseTitle(lines)
+        // Parse header information
         parseHeaderInformation(lines, annotations)
         
-        // First pass: Parse secondary structure information
+        // Parse secondary structure
         parseSecondaryStructure(lines, secondaryStructureMap)
         
-        // Second pass: Parse atoms with better error handling
+        // Parse atoms
         parseAtoms(lines, secondaryStructureMap, atoms)
         
         if (atoms.isEmpty()) {
-            throw PDBParseError.NoValidAtoms
+            throw PDBParseException("No valid atoms found")
         }
         
-        // Generate bonds more efficiently
+        // Generate bonds
         val bonds = generateBonds(atoms)
         
-        // Calculate structure properties
+        // Calculate properties
         val boundingBox = calculateBoundingBox(atoms)
         val centerOfMass = calculateCenterOfMass(atoms)
         
-        // Add calculated annotations if not present
+        // Add calculated annotations
         addCalculatedAnnotations(atoms, annotations)
         
-        return PDBStructure(
+        PDBStructure(
             atoms = atoms,
             bonds = bonds,
             annotations = annotations,
-            boundingBox = boundingBox,
-            centerOfMass = centerOfMass,
-            title = title
+            boundingBoxMin = boundingBox.first,
+            boundingBoxMax = boundingBox.second,
+            centerOfMass = centerOfMass
         )
     }
     
-    private fun parseTitle(lines: List<String>): String? {
-        val titleLines = mutableListOf<String>()
-        
-        for (line in lines) {
-            if (line.startsWith("TITLE")) {
-                val titleContent = safeSubstring(line, 10, 80).trim()
-                if (titleContent.isNotEmpty()) {
-                    titleLines.add(titleContent)
-                }
-            }
-        }
-        
-        if (titleLines.isEmpty()) {
-            return null
-        }
-        
-        val fullTitle = titleLines.joinToString(" ")
-        val cleanTitle = fullTitle
-            .replace(Regex("CRYSTAL STRUCTURE OF", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("X-RAY STRUCTURE OF", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("NMR STRUCTURE OF", RegexOption.IGNORE_CASE), "")
-            .trim()
-        
-        return if (cleanTitle.isEmpty()) null else cleanTitle
-    }
-    
-    private fun parseHeaderInformation(lines: List<String>, annotations: MutableList<com.avas.proteinviewer.data.model.Annotation>) {
+    private fun parseHeaderInformation(lines: List<String>, annotations: MutableList<com.avas.proteinviewer.domain.model.Annotation>) {
         for (line in lines) {
             when {
-                line.startsWith("HEADER") && line.length >= 50 -> {
-                    val classification = safeSubstring(line, 10, 50).trim()
-                    val depositDate = safeSubstring(line, 50, 59).trim()
-                    
+                line.startsWith("HEADER") && line.length > 50 -> {
+                    val classification = line.substring(10, 50).trim()
+                    val date = line.substring(50, 59).trim()
                     if (classification.isNotEmpty()) {
-                        annotations.add(com.avas.proteinviewer.data.model.Annotation(
-                            type = AnnotationType.FUNCTION,
-                            value = classification,
-                            description = "Protein classification"
+                        annotations.add(Annotation(
+                            AnnotationType.FUNCTION,
+                            classification,
+                            "Protein classification"
                         ))
                     }
-                    if (depositDate.isNotEmpty()) {
-                        annotations.add(com.avas.proteinviewer.data.model.Annotation(
-                            type = AnnotationType.DEPOSITION_DATE,
-                            value = depositDate,
-                            description = "Structure deposition date"
+                    if (date.isNotEmpty()) {
+                        annotations.add(Annotation(
+                            AnnotationType.DEPOSITION_DATE,
+                            date,
+                            "Date when structure was deposited"
                         ))
                     }
                 }
-                line.startsWith("REMARK   2 RESOLUTION") -> {
-                    val resolutionStr = safeSubstring(line, 23, 30).trim()
-                    if (resolutionStr.isNotEmpty()) {
-                        annotations.add(com.avas.proteinviewer.data.model.Annotation(
-                            type = AnnotationType.RESOLUTION,
-                            value = "$resolutionStr Å",
-                            description = "X-ray diffraction resolution"
-                        ))
-                    }
+                line.startsWith("REMARK   2 RESOLUTION.") -> {
+                    val resolution = line.substring(23).trim().split(" ")[0]
+                    annotations.add(Annotation(
+                        AnnotationType.RESOLUTION,
+                        "$resolution Å",
+                        "X-ray diffraction resolution"
+                    ))
                 }
                 line.startsWith("EXPDTA") -> {
-                    val method = safeSubstring(line, 10, 70).trim()
-                    if (method.isNotEmpty()) {
-                        annotations.add(com.avas.proteinviewer.data.model.Annotation(
-                            type = AnnotationType.EXPERIMENTAL_METHOD,
-                            value = method,
-                            description = "Structure determination method"
-                        ))
+                    val method = line.substring(10).trim()
+                    annotations.add(Annotation(
+                        AnnotationType.EXPERIMENTAL_METHOD,
+                        method,
+                        "Experimental technique"
+                    ))
+                }
+                line.startsWith("SOURCE") && line.contains("ORGANISM_SCIENTIFIC:") -> {
+                    val organism = line.substring(line.indexOf("ORGANISM_SCIENTIFIC:") + 20).trim()
+                    annotations.add(Annotation(
+                        AnnotationType.ORGANISM,
+                        organism,
+                        "Source organism"
+                    ))
+                }
+            }
+        }
+    }
+    
+    private fun parseSecondaryStructure(lines: List<String>, map: MutableMap<String, SecondaryStructure>) {
+        for (line in lines) {
+            try {
+                when {
+                    line.startsWith("HELIX") && line.length >= 38 -> {
+                        val chain = line.substring(19, 20).trim()
+                        val start = line.substring(21, 25).trim().toIntOrNull() ?: continue
+                        val end = line.substring(33, 37).trim().toIntOrNull() ?: continue
+                        for (i in start..end) {
+                            map["${chain}_$i"] = SecondaryStructure.HELIX
+                        }
+                    }
+                    line.startsWith("SHEET") && line.length >= 38 -> {
+                        val chain = line.substring(21, 22).trim()
+                        val start = line.substring(22, 26).trim().toIntOrNull() ?: continue
+                        val end = line.substring(33, 37).trim().toIntOrNull() ?: continue
+                        for (i in start..end) {
+                            map["${chain}_$i"] = SecondaryStructure.SHEET
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                // Skip malformed lines
             }
-        }
-    }
-    
-    private fun parseSecondaryStructure(lines: List<String>, secondaryStructureMap: MutableMap<String, SecondaryStructure>) {
-        for (line in lines) {
-            when {
-                line.startsWith("HELIX") && line.length >= 37 -> {
-                    parseHelixRecord(line, secondaryStructureMap)
-                }
-                line.startsWith("SHEET") && line.length >= 37 -> {
-                    parseSheetRecord(line, secondaryStructureMap)
-                }
-            }
-        }
-    }
-    
-    private fun parseHelixRecord(line: String, secondaryStructureMap: MutableMap<String, SecondaryStructure>) {
-        val chain = safeSubstring(line, 19, 20).trim()
-        val startResStr = safeSubstring(line, 21, 25).trim()
-        val endResStr = safeSubstring(line, 33, 37).trim()
-        
-        val startRes = startResStr.toIntOrNull() ?: return
-        val endRes = endResStr.toIntOrNull() ?: return
-        
-        for (resNum in startRes..endRes) {
-            secondaryStructureMap["${chain}_$resNum"] = SecondaryStructure.HELIX
-        }
-    }
-    
-    private fun parseSheetRecord(line: String, secondaryStructureMap: MutableMap<String, SecondaryStructure>) {
-        val chain = safeSubstring(line, 21, 22).trim()
-        val startResStr = safeSubstring(line, 22, 26).trim()
-        val endResStr = safeSubstring(line, 33, 37).trim()
-        
-        val startRes = startResStr.toIntOrNull() ?: return
-        val endRes = endResStr.toIntOrNull() ?: return
-        
-        for (resNum in startRes..endRes) {
-            secondaryStructureMap["${chain}_$resNum"] = SecondaryStructure.SHEET
         }
     }
     
@@ -175,93 +138,108 @@ object PDBParser {
         secondaryStructureMap: Map<String, SecondaryStructure>,
         atoms: MutableList<Atom>
     ) {
-        var atomIndex = 0
+        var atomId = 0
         
         for (line in lines) {
             if (!line.startsWith("ATOM") && !line.startsWith("HETATM")) continue
-            if (line.length < 54) continue // 최소 좌표까지는 있어야 함
+            if (line.length < 54) continue
             
-            // Parse atom information with safer extraction
-            val atomName = safeSubstring(line, 12, 16).trim()
-            val residueName = safeSubstring(line, 17, 20).trim()
-            val chain = safeSubstring(line, 21, 22).trim()
-            val residueNumberStr = safeSubstring(line, 22, 26).trim()
-            
-            // Parse coordinates with validation
-            val xStr = safeSubstring(line, 30, 38).trim()
-            val yStr = safeSubstring(line, 38, 46).trim()
-            val zStr = safeSubstring(line, 46, 54).trim()
-            
-            val residueNumber = residueNumberStr.toIntOrNull() ?: continue
-            val x = xStr.toFloatOrNull() ?: continue
-            val y = yStr.toFloatOrNull() ?: continue
-            val z = zStr.toFloatOrNull() ?: continue
-            
-            if (!x.isFinite() || !y.isFinite() || !z.isFinite()) continue
-            
-            // Parse optional fields
-            val occupancy = safeSubstring(line, 54, 60).trim().toFloatOrNull() ?: 1.0f
-            val tempFactor = safeSubstring(line, 60, 66).trim().toFloatOrNull() ?: 0.0f
-            var element = safeSubstring(line, 76, 78).trim()
-            
-            // Guess element from atom name if not provided
-            if (element.isEmpty()) {
-                element = guessElement(atomName)
+            try {
+                val name = line.substring(12, 16).trim()
+                val residueName = line.substring(17, 20).trim()
+                val chain = line.substring(21, 22).trim().ifEmpty { "A" }
+                val residueNumber = line.substring(22, 26).trim().toIntOrNull() ?: continue
+                
+                val x = line.substring(30, 38).trim().toFloatOrNull() ?: continue
+                val y = line.substring(38, 46).trim().toFloatOrNull() ?: continue
+                val z = line.substring(46, 54).trim().toFloatOrNull() ?: continue
+                
+                val occupancy = if (line.length > 60) {
+                    line.substring(54, 60).trim().toFloatOrNull() ?: 1.0f
+                } else 1.0f
+                
+                val tempFactor = if (line.length > 66) {
+                    line.substring(60, 66).trim().toFloatOrNull() ?: 0.0f
+                } else 0.0f
+                
+                val element = if (line.length > 77) {
+                    line.substring(76, 78).trim().ifEmpty { 
+                        name.take(1)
+                    }
+                } else {
+                    name.take(1)
+                }
+                
+                val key = "${chain}_${residueNumber}"
+                val secondaryStructure = secondaryStructureMap[key] ?: SecondaryStructure.COIL
+                
+                val isBackbone = backboneAtoms.contains(name)
+                val isLigand = !standardResidues.contains(residueName) && line.startsWith("HETATM")
+                // iOS와 동일한 로직 (PDB.swift:320): 백본도 아니고 리간드도 아닌 원자
+                val isPocket = !isBackbone && !isLigand
+                
+                atoms.add(Atom(
+                    id = atomId++,
+                    element = element,
+                    name = name,
+                    chain = chain,
+                    residueName = residueName,
+                    residueNumber = residueNumber,
+                    position = Vector3(x, y, z),
+                    secondaryStructure = secondaryStructure,
+                    isBackbone = isBackbone,
+                    isLigand = isLigand,
+                    isPocket = isPocket,
+                    occupancy = occupancy,
+                    temperatureFactor = tempFactor
+                ))
+            } catch (e: Exception) {
+                // Skip malformed atoms
             }
-            
-            // Determine atom properties
-            val isBackbone = backboneAtoms.contains(atomName)
-            val isLigand = line.startsWith("HETATM") || !standardResidues.contains(residueName)
-            val isPocket = !isBackbone && !isLigand
-            
-            // Get secondary structure
-            val structureKey = "${chain}_$residueNumber"
-            val secondaryStructure = secondaryStructureMap[structureKey] 
-                ?: if (isLigand) SecondaryStructure.UNKNOWN else SecondaryStructure.COIL
-            
-            val atom = Atom(
-                id = atomIndex,
-                element = element.replaceFirstChar { it.uppercase() },
-                name = atomName,
-                chain = chain.ifEmpty { "A" }, // Default chain
-                residueName = residueName,
-                residueNumber = residueNumber,
-                position = Vector3(x, y, z),
-                secondaryStructure = secondaryStructure,
-                isBackbone = isBackbone,
-                isLigand = isLigand,
-                isPocket = isPocket,
-                occupancy = occupancy,
-                temperatureFactor = tempFactor
-            )
-            
-            atoms.add(atom)
-            atomIndex++
         }
     }
     
     private fun generateBonds(atoms: List<Atom>): List<Bond> {
-        if (atoms.size <= 1) return emptyList()
-        
         val bonds = mutableListOf<Bond>()
+        val maxBondDistance = 1.7f // Å
         
+        // Covalent radii for common elements
+        val covalentRadii = mapOf(
+            "C" to 0.77f, "N" to 0.75f, "O" to 0.73f,
+            "S" to 1.02f, "P" to 1.06f, "H" to 0.37f
+        )
+        
+        // Only compute bonds between nearby atoms (optimization)
         for (i in atoms.indices) {
-            for (j in i + 1 until atoms.size) {
-                val atomA = atoms[i]
+            val atomA = atoms[i]
+            
+            for (j in (i + 1) until atoms.size) {
                 val atomB = atoms[j]
                 
-                val distance = calculateDistance(atomA.position, atomB.position)
+                // Skip if atoms are too far apart (quick rejection)
+                if (kotlin.math.abs(atomA.position.x - atomB.position.x) > maxBondDistance) continue
+                if (kotlin.math.abs(atomA.position.y - atomB.position.y) > maxBondDistance) continue
+                if (kotlin.math.abs(atomA.position.z - atomB.position.z) > maxBondDistance) continue
                 
-                // Skip too close atoms (likely overlapping)
-                if (distance <= 0.4f) continue
+                val distance = (atomA.position - atomB.position).length()
                 
-                val bondCutoff = (covalentRadius(atomA.element) + covalentRadius(atomB.element)) * 1.3f
+                // Check if bond should exist based on distance
+                val radiusA = covalentRadii[atomA.element] ?: 0.77f
+                val radiusB = covalentRadii[atomB.element] ?: 0.77f
+                val bondThreshold = (radiusA + radiusB) * 1.3f
                 
-                if (distance <= bondCutoff) {
+                if (distance < bondThreshold) {
+                    // Determine bond order (simplified)
+                    val order = when {
+                        distance < (radiusA + radiusB) * 0.9f -> BondOrder.TRIPLE
+                        distance < (radiusA + radiusB) * 1.0f -> BondOrder.DOUBLE
+                        else -> BondOrder.SINGLE
+                    }
+                    
                     bonds.add(Bond(
-                        atomA = i,
-                        atomB = j,
-                        order = BondOrder.SINGLE,
+                        atomA = atomA.id,
+                        atomB = atomB.id,
+                        order = order,
                         distance = distance
                     ))
                 }
@@ -271,41 +249,30 @@ object PDBParser {
         return bonds
     }
     
-    private fun calculateBoundingBox(atoms: List<Atom>): BoundingBox {
-        if (atoms.isEmpty()) {
-            return BoundingBox(
-                min = Vector3(0f, 0f, 0f),
-                max = Vector3(0f, 0f, 0f)
-            )
+    private fun calculateBoundingBox(atoms: List<Atom>): Pair<Vector3, Vector3> {
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var minZ = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+        var maxZ = Float.MIN_VALUE
+        
+        for (atom in atoms) {
+            minX = minOf(minX, atom.position.x)
+            minY = minOf(minY, atom.position.y)
+            minZ = minOf(minZ, atom.position.z)
+            maxX = maxOf(maxX, atom.position.x)
+            maxY = maxOf(maxY, atom.position.y)
+            maxZ = maxOf(maxZ, atom.position.z)
         }
         
-        val firstPos = atoms.first().position
-        var minX = firstPos.x
-        var minY = firstPos.y
-        var minZ = firstPos.z
-        var maxX = firstPos.x
-        var maxY = firstPos.y
-        var maxZ = firstPos.z
-        
-        for (atom in atoms.drop(1)) {
-            val pos = atom.position
-            minX = minOf(minX, pos.x)
-            minY = minOf(minY, pos.y)
-            minZ = minOf(minZ, pos.z)
-            maxX = maxOf(maxX, pos.x)
-            maxY = maxOf(maxY, pos.y)
-            maxZ = maxOf(maxZ, pos.z)
-        }
-        
-        return BoundingBox(
-            min = Vector3(minX, minY, minZ),
-            max = Vector3(maxX, maxY, maxZ)
+        return Pair(
+            Vector3(minX, minY, minZ),
+            Vector3(maxX, maxY, maxZ)
         )
     }
     
     private fun calculateCenterOfMass(atoms: List<Atom>): Vector3 {
-        if (atoms.isEmpty()) return Vector3(0f, 0f, 0f)
-        
         var sumX = 0f
         var sumY = 0f
         var sumZ = 0f
@@ -320,88 +287,14 @@ object PDBParser {
         return Vector3(sumX / count, sumY / count, sumZ / count)
     }
     
-    private fun addCalculatedAnnotations(atoms: List<Atom>, annotations: MutableList<com.avas.proteinviewer.data.model.Annotation>) {
-        // Add molecular weight if not present
-        if (!annotations.any { it.type == AnnotationType.MOLECULAR_WEIGHT }) {
-            val estimatedWeight = atoms.sumOf { atomicWeight(it.element).toDouble() }
-            annotations.add(com.avas.proteinviewer.data.model.Annotation(
-                type = AnnotationType.MOLECULAR_WEIGHT,
-                value = "${estimatedWeight.toInt()} Da",
-                description = "Calculated molecular weight"
-            ))
-        }
-        
-        // Add default values for missing annotations
-        val defaultAnnotations = listOf(
-            Triple(AnnotationType.RESOLUTION, "Unknown", "Resolution not specified"),
-            Triple(AnnotationType.EXPERIMENTAL_METHOD, "Unknown", "Method not specified"),
-            Triple(AnnotationType.ORGANISM, "Unknown", "Source organism not specified")
-        )
-        
-        for ((type, value, description) in defaultAnnotations) {
-            if (!annotations.any { it.type == type }) {
-                annotations.add(com.avas.proteinviewer.data.model.Annotation(type = type, value = value, description = description))
-            }
-        }
-    }
-    
-    // Utility functions
-    private fun safeSubstring(string: String, start: Int, end: Int): String {
-        val startIndex = maxOf(0, minOf(start, string.length))
-        val endIndex = maxOf(startIndex, minOf(end, string.length))
-        return string.substring(startIndex, endIndex)
-    }
-    
-    private fun guessElement(atomName: String): String {
-        val cleaned = atomName.trim()
-        val letters = cleaned.filter { it.isLetter() }
-        
-        if (letters.length >= 2) {
-            val twoChar = letters.substring(0, 2)
-            if (listOf("CA", "MG", "FE", "ZN", "CU", "MN", "NI", "CO").contains(twoChar.uppercase())) {
-                return twoChar
-            }
-        }
-        
-        return if (letters.isEmpty()) "C" else letters.substring(0, 1)
-    }
-    
-    private fun calculateDistance(pos1: Vector3, pos2: Vector3): Float {
-        val dx = pos1.x - pos2.x
-        val dy = pos1.y - pos2.y
-        val dz = pos1.z - pos2.z
-        return sqrt(dx * dx + dy * dy + dz * dz)
-    }
-    
-    private fun covalentRadius(element: String): Float = when (element.uppercase()) {
-        "H" -> 0.31f
-        "C" -> 0.76f
-        "N" -> 0.71f
-        "O" -> 0.66f
-        "S" -> 1.05f
-        "P" -> 1.07f
-        "CA" -> 1.74f
-        "MG" -> 1.30f
-        "FE" -> 1.25f
-        "ZN" -> 1.22f
-        "CU" -> 1.28f
-        "MN" -> 1.39f
-        else -> 0.85f
-    }
-    
-    private fun atomicWeight(element: String): Float = when (element.uppercase()) {
-        "H" -> 1.008f
-        "C" -> 12.01f
-        "N" -> 14.01f
-        "O" -> 16.00f
-        "S" -> 32.07f
-        "P" -> 30.97f
-        "CA" -> 40.08f
-        "MG" -> 24.31f
-        "FE" -> 55.85f
-        "ZN" -> 65.38f
-        "CU" -> 63.55f
-        "MN" -> 54.94f
-        else -> 14.0f // Average approximation
+    private fun addCalculatedAnnotations(atoms: List<Atom>, annotations: MutableList<com.avas.proteinviewer.domain.model.Annotation>) {
+        // Add atom count
+        annotations.add(Annotation(
+            AnnotationType.MOLECULAR_WEIGHT,
+            "${atoms.size} atoms",
+            "Total number of atoms in structure"
+        ))
     }
 }
+
+class PDBParseException(message: String) : Exception(message)

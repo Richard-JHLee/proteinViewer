@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">タンパク質ビューア</string>
+    
+    <!-- Main Screen -->
+    <string name="main_title">タンパク質ビューア</string>
+    <string name="main_subtitle">3Dタンパク質構造を探索</string>
+    <string name="loading_protein">タンパク質構造を読み込み中...</string>
+    <string name="loading_progress">読み込み進行状況: %1$s</string>
+    <string name="error_loading">タンパク質読み込みエラー</string>
+    <string name="error_network">ネットワークエラー。接続を確認してください。</string>
+    <string name="error_parsing">タンパク質データ解析エラー</string>
+    
+    <!-- Navigation -->
+    <string name="nav_menu">メニュー</string>
+    <string name="nav_library">ライブラリ</string>
+    <string name="nav_search">検索</string>
+    <string name="nav_info">情報</string>
+    <string name="nav_about">について</string>
+    <string name="nav_user_guide">ユーザーガイド</string>
+    <string name="nav_features">機能</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_help">ヘルプ</string>
+    <string name="nav_privacy">プライバシーポリシー</string>
+    <string name="nav_terms">サービス利用規約</string>
+    <string name="nav_license">ライセンス</string>
+    
+    <!-- Search -->
+    <string name="search_hint">PDB IDまたはタンパク質名を検索</string>
+    <string name="search_button">検索</string>
+    <string name="search_results">検索結果</string>
+    <string name="search_no_results">検索結果がありません</string>
+    <string name="search_error">検索中にエラーが発生しました</string>
+    
+    <!-- Protein Information -->
+    <string name="protein_id">タンパク質ID</string>
+    <string name="protein_name">タンパク質名</string>
+    <string name="protein_description">説明</string>
+    <string name="protein_organism">生物</string>
+    <string name="protein_method">方法</string>
+    <string name="protein_resolution">解像度</string>
+    <string name="protein_atoms">原子</string>
+    <string name="protein_residues">残基</string>
+    <string name="protein_chains">チェーン</string>
+    <string name="protein_ligands">リガンド</string>
+    <string name="protein_pockets">ポケット</string>
+    
+    <!-- 3D Viewer -->
+    <string name="viewer_3d">3Dビューア</string>
+    <string name="viewer_controls">コントロール</string>
+    <string name="viewer_rotate">回転</string>
+    <string name="viewer_zoom">ズーム</string>
+    <string name="viewer_pan">パン</string>
+    <string name="viewer_reset">リセット</string>
+    <string name="viewer_fullscreen">フルスクリーン</string>
+    
+    <!-- AR Mode -->
+    <string name="ar_mode">ARモード</string>
+    <string name="ar_place_protein">タンパク質を配置</string>
+    <string name="ar_remove_protein">タンパク質を削除</string>
+    <string name="ar_scale_protein">タンパク質のサイズ調整</string>
+    <string name="ar_rotate_protein">タンパク質を回転</string>
+    
+    <!-- Education -->
+    <string name="education_quiz">クイズ</string>
+    <string name="education_explanation">説明</string>
+    <string name="education_beginner">初級</string>
+    <string name="education_intermediate">中級</string>
+    <string name="education_advanced">上級</string>
+    
+    <!-- Library -->
+    <string name="library_title">タンパク質ライブラリ</string>
+    <string name="library_categories">カテゴリ</string>
+    <string name="library_favorites">お気に入り</string>
+    <string name="library_recent">最近</string>
+    <string name="library_all">すべて</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_theme">テーマ</string>
+    <string name="settings_quality">品質</string>
+    <string name="settings_performance">パフォーマンス</string>
+    
+    <!-- Permissions -->
+    <string name="permission_camera_title">カメラ権限</string>
+    <string name="permission_camera_message">ARモードにカメラアクセスが必要です</string>
+    <string name="permission_camera_denied">ARモードにカメラ権限が必要です</string>
+    
+    <!-- Errors -->
+    <string name="error_generic">エラーが発生しました</string>
+    <string name="error_network_unavailable">ネットワークが利用できません</string>
+    <string name="error_file_not_found">ファイルが見つかりません</string>
+    <string name="error_invalid_data">無効なデータ形式です</string>
+    <string name="error_insufficient_memory">メモリが不足しています</string>
+    <string name="error_unknown">不明なエラーです</string>
+</resources>
