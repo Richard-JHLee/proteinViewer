@@ -28,42 +28,7 @@ fun InfoPanel(
             .fillMaxWidth()
             // 고정 높이 제거 - 내용만큼만 차지하도록
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Protein Information",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
-            }
-        }
-        
-            Divider()
-        
-        // Tabs
-        ScrollableTabRow(
-            selectedTabIndex = InfoTab.values().indexOf(selectedTab),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            InfoTab.values().forEach { tab ->
-                Tab(
-                    selected = selectedTab == tab,
-                    onClick = { onTabChange(tab) },
-                    text = { Text(tab.name.replace("_", " ").lowercase().capitalize()) }
-                )
-            }
-        }
-        
-        // Content - LazyColumn 대신 일반 Column으로 변경 (스크롤은 부모에서 처리)
+        // Content only - 탭바는 InfoModeScreen의 bottomBar로 이동
         Column(
             modifier = Modifier
                 .fillMaxWidth()

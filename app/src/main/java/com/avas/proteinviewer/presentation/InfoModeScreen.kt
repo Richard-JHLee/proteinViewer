@@ -29,6 +29,29 @@ fun InfoModeScreen(
     onOpenDrawer: () -> Unit
 ) {
     Scaffold(
+        bottomBar = {
+            // 아이폰과 동일: 하단 고정 탭바
+            if (uiState.structure != null) {
+                ScrollableTabRow(
+                    selectedTabIndex = uiState.selectedInfoTab.ordinal,
+                    modifier = Modifier.fillMaxWidth(),
+                    edgePadding = 0.dp
+                ) {
+                    InfoTab.values().forEach { tab ->
+                        Tab(
+                            selected = uiState.selectedInfoTab == tab,
+                            onClick = { viewModel.setInfoTab(tab) },
+                            text = { 
+                                Text(
+                                    text = tab.name.replace("_", " ").lowercase()
+                                        .replaceFirstChar { it.uppercase() }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        },
         topBar = {
             Column {
                 // Top Bar
