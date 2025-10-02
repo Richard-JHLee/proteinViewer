@@ -540,7 +540,16 @@ class Protein3DRenderer(
         
         // iOS 방식: Highlight된 경우 채도와 밝기 증가
         return if (isHighlighted) {
-            baseColor.copy(alpha = opacity)
+            // 아이폰과 동일: 채도 1.4배, 밝기 1.3배 증가
+            val hsv = FloatArray(3)
+            val argb = (baseColor.alpha * 255).toInt() shl 24 or
+                       ((baseColor.red * 255).toInt() shl 16) or
+                       ((baseColor.green * 255).toInt() shl 8) or
+                       (baseColor.blue * 255).toInt()
+            android.graphics.Color.colorToHSV(argb, hsv)
+            hsv[1] = (hsv[1] * 1.4f).coerceIn(0f, 1f) // Saturation 증가
+            hsv[2] = (hsv[2] * 1.3f).coerceIn(0f, 1f) // Brightness 증가
+            Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = opacity)
         } else {
             baseColor.copy(alpha = opacity * 0.7f)
         }
@@ -557,7 +566,20 @@ class Protein3DRenderer(
             ColorMode.UNIFORM -> Color.Blue
         }
         
-        return baseColor.copy(alpha = opacity)
+        // 아이폰과 동일: 하이라이트 시 채도와 밝기 증가
+        return if (isHighlighted) {
+            val hsv = FloatArray(3)
+            val argb = (baseColor.alpha * 255).toInt() shl 24 or
+                       ((baseColor.red * 255).toInt() shl 16) or
+                       ((baseColor.green * 255).toInt() shl 8) or
+                       (baseColor.blue * 255).toInt()
+            android.graphics.Color.colorToHSV(argb, hsv)
+            hsv[1] = (hsv[1] * 1.4f).coerceIn(0f, 1f) // Saturation 증가
+            hsv[2] = (hsv[2] * 1.3f).coerceIn(0f, 1f) // Brightness 증가
+            Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = opacity)
+        } else {
+            baseColor.copy(alpha = opacity)
+        }
     }
     
     private fun getAtomRadius(element: String): Float {
