@@ -40,6 +40,7 @@ fun ProteinViewerScreen(
             renderStyle = renderStyle,
             colorMode = colorMode,
             highlightedChains = highlightedChains,
+            focusedElement = null, // Viewer Mode에서는 Focus 없음 (아이폰과 동일)
             modifier = Modifier.fillMaxSize()
         )
         

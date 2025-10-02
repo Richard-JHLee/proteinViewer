@@ -17,6 +17,7 @@ class Protein3DRenderer(
     private val renderStyle: RenderStyle,
     private val colorMode: ColorMode,
     private val highlightedChains: Set<String> = emptySet(),
+    private val focusedElement: String? = null, // "chain:A", "ligand:HOH", "pocket:SITE1", "atom:123"
     private val transparency: Float = 0.7f,
     private val atomSize: Float = 1.0f
 ) {
@@ -94,18 +95,22 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom.chain)
+            val isFocused = isAtomInFocus(atom)
             
             // 디버그: 초기 상태 확인
             if (atom.id == 1) {
                 android.util.Log.d("Protein3DRenderer", "highlightedChains: $highlightedChains")
-                android.util.Log.d("Protein3DRenderer", "atom.chain: ${atom.chain}, isHighlighted: $isHighlighted")
+                android.util.Log.d("Protein3DRenderer", "focusedElement: $focusedElement")
+                android.util.Log.d("Protein3DRenderer", "atom.chain: ${atom.chain}, isHighlighted: $isHighlighted, isFocused: $isFocused")
             }
             
-            // 투명도 계산 (iOS 방식)
+            // 투명도 계산 (아이폰과 동일: Focus 우선)
             val baseOpacity = when {
-                isHighlighted -> 0.9f
-                highlightedChains.isEmpty() -> 0.5f // 아이폰과 동일: 0.5f
-                else -> 0.15f // 아이폰과 동일: 0.15f (매우 희미)
+                isFocused -> 1.0f // Focus된 원자: 완전 불투명
+                isHighlighted -> 0.9f // Highlight된 원자
+                focusedElement != null -> 0.1f // Focus 있을 때 다른 원자: 매우 희미
+                highlightedChains.isEmpty() -> 0.5f // 초기 상태
+                else -> 0.15f // Highlight 있을 때 다른 원자
             }
             
             val finalOpacity = baseOpacity * transparency
@@ -115,8 +120,8 @@ class Protein3DRenderer(
             val perspectiveFactor = 1.0f / (1.0f + abs(depth) * 0.005f)
             val radius = (baseRadius * scaleFactor * perspectiveFactor).coerceAtLeast(2f)
             
-            // 색상 결정
-            val color = getAtomColor(atom, isHighlighted, finalOpacity)
+            // 색상 결정 (Focus 우선)
+            val color = getAtomColor(atom, isFocused || isHighlighted, finalOpacity)
             
             drawScope.drawCircle(
                 color = color,
@@ -157,9 +162,16 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom1.chain)
-            // 아이폰과 동일: 초기 0.5f, 하이라이트 0.8f, 다른것 하이라이트시 0.15f
-            val baseOpacity = if (isHighlighted) 0.8f else if (highlightedChains.isEmpty()) 0.5f else 0.15f
-            val color = getAtomColor(atom1, isHighlighted, baseOpacity * transparency)
+            val isFocused = isAtomInFocus(atom1)
+            // 아이폰과 동일: Focus 우선
+            val baseOpacity = when {
+                isFocused -> 1.0f
+                isHighlighted -> 0.8f
+                focusedElement != null -> 0.1f
+                highlightedChains.isEmpty() -> 0.5f
+                else -> 0.15f
+            }
+            val color = getAtomColor(atom1, isFocused || isHighlighted, baseOpacity * transparency)
             
             drawScope.drawLine(
                 color = color,
@@ -181,9 +193,16 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom.chain)
-            // 아이폰과 동일
-            val baseOpacity = if (isHighlighted) 0.9f else if (highlightedChains.isEmpty()) 0.5f else 0.15f
-            val color = getAtomColor(atom, isHighlighted, baseOpacity * transparency)
+            val isFocused = isAtomInFocus(atom)
+            // 아이폰과 동일: Focus 우선
+            val baseOpacity = when {
+                isFocused -> 1.0f
+                isHighlighted -> 0.9f
+                focusedElement != null -> 0.1f
+                highlightedChains.isEmpty() -> 0.5f
+                else -> 0.15f
+            }
+            val color = getAtomColor(atom, isFocused || isHighlighted, baseOpacity * transparency)
             
             drawScope.drawCircle(
                 color = color,
@@ -212,6 +231,7 @@ class Protein3DRenderer(
             if (caAtoms.size < 3) return@forEach
             
             val isChainHighlighted = highlightedChains.contains(chainId)
+            val isChainFocused = focusedElement == "chain:$chainId"
             
             // Catmull-Rom 스플라인 생성 (iOS와 동일)
             val splinePoints = generateCatmullRomSpline(caAtoms, 5)
@@ -219,11 +239,13 @@ class Protein3DRenderer(
             // 리본을 실제 면(surface)으로 렌더링
             if (splinePoints.size < 2) return@forEach
             
-            // 투명도 계산 (iOS 방식)
+            // 투명도 계산 (아이폰과 동일: Focus 우선)
             val baseOpacity = when {
-                isChainHighlighted -> 1.0f // 아이폰과 동일
-                highlightedChains.isEmpty() -> 0.5f // 아이폰과 동일
-                else -> 0.15f // 아이폰과 동일
+                isChainFocused -> 1.0f // Focus된 체인: 완전 불투명
+                isChainHighlighted -> 1.0f // Highlight된 체인
+                focusedElement != null -> 0.1f // Focus 있을 때 다른 체인: 매우 희미
+                highlightedChains.isEmpty() -> 0.5f // 초기 상태
+                else -> 0.15f // Highlight 있을 때 다른 체인
             }
             
             // 리본의 폭 계산
@@ -279,7 +301,7 @@ class Protein3DRenderer(
                 val leftBottom = Offset(x2 + perpX * halfWidth, y2 + perpY * halfWidth)
                 val rightBottom = Offset(x2 - perpX * halfWidth, y2 - perpY * halfWidth)
                 
-                val color = getRibbonColor(atom1, isChainHighlighted, baseOpacity * transparency)
+                val color = getRibbonColor(atom1, isChainFocused || isChainHighlighted, baseOpacity * transparency)
                 
                 // 리본 면 그리기 (채워진 사각형)
                 val path = androidx.compose.ui.graphics.Path().apply {
@@ -625,6 +647,31 @@ class Protein3DRenderer(
             "SHEET" -> Color(0xFFFFCC00) // systemYellow
             "COIL" -> Color(0xFF8E8E93) // systemGray
             else -> Color(0xFF007AFF) // systemBlue (unknown)
+        }
+    }
+    
+    // 아이폰과 동일: Focus 판정 로직
+    private fun isAtomInFocus(atom: Atom): Boolean {
+        if (focusedElement == null) return false
+        
+        return when {
+            focusedElement.startsWith("chain:") -> {
+                val chainId = focusedElement.removePrefix("chain:")
+                atom.chain == chainId
+            }
+            focusedElement.startsWith("ligand:") -> {
+                val ligandName = focusedElement.removePrefix("ligand:")
+                atom.residueName == ligandName
+            }
+            focusedElement.startsWith("pocket:") -> {
+                val pocketName = focusedElement.removePrefix("pocket:")
+                atom.residueName == pocketName
+            }
+            focusedElement.startsWith("atom:") -> {
+                val atomId = focusedElement.removePrefix("atom:").toIntOrNull()
+                atom.id == atomId
+            }
+            else -> false
         }
     }
 }

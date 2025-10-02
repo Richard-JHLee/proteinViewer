@@ -216,6 +216,7 @@ fun InfoModeScreen(
                             renderStyle = uiState.renderStyle,
                             colorMode = uiState.colorMode,
                             highlightedChains = uiState.highlightedChains,
+                            focusedElement = uiState.focusedElement, // Focus 전달
                             modifier = Modifier.fillMaxSize()
                         )
                     }
