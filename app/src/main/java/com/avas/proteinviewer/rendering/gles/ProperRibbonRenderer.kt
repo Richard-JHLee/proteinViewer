@@ -121,7 +121,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         // 삼각형 메쉬로 Ribbon 렌더링
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexVbo)
-        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, 0)
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, 0)
 
         GLES30.glDisableVertexAttribArray(aPositionHandle)
         GLES30.glDisableVertexAttribArray(aColorHandle)
@@ -215,7 +215,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             atoms = atoms,
             colorMode = currentColorMode,
             radius = 0.8f,
-            segments = 4  // 더 단순한 구체 (무늬 제거)
+            segments = 16  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
         // Highlight 효과 적용
@@ -245,7 +245,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             atoms = atoms,
             colorMode = currentColorMode,
             radius = 0.5f, // Sticks용 구체 크기 (Spheres보다 작게)
-            segments = 4  // 더 단순한 구체 (무늬 제거)
+            segments = 12  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
         // Highlight 효과 적용
@@ -254,7 +254,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val allVertices = mutableListOf<Float>()
         val allColors = mutableListOf<Float>()
         val allNormals = mutableListOf<Float>()
-        val allIndices = mutableListOf<Short>()
+        val allIndices = mutableListOf<Int>()
         
         // 구체 데이터 추가
         allVertices.addAll(sphereData.vertices)
@@ -298,7 +298,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                     
                     // 인덱스 오프셋 적용
                     cylinderMesh.indices.forEach { index ->
-                        allIndices.add((index + vertexOffset).toShort())
+                        allIndices.add(index + vertexOffset)
                     }
                     
                     vertexOffset += cylinderMesh.vertices.size / 3
@@ -334,7 +334,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val allVertices = mutableListOf<Float>()
         val allColors = mutableListOf<Float>()
         val allNormals = mutableListOf<Float>()
-        val allIndices = mutableListOf<Short>()
+        val allIndices = mutableListOf<Int>()
         
         var vertexOffset = 0
 
@@ -394,7 +394,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 인덱스 오프셋 적용
             cartoonMesh.indices.forEach { index ->
-                allIndices.add((index + vertexOffset).toShort())
+                allIndices.add(index + vertexOffset)
             }
             
             vertexOffset += cartoonMesh.vertices.size / 3
@@ -464,7 +464,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun createCylinderMesh(start: Vector3, end: Vector3, radius: Float, segments: Int): MeshData {
         val vertices = mutableListOf<Float>()
         val normals = mutableListOf<Float>()
-        val indices = mutableListOf<Short>()
+        val indices = mutableListOf<Int>()
         
         val direction = Vector3(
             end.x - start.x,
@@ -530,16 +530,16 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 첫 번째 삼각형
             indices.addAll(listOf(
-                current.toShort(),
-                (current + 1).toShort(),
-                next.toShort()
+                current,
+                current + 1,
+                next
             ))
             
             // 두 번째 삼각형
             indices.addAll(listOf(
-                (current + 1).toShort(),
-                (next + 1).toShort(),
-                next.toShort()
+                current + 1,
+                next + 1,
+                next
             ))
         }
         
@@ -549,7 +549,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun createCartoonTubeMesh(splinePoints: List<SplinePoint>, segments: Int): MeshData {
         val vertices = mutableListOf<Float>()
         val normals = mutableListOf<Float>()
-        val indices = mutableListOf<Short>()
+        val indices = mutableListOf<Int>()
         
         var vertexOffset = 0
         
@@ -574,7 +574,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 인덱스 오프셋 적용
             cylinderMesh.indices.forEach { index ->
-                indices.add((index + vertexOffset).toShort())
+                indices.add(index + vertexOffset)
             }
             
             vertexOffset += cylinderMesh.vertices.size / 3
@@ -623,7 +623,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     data class MeshData(
         val vertices: List<Float>,
         val normals: List<Float>,
-        val indices: List<Short>
+        val indices: List<Int>
     )
 
     private fun uploadSurfaceStructure(structure: PDBStructure) {
@@ -642,7 +642,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             atoms = atoms,
             colorMode = ColorMode.UNIFORM, // Surface는 항상 회색
             radius = 1.0f, // Surface용 큰 구체
-            segments = 6  // 더 단순한 구체 (무늬 제거)
+            segments = 20  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
         // Highlight 효과 적용
@@ -679,7 +679,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val allVertices = mutableListOf<Float>()
         val allColors = mutableListOf<Float>()
         val allNormals = mutableListOf<Float>()
-        val allIndices = mutableListOf<Short>()
+        val allIndices = mutableListOf<Int>()
         
         var vertexOffset = 0
 
@@ -740,7 +740,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 인덱스 오프셋 적용
             mesh.indices.forEach { index ->
-                allIndices.add((index + vertexOffset).toShort())
+                allIndices.add(index + vertexOffset)
             }
             
             vertexOffset += mesh.vertices.size / 3
@@ -852,7 +852,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     ): Mesh {
         val vertices = mutableListOf<Float>()
         val normals = mutableListOf<Float>()
-        val indices = mutableListOf<Short>()
+        val indices = mutableListOf<Int>()
 
         for (i in 0 until curve.size - 1) {
             val p1 = curve[i].position
@@ -885,10 +885,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         // 인덱스 생성
         for (i in 0 until curve.size - 2) {
             for (j in 0 until segments) {
-                val i0 = (i * (segments + 1) + j).toShort()
-                val i1 = (i0 + 1).toShort()
-                val i2 = (i0 + segments + 1).toShort()
-                val i3 = (i2 + 1).toShort()
+                val i0 = i * (segments + 1) + j
+                val i1 = i0 + 1
+                val i2 = i0 + segments + 1
+                val i3 = i2 + 1
 
                 indices.addAll(listOf(i0, i2, i1, i1, i2, i3))
             }
@@ -900,7 +900,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun uploadToGPU(
         vertices: List<Float>,
         colors: List<Float>,
-        indices: List<Short>
+        indices: List<Int>
     ) {
         val vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
         vertices.forEach { vertexBuffer.put(it) }
@@ -910,7 +910,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         colors.forEach { colorBuffer.put(it) }
         colorBuffer.flip()
 
-        val indexBuffer = ByteBuffer.allocateDirect(indices.size * 2).order(ByteOrder.nativeOrder()).asShortBuffer()
+        val indexBuffer = ByteBuffer.allocateDirect(indices.size * 4).order(ByteOrder.nativeOrder()).asIntBuffer()
         indices.forEach { indexBuffer.put(it) }
         indexBuffer.flip()
 
@@ -921,7 +921,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, colorBuffer.capacity() * 4, colorBuffer, GLES30.GL_STATIC_DRAW)
 
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexVbo)
-        GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexBuffer.capacity() * 2, indexBuffer, GLES30.GL_STATIC_DRAW)
+        GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexBuffer.capacity() * 4, indexBuffer, GLES30.GL_STATIC_DRAW)
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, 0)
@@ -1000,7 +1000,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     data class Mesh(
         val vertices: List<Float>,
         val normals: List<Float>,
-        val indices: List<Short>
+        val indices: List<Int>
     )
 
     companion object {

@@ -38,7 +38,7 @@ class SphereRenderer {
     private fun createSphereMesh(center: Vector3, radius: Float, segments: Int): MeshData {
         val vertices = mutableListOf<Float>()
         val normals = mutableListOf<Float>()
-        val indices = mutableListOf<Short>()
+        val indices = mutableListOf<Int>()
         
         // 구체 생성 (구현 가이드에 따라)
         val rings = segments  // 세로 링 수
@@ -74,30 +74,43 @@ class SphereRenderer {
         }
         
         // 인덱스 생성 (stride = sectors + 1)
+        val totalVertices = (rings + 1) * (sectors + 1)
+        
         for (i in 0 until rings) {
             for (j in 0 until sectors) {
                 val base = i * stride + j
                 val nextBase = base + stride
                 
-                // 두 개의 삼각형
-                // 첫 번째 삼각형: (base, base + 1, nextBase)
-                indices.addAll(listOf(
-                    base.toShort(),
-                    (base + 1).toShort(),
-                    nextBase.toShort()
-                ))
+                // 경계 처리: 마지막 섹터에서는 첫 번째 정점으로 연결
+                val nextJ = if (j == sectors - 1) 0 else j + 1
+                val baseNext = i * stride + nextJ
+                val nextBaseNext = baseNext + stride
                 
-                // 두 번째 삼각형: (base + 1, nextBase + 1, nextBase)
-                indices.addAll(listOf(
-                    (base + 1).toShort(),
-                    (nextBase + 1).toShort(),
-                    nextBase.toShort()
-                ))
+                // 정점 범위 검증
+                if (base < totalVertices && baseNext < totalVertices && 
+                    nextBase < totalVertices && nextBaseNext < totalVertices) {
+                    
+                    // 두 개의 삼각형
+                    // 첫 번째 삼각형: (base, baseNext, nextBase)
+                    indices.addAll(listOf(
+                        base,
+                        baseNext,
+                        nextBase
+                    ))
+                    
+                    // 두 번째 삼각형: (baseNext, nextBaseNext, nextBase)
+                    indices.addAll(listOf(
+                        baseNext,
+                        nextBaseNext,
+                        nextBase
+                    ))
+                } else {
+                    Log.w(TAG, "Index out of bounds: base=$base, baseNext=$baseNext, nextBase=$nextBase, nextBaseNext=$nextBaseNext, totalVertices=$totalVertices")
+                }
             }
         }
         
         // 디버깅: 배열 길이 확인
-        val totalVertices = (rings + 1) * (sectors + 1)
         val totalTriangles = rings * sectors * 2
         Log.d(TAG, "Sphere mesh: $totalVertices vertices, $totalTriangles triangles, ${vertices.size/3} actual vertices")
         
@@ -151,7 +164,7 @@ class SphereRenderer {
         val allVertices = mutableListOf<Float>()
         val allColors = mutableListOf<Float>()
         val allNormals = mutableListOf<Float>()
-        val allIndices = mutableListOf<Short>()
+        val allIndices = mutableListOf<Int>()
         
         var vertexOffset = 0
         
@@ -186,7 +199,7 @@ class SphereRenderer {
             
             // 인덱스 오프셋 적용
             sphereMesh.indices.forEach { index ->
-                allIndices.add((index + vertexOffset).toShort())
+                allIndices.add(index + vertexOffset)
             }
             
             vertexOffset += sphereMesh.vertices.size / 3
@@ -203,7 +216,7 @@ data class SphereRenderData(
     val vertices: List<Float>,
     val colors: List<Float>,
     val normals: List<Float>,
-    val indices: List<Short>
+    val indices: List<Int>
 )
 
 
@@ -213,5 +226,5 @@ data class SphereRenderData(
 data class MeshData(
     val vertices: List<Float>,
     val normals: List<Float>,
-    val indices: List<Short>
+    val indices: List<Int>
 )

@@ -3,6 +3,8 @@ package com.avas.proteinviewer.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -392,11 +394,135 @@ private fun SecondaryOptionsBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(60.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .height(60.dp)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // TODO: iPhone과 동일한 슬라이더 구현 예정
-        Text("Options Sliders (TODO)", style = MaterialTheme.typography.bodySmall)
+        // Rotation Toggle (회전 활성화/비활성화)
+        OptionsSliderItem(
+            icon = Icons.Default.RotateRight,
+            label = "Rotate",
+            isToggle = true,
+            toggleValue = rotationEnabled,
+            onToggleChange = { rotationEnabled = it },
+            modifier = Modifier.width(80.dp)
+        )
+        
+        // Zoom Level (줌 레벨)
+        OptionsSliderItem(
+            icon = Icons.Default.ZoomIn,
+            label = "Zoom",
+            sliderValue = zoomLevel,
+            sliderRange = 0.5f..2.0f,
+            onSliderChange = { zoomLevel = it },
+            modifier = Modifier.width(80.dp)
+        )
+        
+        // Transparency (투명도)
+        OptionsSliderItem(
+            icon = Icons.Default.Visibility,
+            label = "Opacity",
+            sliderValue = transparency,
+            sliderRange = 0.1f..1.0f,
+            onSliderChange = { transparency = it },
+            modifier = Modifier.width(80.dp)
+        )
+        
+        // Atom Size (원자 크기)
+        OptionsSliderItem(
+            icon = Icons.Default.Circle,
+            label = "Size",
+            sliderValue = atomSize,
+            sliderRange = 0.5f..2.0f,
+            onSliderChange = { atomSize = it },
+            modifier = Modifier.width(80.dp)
+        )
+        
+        // Ribbon Width (리본 모드일 때만 표시)
+        if (renderStyle == RenderStyle.RIBBON) {
+            OptionsSliderItem(
+                icon = Icons.Default.ArrowForward,
+                label = "Width",
+                sliderValue = ribbonWidth,
+                sliderRange = 1.0f..8.0f,
+                onSliderChange = { ribbonWidth = it },
+                modifier = Modifier.width(80.dp)
+            )
+        }
+        
+        // Ribbon Flatness (리본 모드일 때만 표시)
+        if (renderStyle == RenderStyle.RIBBON) {
+            OptionsSliderItem(
+                icon = Icons.Default.Rectangle,
+                label = "Flat",
+                sliderValue = ribbonFlatness,
+                sliderRange = 0.0f..1.0f,
+                onSliderChange = { ribbonFlatness = it },
+                modifier = Modifier.width(80.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun OptionsSliderItem(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    isToggle: Boolean = false,
+    toggleValue: Boolean = false,
+    onToggleChange: (Boolean) -> Unit = {},
+    sliderValue: Float = 0f,
+    sliderRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    onSliderChange: (Float) -> Unit = {}
+) {
+    Column(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // 아이콘과 라벨
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(12.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        if (isToggle) {
+            // Toggle 버튼
+            Switch(
+                checked = toggleValue,
+                onCheckedChange = onToggleChange,
+                modifier = Modifier.size(24.dp)
+            )
+        } else {
+            // 슬라이더
+            Slider(
+                value = sliderValue,
+                onValueChange = onSliderChange,
+                valueRange = sliderRange,
+                modifier = Modifier.width(70.dp)
+            )
+        }
     }
 }
 
