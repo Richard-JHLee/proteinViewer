@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
@@ -336,32 +337,87 @@ fun InfoPanel(
                 }
                 
                 InfoTab.RESIDUES -> {
-                    val residueCounts = structure.atoms
-                        .groupBy { it.residueName }
-                        .mapValues { it.value.size }
-                        .toList()
-                        .sortedByDescending { it.second }
-                    
-                    residueCounts.forEach { (residue, count) ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth()
+                    // Residue Composition (아이폰과 동일)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = residue,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "$count atoms",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Text(
+                                "Residue Composition",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            val residueCounts = structure.atoms
+                                .groupBy { it.residueName }
+                                .mapValues { it.value.size }
+                                .toList()
+                                .sortedByDescending { it.second }
+                            
+                            val totalResidues = residueCounts.sumOf { it.second }
+                            
+                            // Top 15 residues (아이폰과 동일)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                residueCounts.take(15).forEach { (residue, count) ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = residue,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.width(50.dp)
+                                        )
+                                        
+                                        Text(
+                                            text = "$count",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.width(35.dp)
+                                        )
+                                        
+                                        // Progress bar (화면 너비에 맞게)
+                                        val percentage = count.toFloat() / totalResidues
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(16.dp)
+                                                .background(
+                                                    Color(0xFFE0E0E0),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                )
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(percentage)
+                                                    .background(
+                                                        getResidueColor(residue),
+                                                        shape = RoundedCornerShape(4.dp)
+                                                    )
+                                            )
+                                        }
+                                        
+                                        Text(
+                                            text = "${String.format("%.1f", percentage * 100)}%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.width(45.dp),
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -544,6 +600,24 @@ private fun InfoRow(label: String, value: String, description: String? = null) {
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+    }
+}
+
+private fun getResidueColor(residueName: String): Color {
+    // 아미노산 타입별 색상 (아이폰과 유사)
+    return when (residueName.uppercase()) {
+        // 소수성 (Hydrophobic) - 파란색 계열
+        "ALA", "VAL", "ILE", "LEU", "MET", "PHE", "TRP", "PRO" -> Color(0xFF2196F3)
+        // 극성 (Polar) - 녹색 계열
+        "SER", "THR", "CYS", "TYR", "ASN", "GLN" -> Color(0xFF4CAF50)
+        // 양전하 (Positive) - 빨간색 계열
+        "LYS", "ARG", "HIS" -> Color(0xFFF44336)
+        // 음전하 (Negative) - 주황색 계열
+        "ASP", "GLU" -> Color(0xFFFF9800)
+        // 특수 - 회색
+        "GLY" -> Color(0xFF9E9E9E)
+        // 기타 - 보라색
+        else -> Color(0xFF9C27B0)
     }
 }
 
