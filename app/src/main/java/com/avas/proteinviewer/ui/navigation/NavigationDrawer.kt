@@ -159,6 +159,7 @@ private fun DrawerFooter() {
 }
 
 enum class DrawerItemType(val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Library(Icons.Default.LibraryBooks),
     About(Icons.Default.Info),
     UserGuide(Icons.Default.MenuBook),
     Features(Icons.Default.Star),
@@ -170,6 +171,7 @@ enum class DrawerItemType(val icon: androidx.compose.ui.graphics.vector.ImageVec
     
     val title: String
         get() = when (this) {
+            Library -> LanguageHelper.localizedText("단백질 라이브러리", "Protein Library")
             About -> LanguageHelper.localizedText("정보", "About")
             UserGuide -> LanguageHelper.localizedText("사용자 가이드", "User Guide")
             Features -> LanguageHelper.localizedText("기능", "Features")
@@ -182,6 +184,7 @@ enum class DrawerItemType(val icon: androidx.compose.ui.graphics.vector.ImageVec
     
     val subtitle: String
         get() = when (this) {
+            Library -> LanguageHelper.localizedText("단백질 데이터베이스 검색", "Search protein database")
             About -> LanguageHelper.localizedText("앱 정보 및 버전", "App information and version")
             UserGuide -> LanguageHelper.localizedText("사용자 가이드", "Step-by-step guidance")
             Features -> LanguageHelper.localizedText("주요 기능", "Key capabilities of the app")

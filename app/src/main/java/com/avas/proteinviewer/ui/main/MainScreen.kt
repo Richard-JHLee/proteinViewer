@@ -189,6 +189,7 @@ fun MainScreen(
                     ProteinViewerNavigationDrawer(
                         onItemSelected = { item ->
                             when (item) {
+                                DrawerItemType.Library -> onNavigateToLibrary()
                                 DrawerItemType.About -> onNavigateToAbout()
                                 DrawerItemType.UserGuide -> onNavigateToUserGuide()
                                 DrawerItemType.Features -> onNavigateToFeatures()

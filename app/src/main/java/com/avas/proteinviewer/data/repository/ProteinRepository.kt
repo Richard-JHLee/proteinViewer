@@ -274,8 +274,11 @@ class ProteinRepository @Inject constructor(
                                 ProteinInfo(
                                     pdbId = identifier,
                                     name = proteinName,
-                                    description = proteinDescription,
-                                    categoryName = category
+                                    organism = null,
+                                    resolution = null,
+                                    experimentalMethod = null,
+                                    molecularWeight = null,
+                                    description = proteinDescription
                                 )
                             } else {
                                 null

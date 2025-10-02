@@ -56,6 +56,13 @@ class ProteinViewModel @Inject constructor(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
     
+    /**
+     * Load More Category Proteins 함수
+     */
+    fun loadMoreCategoryProteins(category: String) {
+        loadMoreProteins()
+    }
+    
     // 각 카테고리별 페이지네이션 상태
     private val categoryPages = mutableMapOf<String, Int>()
     private val categoryHasMore = mutableMapOf<String, Boolean>()
@@ -483,8 +490,11 @@ class ProteinViewModel @Inject constructor(
         return ProteinInfo(
             pdbId = pdbId.uppercase(),
             name = generateProteinName(pdbId, "Search"),
-            description = generateProteinDescription(pdbId, "Search", 1.0),
-            categoryName = "Search Results"
+            organism = null,
+            resolution = null,
+            experimentalMethod = null,
+            molecularWeight = null,
+            description = generateProteinDescription(pdbId, "Search", 1.0)
         )
     }
 
