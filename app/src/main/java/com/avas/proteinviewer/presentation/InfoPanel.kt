@@ -1,11 +1,14 @@
 package com.avas.proteinviewer.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -13,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
 import java.util.Locale
 
@@ -121,62 +125,213 @@ fun InfoPanel(
                         val residueCount = chainAtoms.map { it.residueNumber }.toSet().size
                         val uniqueResidueTypes = chainAtoms.map { it.residueName }.toSet().size
                         
-                        InfoCard(
-                            title = "Chain $chain",
-                            content = {
-                                // iOS 스타일: Chain Overview
-                                Text("Chain Overview", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Chain Header (아이폰과 동일)
+                                Text(
+                                    text = "Chain $chain",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                                 
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                        Text("Length", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text("$residueCount residues", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                // Chain Overview (아이폰과 동일)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Length",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "$residueCount residues",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
                                     }
-                                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                        Text("Atoms", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text("${chainAtoms.size}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${chainAtoms.size}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
                                     }
-                                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                        Text("Residue Types", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text("$uniqueResidueTypes", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Residue Types",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "$uniqueResidueTypes",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
                                     }
                                 }
                                 
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Divider()
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                // Secondary Structure Composition
-                                Text("Secondary Structure", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                val helixCount = chainAtoms.count { it.secondaryStructure == SecondaryStructure.HELIX }
-                                val sheetCount = chainAtoms.count { it.secondaryStructure == SecondaryStructure.SHEET }
-                                val coilCount = chainAtoms.count { it.secondaryStructure == SecondaryStructure.COIL }
-                                
-                                InfoRow("α-Helix", "$helixCount atoms (${(helixCount * 100 / chainAtoms.size)}%)")
-                                InfoRow("β-Sheet", "$sheetCount atoms (${(sheetCount * 100 / chainAtoms.size)}%)")
-                                InfoRow("Coil", "$coilCount atoms (${(coilCount * 100 / chainAtoms.size)}%)")
-                                
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Divider()
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                // Sequence Preview (first 50 residues)
-                                Text("Sequence Preview", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                val caAtoms = chainAtoms.filter { it.name == "CA" }.sortedBy { it.residueNumber }
-                                val sequence = caAtoms.take(50).joinToString("") { residueToSingleLetter(it.residueName) }
-                                Text(
-                                    text = sequence + if (caAtoms.size > 50) "..." else "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                // Sequence Information (아이폰과 동일)
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(8.dp)
-                                )
+                                        .background(
+                                            Color(0xFFF5F5F5),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "Sequence Information",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    
+                                    val caAtoms = chainAtoms.filter { it.name == "CA" }.sortedBy { it.residueNumber }
+                                    val sequence = caAtoms.joinToString("") { residueToSingleLetter(it.residueName) }
+                                    
+                                    Text(
+                                        "Length: ${caAtoms.size} residues",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    
+                                    // Sequence (scrollable, 아이폰과 동일)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(120.dp)
+                                            .background(
+                                                Color(0xFFE0E0E0),
+                                                shape = RoundedCornerShape(4.dp)
+                                            )
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(
+                                            text = sequence,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                                
+                                // Structural Characteristics (아이폰과 동일)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            Color(0xFFF5F5F5),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "Structural Characteristics",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    
+                                    val backboneAtoms = chainAtoms.count { it.isBackbone }
+                                    val sidechainAtoms = chainAtoms.size - backboneAtoms
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            "Backbone atoms: $backboneAtoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "Side chain atoms: $sidechainAtoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    
+                                    // Secondary Structure
+                                    val helixAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.HELIX }
+                                    val sheetAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.SHEET }
+                                    val coilAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.COIL }
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            "α-helix: $helixAtoms atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFFF44336) // Red
+                                        )
+                                        Text(
+                                            "β-sheet: $sheetAtoms atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFFFFEB3B) // Yellow
+                                        )
+                                        Text(
+                                            "Coil: $coilAtoms atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                                
+                                // Highlight and Focus Buttons (아이폰과 동일)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Button(
+                                        onClick = { /* TODO: Toggle highlight */ },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF2196F3)
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Star, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Highlight")
+                                    }
+                                    
+                                    Button(
+                                        onClick = { /* TODO: Focus */ },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF4CAF50)
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Search, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Focus")
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
                 }
                 
