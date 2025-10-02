@@ -7,18 +7,18 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import com.avas.proteinviewer.domain.model.PDBStructure
-import com.avas.proteinviewer.rendering.gles.SimpleRibbonRenderer
+import com.avas.proteinviewer.rendering.gles.ProperRibbonRenderer
 
 /**
  * OpenGL ES 3.0 전용 3D 단백질 뷰어 (Ribbon 스타일)
- * 아이폰과 동일하게 CA 원자들을 연결하여 Ribbon 렌더링
+ * Catmull-Rom 스플라인 + 튜브 메쉬로 폭이 있는 Ribbon 렌더링
  */
 class OpenGL30SurfaceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs) {
 
-    private val renderer = SimpleRibbonRenderer()
+    private val renderer = ProperRibbonRenderer()
     
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
