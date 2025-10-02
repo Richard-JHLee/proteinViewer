@@ -1,6 +1,7 @@
 package com.avas.proteinviewer.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,24 +31,40 @@ fun InfoModeScreen(
 ) {
     Scaffold(
         bottomBar = {
-            // 아이폰과 동일: 하단 고정 탭바
+            // 아이폰과 동일: 하단 고정 탭바 (7개 탭)
             if (uiState.structure != null) {
-                ScrollableTabRow(
-                    selectedTabIndex = uiState.selectedInfoTab.ordinal,
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    edgePadding = 0.dp
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 3.dp
                 ) {
-                    InfoTab.values().forEach { tab ->
-                        Tab(
-                            selected = uiState.selectedInfoTab == tab,
-                            onClick = { viewModel.setInfoTab(tab) },
-                            text = { 
-                                Text(
-                                    text = tab.name.replace("_", " ").lowercase()
-                                        .replaceFirstChar { it.uppercase() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                            InfoTab.values().forEach { tab ->
+                                val isSelected = uiState.selectedInfoTab == tab
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.setInfoTab(tab) },
+                                    label = {
+                                        Text(
+                                            text = tab.name.replace("_", " ")
+                                                .lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF2196F3), // 파란색
+                                        selectedLabelColor = Color.White
+                                    )
                                 )
                             }
-                        )
                     }
                 }
             }
