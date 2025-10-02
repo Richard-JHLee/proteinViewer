@@ -425,76 +425,442 @@ fun InfoPanel(
                 
                 InfoTab.LIGANDS -> {
                     val ligands = structure.atoms.filter { it.isLigand }
+                    val ligandGroups = ligands.groupBy { it.residueName }
+                    
                     if (ligands.isEmpty()) {
-                        Text(
-                            text = "No ligands found",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        ligands.groupBy { it.residueName }.keys.toList().forEach { ligandName ->
-                            val ligandAtoms = ligands.filter { it.residueName == ligandName }
-                            InfoCard(
-                                title = ligandName,
-                                content = {
-                                    InfoRow("Atoms", "${ligandAtoms.size}")
-                                    InfoRow("Chains", "${ligandAtoms.map { it.chain }.toSet().size}")
-                                }
+                        // No Ligands (아이폰과 동일)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.Gray.copy(alpha = 0.1f)
                             )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Science,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color.Gray
+                                )
+                                Text(
+                                    "No Ligands Detected",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "This structure does not contain any small molecules or ions bound to the protein.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        // Ligand Overview (아이폰과 동일)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    "Ligand Overview",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Total Ligands",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${ligandGroups.size}",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF2196F3)
+                                        )
+                                    }
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Total Atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${ligands.size}",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF4CAF50)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Individual Ligands (아이폰과 동일)
+                        ligandGroups.keys.sorted().forEach { ligandName ->
+                            val ligandAtoms = ligandGroups[ligandName]!!
+                            val uniqueChains = ligandAtoms.map { it.chain }.toSet()
+                            
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        ligandName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                Color(0xFFF5F5F5),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Atoms",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                "${ligandAtoms.size}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Chains",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                uniqueChains.sorted().joinToString(", "),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Elements",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                ligandAtoms.map { it.element }.toSet().sorted().joinToString(", "),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    
+                                    // Highlight Button
+                                    Button(
+                                        onClick = { /* TODO: Highlight ligand */ },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF2196F3)
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Star, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Highlight Ligand")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
                 
                 InfoTab.POCKETS -> {
-                    Text(
-                        text = "Pocket analysis not yet implemented",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Pockets Not Implemented (아이폰과 동일)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Gray.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Build,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
+                            )
+                            Text(
+                                "Pocket Analysis",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Pocket detection and analysis features are currently under development.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
                 
                 InfoTab.SEQUENCE -> {
-                    val residues = structure.atoms
-                        .filter { it.isBackbone && it.name == "CA" }
-                        .sortedBy { it.residueNumber }
+                    val chains = structure.chains.sorted()
+                    val totalResidues = structure.atoms
+                        .filter { it.name == "CA" }
+                        .map { "${it.chain}:${it.residueNumber}" }
+                        .toSet().size
                     
-                    structure.chains.toList().forEach { chain ->
-                        val chainResidues = residues.filter { it.chain == chain }
-                        InfoCard(
-                            title = "Chain $chain Sequence",
-                            content = {
-                                Text(
-                                    text = chainResidues.joinToString("") { 
-                                        residueToSingleLetter(it.residueName) 
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                                )
-                            }
+                    // Sequence Overview (아이폰과 동일)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Sequence Overview",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Chains",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "${chains.size}",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF2196F3)
+                                    )
+                                }
+                                
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Total Residues",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "$totalResidues",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Individual Chain Sequences (아이폰과 동일)
+                    chains.forEach { chain ->
+                        val chainAtoms = structure.atoms
+                            .filter { it.chain == chain && it.name == "CA" }
+                            .sortedBy { it.residueNumber }
+                        
+                        val sequence = chainAtoms.joinToString("") { 
+                            residueToSingleLetter(it.residueName) 
+                        }
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Chain $chain",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        "${chainAtoms.size} residues",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                // Sequence with blocks of 10 (아이폰과 동일)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            Color(0xFFF5F5F5),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = sequence.chunked(10).joinToString(" "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        lineHeight = 20.sp
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 
                 InfoTab.ANNOTATIONS -> {
-                    structure.annotations.forEach { annotation ->
-                        InfoCard(
-                            title = annotation.type.displayName,
-                            content = {
+                    if (structure.annotations.isEmpty()) {
+                        // No Annotations (기본 정보 표시)
+                        // Structure Information (보라색 카드)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF9C27B0).copy(alpha = 0.1f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF9C27B0).copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
                                 Text(
-                                    text = annotation.value,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    "Structure Information",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                if (annotation.description.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = annotation.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    InfoRow("PDB ID", proteinInfo?.id ?: "N/A", "Protein Data Bank identifier")
+                                    InfoRow("Total Atoms", "${structure.atomCount}", "atom")
+                                    InfoRow("Total Bonds", "${structure.bonds.size}", "link")
+                                    InfoRow("Chains", "${structure.chainCount}", "link.horizontal")
                                 }
                             }
-                        )
+                        }
+                        
+                        // Chemical Composition (주황색 카드)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFF9800).copy(alpha = 0.1f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    "Chemical Composition",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    val uniqueElements = structure.atoms.map { it.element }.toSet()
+                                    InfoRow("Elements", "${uniqueElements.size}", "Number of different chemical elements present")
+                                    InfoRow("Element Types", uniqueElements.sorted().joinToString(", "), "Chemical elements found in this structure")
+                                    val chainList = structure.chains.sorted().joinToString(", ")
+                                    InfoRow("Chain IDs", chainList, "Identifiers for each polypeptide chain")
+                                }
+                            }
+                        }
+                    } else {
+                        // 실제 Annotations 표시
+                        structure.annotations.forEach { annotation ->
+                            InfoCard(
+                                title = annotation.type.displayName,
+                                content = {
+                                    Text(
+                                        text = annotation.value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    if (annotation.description.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = annotation.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
