@@ -3,12 +3,14 @@ package com.avas.proteinviewer.presentation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.domain.model.*
@@ -37,22 +39,54 @@ fun InfoPanel(
         ) {
             when (selectedTab) {
                 InfoTab.OVERVIEW -> {
-                    // iOS 스타일: Structure Information
+                    // Basic Statistics Cards (아이폰과 동일)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        StatCard(
+                            title = "Atoms",
+                            value = "${structure.atomCount}",
+                            color = Color(0xFF2196F3), // Blue
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatCard(
+                            title = "Chains",
+                            value = "${structure.chainCount}",
+                            color = Color(0xFF4CAF50), // Green
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatCard(
+                            title = "Residues",
+                            value = "${structure.residueCount}",
+                            color = Color(0xFFFF9800), // Orange
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Structure Information (파란색 카드)
                     InfoCard(
                         title = "Structure Information",
+                        backgroundColor = Color(0xFF2196F3).copy(alpha = 0.1f),
+                        borderColor = Color(0xFF2196F3).copy(alpha = 0.3f),
                         content = {
-                            InfoRow("PDB ID", proteinInfo?.id ?: "N/A")
-                            InfoRow("Total Atoms", "${structure.atomCount}")
-                            InfoRow("Total Bonds", "${structure.bonds.size}")
-                            InfoRow("Chains", "${structure.chainCount}")
-                            val uniqueResidues = structure.atoms.map { it.residueName }.toSet()
-                            InfoRow("Residue Types", "${uniqueResidues.size}")
+                            InfoRow("PDB ID", proteinInfo?.id ?: "N/A", "Protein Data Bank identifier")
+                            InfoRow("Total Atoms", "${structure.atomCount}", "atom")
+                            InfoRow("Total Bonds", "${structure.bonds.size}", "link")
+                            InfoRow("Chains", "${structure.chainCount}", "link.horizontal")
+                            val uniqueElements = structure.atoms.map { it.element }.toSet()
+                            InfoRow("Elements", "${uniqueElements.size}", "Number of different chemical elements present")
+                            InfoRow("Element Types", uniqueElements.sorted().joinToString(", "), "Chemical elements found in this structure")
                         }
                     )
                     
-                    // iOS 스타일: Chemical Composition
+                    // Chemical Composition (녹색 카드)
                     InfoCard(
                         title = "Chemical Composition",
+                        backgroundColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                        borderColor = Color(0xFF4CAF50).copy(alpha = 0.3f),
                         content = {
                             val uniqueResidues = structure.atoms.map { it.residueName }.toSet()
                             InfoRow("Residue Types", "${uniqueResidues.size}", "Number of different amino acid types present")
@@ -61,52 +95,24 @@ fun InfoPanel(
                             InfoRow("Chain IDs", chainList, "Identifiers for all polypeptide chains")
                             val hasLigands = structure.atoms.any { it.isLigand }
                             InfoRow("Ligands", if (hasLigands) "Present" else "None", 
-                                if (hasLigands) "Small molecules or ions bound to the protein" else "No small molecules detected")
+                                if (hasLigands) "Small molecules or ions bound to the protein" else "No small molecules detected in this structure")
                         }
                     )
                     
-                    // iOS 스타일: Experimental Details (API 데이터 사용)
+                    // Experimental Details (주황색 카드)
                     InfoCard(
                         title = "Experimental Details",
+                        backgroundColor = Color(0xFFFF9800).copy(alpha = 0.1f),
+                        borderColor = Color(0xFFFF9800).copy(alpha = 0.3f),
                         content = {
-                            proteinInfo?.resolution?.let {
-                                InfoRow("Resolution", "%.2f Å".format(Locale.US, it), "Quality measure of structure determination")
-                            }
-                            proteinInfo?.experimentalMethod?.let {
-                                InfoRow("Method", it, "Experimental technique used")
-                            }
-                            proteinInfo?.depositionDate?.let {
-                                InfoRow("Deposition Date", it, "Date structure was deposited to PDB")
-                            }
-                            proteinInfo?.organism?.let {
-                                InfoRow("Organism", it, "Source organism of the protein")
-                            }
-                            proteinInfo?.classification?.let {
-                                InfoRow("Classification", it, "Functional classification")
+                            InfoRow("Structure Type", "Protein", "This is a protein structure determined by experimental methods")
+                            InfoRow("Data Source", "PDB", "Protein Data Bank - worldwide repository of 3D structure data")
+                            InfoRow("Quality", "Experimental", "Structure determined through experimental techniques like X-ray crystallography")
+                            structure.atoms.firstOrNull()?.let { firstAtom ->
+                                InfoRow("First Residue", firstAtom.residueName, "Chain ${firstAtom.chain}")
                             }
                         }
                     )
-                    
-                    // 추가 Annotations
-                    structure.annotations.forEach { annotation ->
-                        InfoCard(
-                            title = annotation.type.displayName,
-                            content = {
-                                Text(
-                                    text = annotation.value,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                if (annotation.description.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = annotation.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        )
-                    }
                 }
                 
                 InfoTab.CHAINS -> {
@@ -286,13 +292,55 @@ fun InfoPanel(
 }
 
 @Composable
+private fun StatCard(
+    title: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
 private fun InfoCard(
     title: String,
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    borderColor: Color = MaterialTheme.colorScheme.outline,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
