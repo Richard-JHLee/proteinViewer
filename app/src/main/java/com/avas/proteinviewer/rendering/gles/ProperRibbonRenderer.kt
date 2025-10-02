@@ -152,19 +152,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val oldMode = currentColorMode
         currentColorMode = mode
         Log.d(TAG, "Color mode changed from $oldMode to: $mode")
-        // Color mode가 변경되면 버퍼 재생성 필요
-        currentStructure?.let {
-            uploadStructure(it)
-        }
+        // 색상만 업데이트 (requestRender만 호출)
+        // uploadStructure를 호출하지 않아 버퍼 크기는 그대로 유지
     }
     
     fun updateHighlightedChains(highlightedChains: Set<String>) {
         currentHighlightedChains = highlightedChains
         Log.d(TAG, "Highlighted chains updated: $highlightedChains")
-        // Highlight가 변경되면 버퍼 재생성 필요 (색상/투명도 변경)
-        currentStructure?.let {
-            uploadStructure(it)
-        }
+        // 색상만 업데이트 (requestRender만 호출)
+        // uploadStructure를 호출하지 않아 버퍼 크기는 그대로 유지
     }
 
     fun orbit(deltaX: Float, deltaY: Float) {
