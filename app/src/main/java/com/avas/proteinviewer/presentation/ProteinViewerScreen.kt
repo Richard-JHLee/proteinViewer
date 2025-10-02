@@ -243,7 +243,8 @@ private fun PrimarySecondaryButton(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
+                // 선택 시: 파란색, 미선택 시: 검정색
+                tint = if (isSelected) Color(0xFF2196F3) else Color.Black,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -251,8 +252,10 @@ private fun PrimarySecondaryButton(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = 11.sp,
-                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Normal
+                // 항상 검정색
+                color = Color.Black,
+                // 선택 시: Bold, 미선택 시: Normal
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
             )
         }
     }
@@ -264,14 +267,14 @@ private fun RowScope.SecondaryStyleButton(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
-    selectedColor: Color = Color(0xFF2196F3), // Default Blue
+    selectedColor: Color = Color(0xFF2196F3), // Default Blue (배경색으로만 사용)
     onClick: () -> Unit
 ) {
-    // iPhone과 동일: 선택 시 배경색 0.1 alpha, 텍스트/아이콘은 해당 색상
+    // 선택 시: 파란색 배경 + 파란색 아이콘 + 검은색 Bold 텍스트
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) selectedColor.copy(alpha = 0.1f) else Color.Transparent
+            containerColor = if (isSelected) Color(0xFF2196F3).copy(alpha = 0.1f) else Color.Transparent
         ),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
         shape = RoundedCornerShape(8.dp),
@@ -285,8 +288,8 @@ private fun RowScope.SecondaryStyleButton(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                // iPhone과 동일: 선택 시 색상, 미선택 시 primary (검정)
-                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
+                // 선택 시: 파란색, 미선택 시: 검정색
+                tint = if (isSelected) Color(0xFF2196F3) else Color.Black,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -295,9 +298,10 @@ private fun RowScope.SecondaryStyleButton(
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = 11.sp,
                 maxLines = 1,
-                // iPhone과 동일: 선택 시 색상, 미선택 시 primary
-                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium
+                // 항상 검정색
+                color = Color.Black,
+                // 선택 시: Bold, 미선택 시: Medium
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
         }
     }
@@ -324,17 +328,17 @@ private fun SecondaryRenderingStyleBar(
                 icon = getStyleIcon(style),
                 label = style.displayName,
                 isSelected = selectedStyle == style,
-                selectedColor = Color(0xFF2196F3), // Blue (iPhone과 동일)
+                selectedColor = Color(0xFF2196F3), // Blue
                 onClick = { onStyleSelect(style) }
             )
         }
         
-        // Highlight All 버튼 (iPhone과 동일: Yellow)
+        // Highlight All 버튼 (배경/아이콘: 파란색, 텍스트: 검정 Bold)
         SecondaryStyleButton(
-            icon = if (highlightAllChains) Icons.Default.Lightbulb else Icons.Default.Lightbulb,
+            icon = Icons.Default.Lightbulb,
             label = "Highlight All",
             isSelected = highlightAllChains,
-            selectedColor = Color(0xFFFFEB3B), // Yellow
+            selectedColor = Color(0xFF2196F3), // Blue (노랑색 대신)
             onClick = onHighlightAllToggle
         )
     }
@@ -358,7 +362,7 @@ private fun SecondaryColorModeBar(
                 icon = getColorModeIcon(mode),
                 label = mode.displayName,
                 isSelected = selectedMode == mode,
-                selectedColor = Color(0xFF4CAF50), // Green (iPhone과 동일)
+                selectedColor = Color(0xFF2196F3), // Blue (Green 대신)
                 onClick = { onModeSelect(mode) }
             )
         }
