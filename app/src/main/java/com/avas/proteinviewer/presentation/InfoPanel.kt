@@ -618,39 +618,202 @@ fun InfoPanel(
                 }
                 
                 InfoTab.POCKETS -> {
-                    // Pockets Not Implemented (아이폰과 동일)
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.Gray.copy(alpha = 0.1f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                    val pockets = structure.atoms.filter { it.isPocket }
+                    val pocketGroups = pockets.groupBy { it.residueName }
+                    
+                    if (pockets.isEmpty()) {
+                        // No Pockets (아이폰과 동일)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.Gray.copy(alpha = 0.1f)
+                            )
                         ) {
-                            Icon(
-                                Icons.Default.Build,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = Color.Gray
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Place,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color.Gray
+                                )
+                                Text(
+                                    "No Binding Pockets Detected",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "This structure does not contain any identified binding pockets or active sites.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        // Binding Pocket Overview (아이폰과 동일)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF9C27B0).copy(alpha = 0.1f)
                             )
-                            Text(
-                                "Pocket Analysis",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "Pocket detection and analysis features are currently under development.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    "Binding Pocket Overview",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Total Pockets",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${pocketGroups.size}",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF9C27B0)
+                                        )
+                                    }
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Total Atoms",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "${pockets.size}",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFFFF9800)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Individual Pockets (아이폰과 동일)
+                        pocketGroups.keys.sorted().forEach { pocketName ->
+                            val pocketAtoms = pocketGroups[pocketName]!!
+                            val uniqueChains = pocketAtoms.map { it.chain }.toSet()
+                            
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        pocketName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                Color(0xFFF5F5F5),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Atoms",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                "${pocketAtoms.size}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Chains",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                uniqueChains.sorted().joinToString(", "),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        // Element composition
+                                        val elementCounts = pocketAtoms
+                                            .groupBy { it.element }
+                                            .mapValues { it.value.size }
+                                            .toList()
+                                            .sortedByDescending { it.second }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Elements",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                elementCounts.joinToString(", ") { "${it.first}${it.second}" },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    
+                                    // Highlight Button
+                                    Button(
+                                        onClick = { /* TODO: Highlight pocket */ },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF9C27B0)
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Star, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Highlight Pocket")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
