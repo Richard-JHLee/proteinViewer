@@ -1,5 +1,6 @@
 package com.avas.proteinviewer.rendering.gles
 
+import android.graphics.Color
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
@@ -9,6 +10,7 @@ import com.avas.proteinviewer.domain.model.Atom
 import com.avas.proteinviewer.domain.model.SecondaryStructure
 import com.avas.proteinviewer.domain.model.RenderStyle
 import com.avas.proteinviewer.domain.model.ColorMode
+import com.avas.proteinviewer.rendering.ColorMaps
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.microedition.khronos.egl.EGLConfig
@@ -39,12 +41,24 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var vao = 0
 
     private var indexCount = 0
-    private val ribbonRadius = 0.4f
+    private val ribbonRadius = 0.2f  // 얇은 리본을 위해 더 작게
     private val tubeSegments = 8 // 원통의 분할 수
 
     private var buffersReady = false
     private var pendingStructure: PDBStructure? = null
     private var currentStructure: PDBStructure? = null
+    
+    // 구체 메쉬 캐시 (메모리 효율성)
+    private val sphereMeshCache = mutableMapOf<Int, MeshData>()
+    
+    // 구체 메쉬를 캐시에서 가져오거나 생성 (매우 매끄러운 구체)
+    private fun getCachedSphereMesh(radius: Float, segments: Int): MeshData {
+        val key = (radius * 1000).toInt() * 1000 + segments // radius와 segments를 키로 사용
+        
+        return sphereMeshCache.getOrPut(key) {
+            createSmoothSphereMesh(Vector3(0f, 0f, 0f), radius, segments)
+        }
+    }
     private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
     private var currentColorMode: ColorMode = ColorMode.CHAIN
     private var currentHighlightedChains: Set<String> = emptySet()
@@ -144,23 +158,28 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun updateRenderStyle(style: RenderStyle) {
         currentRenderStyle = style
         Log.d(TAG, "Render style changed to: $style")
-        // 현재는 Ribbon만 지원, 나중에 다른 스타일 구현 예정
-        // TODO: Spheres, Sticks, Cartoon, Surface 구현
+        // 구조를 다시 업로드하여 렌더링 스타일 변경 적용
+        uploadStructure(currentStructure)
     }
     
     fun updateColorMode(mode: ColorMode) {
         val oldMode = currentColorMode
         currentColorMode = mode
         Log.d(TAG, "Color mode changed from $oldMode to: $mode")
-        // 색상만 업데이트 (requestRender만 호출)
-        // uploadStructure를 호출하지 않아 버퍼 크기는 그대로 유지
+        // 구조를 다시 업로드하여 색상 변경 적용
+        if (currentStructure != null) {
+            uploadStructure(currentStructure)
+            Log.d(TAG, "Structure re-uploaded for color mode change")
+        } else {
+            Log.w(TAG, "Cannot update color mode: currentStructure is null")
+        }
     }
     
     fun updateHighlightedChains(highlightedChains: Set<String>) {
         currentHighlightedChains = highlightedChains
         Log.d(TAG, "Highlighted chains updated: $highlightedChains")
-        // 색상만 업데이트 (requestRender만 호출)
-        // uploadStructure를 호출하지 않아 버퍼 크기는 그대로 유지
+        // 구조를 다시 업로드하여 하이라이트 효과 적용
+        uploadStructure(currentStructure)
     }
 
     fun orbit(deltaX: Float, deltaY: Float) {
@@ -181,6 +200,719 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             return
         }
 
+        Log.d(TAG, "uploadStructure: currentRenderStyle=$currentRenderStyle")
+
+        // 초기 구조 로드 시에만 카메라 설정
+        if (currentStructure == null) {
+            setupCamera(structure.atoms)
+        }
+
+        when (currentRenderStyle) {
+            RenderStyle.RIBBON -> uploadRibbonStructure(structure)
+            RenderStyle.SPHERES -> uploadSpheresStructure(structure)
+            RenderStyle.STICKS -> uploadSticksStructure(structure)
+            RenderStyle.CARTOON -> uploadCartoonStructure(structure)
+            RenderStyle.SURFACE -> uploadSurfaceStructure(structure)
+        }
+    }
+    
+    private fun uploadSpheresStructure(structure: PDBStructure) {
+        // 모든 원자 렌더링 (CA만이 아닌)
+        val atoms = structure.atoms
+        
+        if (atoms.isEmpty()) {
+            Log.w(TAG, "No atoms found for spheres rendering")
+            indexCount = 0
+            return
+        }
+
+        Log.d(TAG, "Found ${atoms.size} atoms for spheres rendering")
+        Log.d(TAG, "Spheres rendering: ${atoms.size} spheres will be created")
+
+        // 바운딩 박스 계산 (카메라 설정은 초기 로드 시에만)
+        // setupCamera(atoms) // 버튼 선택 시 자동 확대 방지
+
+        val allVertices = mutableListOf<Float>()
+        val allColors = mutableListOf<Float>()
+        val allNormals = mutableListOf<Float>()
+        val allIndices = mutableListOf<Short>()
+        
+        var vertexOffset = 0
+
+        atoms.forEach { atom ->
+            // 원자 색상
+            val atomColor = getAtomColor(atom)
+            
+            // 체인 하이라이트 상태 확인
+            val chainKey = "chain:${atom.chain}"
+            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            
+            // Highlight 효과 적용
+            var finalColor = atomColor
+            if (hasAnyHighlight) {
+                if (isHighlighted) {
+                    // Highlighted: 밝고 선명하게
+                    finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                } else {
+                    // Not highlighted: 매우 희미하게
+                    finalColor = finalColor.map { it * 0.15f }
+                }
+            }
+            
+            // 구체 메쉬 생성 (캐시된 메쉬 사용)
+            val radius = 0.8f // 이미지처럼 큰 구체로 조밀한 구조 형성
+            val center = Vector3(atom.position.x, atom.position.y, atom.position.z)
+            val cachedMesh = getCachedSphereMesh(radius, 16) // 간단한 구체 (색으로 칠하기)
+            val sphereMesh = MeshData(
+                cachedMesh.vertices.mapIndexed { index, value ->
+                    when (index % 3) {
+                        0 -> value + center.x
+                        1 -> value + center.y
+                        2 -> value + center.z
+                        else -> value
+                    }
+                },
+                cachedMesh.normals,
+                cachedMesh.indices
+            )
+            
+            // 메쉬 데이터 추가
+            allVertices.addAll(sphereMesh.vertices)
+            allNormals.addAll(sphereMesh.normals)
+            
+            // 모든 정점에 색상 적용
+            repeat(sphereMesh.vertices.size / 3) {
+                allColors.addAll(finalColor)
+            }
+            
+            // 인덱스 오프셋 적용
+            sphereMesh.indices.forEach { index ->
+                allIndices.add((index + vertexOffset).toShort())
+            }
+            
+            vertexOffset += sphereMesh.vertices.size / 3
+        }
+
+        indexCount = allIndices.size
+
+        // 버퍼에 업로드
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
+
+        Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for spheres")
+    }
+
+    private fun uploadSticksStructure(structure: PDBStructure) {
+        // 모든 원자 렌더링 + 연결선
+        val atoms = structure.atoms
+        
+        if (atoms.isEmpty()) {
+            Log.w(TAG, "No atoms found for sticks rendering")
+            indexCount = 0
+            return
+        }
+
+        Log.d(TAG, "Found ${atoms.size} atoms for sticks rendering")
+
+        // 바운딩 박스 계산 (카메라 설정은 초기 로드 시에만)
+        // setupCamera(atoms) // 버튼 선택 시 자동 확대 방지
+
+        val allVertices = mutableListOf<Float>()
+        val allColors = mutableListOf<Float>()
+        val allNormals = mutableListOf<Float>()
+        val allIndices = mutableListOf<Short>()
+        
+        var vertexOffset = 0
+
+        // 1. 원자들을 작은 구체로 렌더링
+        atoms.forEach { atom ->
+            // 원자 색상
+            val atomColor = getAtomColor(atom)
+            
+            // 체인 하이라이트 상태 확인
+            val chainKey = "chain:${atom.chain}"
+            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            
+            // Highlight 효과 적용
+            var finalColor = atomColor
+            if (hasAnyHighlight) {
+                if (isHighlighted) {
+                    // Highlighted: 밝고 선명하게
+                    finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                } else {
+                    // Not highlighted: 매우 희미하게
+                    finalColor = finalColor.map { it * 0.15f }
+                }
+            }
+            
+            // 구체 메쉬 생성 (캐시된 메쉬 사용)
+            val radius = 0.5f // Sticks용 구체 크기 (Spheres보다 작게)
+            val center = Vector3(atom.position.x, atom.position.y, atom.position.z)
+            val cachedMesh = getCachedSphereMesh(radius, 16) // 간단한 구체 (색으로 칠하기)
+            val sphereMesh = MeshData(
+                cachedMesh.vertices.mapIndexed { index, value ->
+                    when (index % 3) {
+                        0 -> value + center.x
+                        1 -> value + center.y
+                        2 -> value + center.z
+                        else -> value
+                    }
+                },
+                cachedMesh.normals,
+                cachedMesh.indices
+            )
+            
+            // 메쉬 데이터 추가
+            allVertices.addAll(sphereMesh.vertices)
+            allNormals.addAll(sphereMesh.normals)
+            
+            // 모든 정점에 색상 적용
+            repeat(sphereMesh.vertices.size / 3) {
+                allColors.addAll(finalColor)
+            }
+            
+            // 인덱스 오프셋 적용
+            sphereMesh.indices.forEach { index ->
+                allIndices.add((index + vertexOffset).toShort())
+            }
+            
+            vertexOffset += sphereMesh.vertices.size / 3
+        }
+
+        // 2. 연결선 렌더링 (간단한 거리 기반)
+        val bondRadius = 0.05f
+        val bondColor = listOf(0.5f, 0.5f, 0.5f, 1.0f) // 회색 연결선
+        
+        atoms.forEachIndexed { i, atom1 ->
+            val pos1 = Vector3(atom1.position.x, atom1.position.y, atom1.position.z)
+            
+            // 근처 원자들과 연결선 생성
+            for (j in i + 1 until atoms.size) {
+                val atom2 = atoms[j]
+                val pos2 = Vector3(atom2.position.x, atom2.position.y, atom2.position.z)
+                
+                // 거리 계산
+                val distance = Math.sqrt(
+                    ((pos1.x - pos2.x) * (pos1.x - pos2.x) + 
+                     (pos1.y - pos2.y) * (pos1.y - pos2.y) + 
+                     (pos1.z - pos2.z) * (pos1.z - pos2.z)).toDouble()
+                ).toFloat()
+                
+                // 2.0Å 이내면 연결선 생성
+                if (distance < 2.0f) {
+                    val cylinderMesh = createCylinderMesh(pos1, pos2, bondRadius, 6)
+                    
+                    // 메쉬 데이터 추가
+                    allVertices.addAll(cylinderMesh.vertices)
+                    allNormals.addAll(cylinderMesh.normals)
+                    
+                    // 모든 정점에 회색 색상 적용
+                    repeat(cylinderMesh.vertices.size / 3) {
+                        allColors.addAll(bondColor)
+                    }
+                    
+                    // 인덱스 오프셋 적용
+                    cylinderMesh.indices.forEach { index ->
+                        allIndices.add((index + vertexOffset).toShort())
+                    }
+                    
+                    vertexOffset += cylinderMesh.vertices.size / 3
+                }
+            }
+        }
+
+        indexCount = allIndices.size
+
+        // 버퍼에 업로드
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
+
+        Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for sticks")
+    }
+
+    private fun uploadCartoonStructure(structure: PDBStructure) {
+        // CA 원자만 사용하되 Ribbon과 다른 스타일로 렌더링
+        val caAtoms = structure.atoms.filter { atom ->
+            atom.name.trim().equals("CA", ignoreCase = true)
+        }
+        
+        if (caAtoms.isEmpty()) {
+            Log.w(TAG, "No CA atoms found for cartoon rendering")
+            indexCount = 0
+            return
+        }
+
+        Log.d(TAG, "Found ${caAtoms.size} CA atoms for cartoon rendering")
+
+        // 바운딩 박스 계산 및 카메라 설정
+        setupCamera(caAtoms)
+
+        val allVertices = mutableListOf<Float>()
+        val allColors = mutableListOf<Float>()
+        val allNormals = mutableListOf<Float>()
+        val allIndices = mutableListOf<Short>()
+        
+        var vertexOffset = 0
+
+        // 체인별로 그룹화
+        val chainGroups = caAtoms.groupBy { it.chain }
+        
+        chainGroups.forEach { (chain, atoms) ->
+            val sortedAtoms = atoms.sortedBy { it.residueNumber }
+            
+            if (sortedAtoms.size < 2) return@forEach
+            
+            // 체인 하이라이트 상태 확인
+            val chainKey = "chain:$chain"
+            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            
+            // 색상 모드에 따른 색상 결정 (첫 번째 원자 기준)
+            val firstAtom = sortedAtoms.first()
+            val atomColor = getAtomColor(firstAtom)
+            val chainColor = listOf(atomColor[0], atomColor[1], atomColor[2])
+            
+            // Cartoon: 2차 구조에 따라 다른 굵기와 모양
+            val splinePoints = generateCatmullRomSpline(sortedAtoms, numSegments = 8)
+            
+            // 2차 구조별로 다른 굵기 적용
+            val cartoonMesh = createCartoonTubeMesh(splinePoints, tubeSegments)
+            
+            // 메쉬 데이터 추가
+            allVertices.addAll(cartoonMesh.vertices)
+            allNormals.addAll(cartoonMesh.normals)
+            
+            // 색상 모드에 따른 색상 적용 + Highlight 효과
+            val verticesPerSplinePoint = (tubeSegments + 1)
+            splinePoints.forEachIndexed { index, splinePoint ->
+                var finalColor = chainColor
+                
+                // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
+                if (currentColorMode != ColorMode.UNIFORM) {
+                    val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                    finalColor = blendColors(chainColor, structureColor, alpha = 0.8f)
+                }
+                
+                // Highlight 효과
+                if (hasAnyHighlight) {
+                    if (isHighlighted) {
+                        finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                    } else {
+                        finalColor = finalColor.map { it * 0.15f }
+                    }
+                }
+                
+                // 각 스플라인 포인트의 원형 단면 정점들에 색상 적용
+                repeat(verticesPerSplinePoint) {
+                    allColors.addAll(finalColor)
+                }
+            }
+            
+            // 인덱스 오프셋 적용
+            cartoonMesh.indices.forEach { index ->
+                allIndices.add((index + vertexOffset).toShort())
+            }
+            
+            vertexOffset += cartoonMesh.vertices.size / 3
+        }
+
+        indexCount = allIndices.size
+
+        // 버퍼에 업로드
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
+
+        Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for cartoon")
+    }
+
+    // 헬퍼 함수들
+    private fun getAtomColor(atom: Atom): List<Float> {
+        return when (currentColorMode) {
+            ColorMode.ELEMENT -> {
+                // Element 컬러링: CPK 색상 체계 적용 (아이폰과 동일)
+                val elementColor = ColorMaps.cpk(atom.element)
+                listOf(
+                    Color.red(elementColor) / 255f,
+                    Color.green(elementColor) / 255f,
+                    Color.blue(elementColor) / 255f,
+                    1.0f
+                )
+            }
+            ColorMode.CHAIN -> {
+                // Chain 컬러링: 체인별 고유 색상 적용 (아이폰과 동일)
+                val chainColor = ColorMaps.chainColor(atom.chain)
+                listOf(
+                    Color.red(chainColor) / 255f,
+                    Color.green(chainColor) / 255f,
+                    Color.blue(chainColor) / 255f,
+                    1.0f
+                )
+            }
+            ColorMode.UNIFORM -> {
+                // Uniform 컬러링: 단일 색상 (회색) - 프레젠테이션용
+                val uniformColor = listOf(0.5f, 0.5f, 0.5f, 1.0f)
+                // 디버깅용 로그 (처음 5개 원자만)
+                if (atom.residueNumber <= 5) {
+                    Log.d(TAG, "Uniform color applied: $uniformColor")
+                }
+                uniformColor
+            }
+            ColorMode.SECONDARY_STRUCTURE -> {
+                // Secondary Structure 컬러링: 2차 구조별 색상 적용 (아이폰과 동일)
+                val structureColor = ColorMaps.secondaryStructureColor(atom.secondaryStructure.name)
+                val color = listOf(
+                    Color.red(structureColor) / 255f,
+                    Color.green(structureColor) / 255f,
+                    Color.blue(structureColor) / 255f,
+                    1.0f
+                )
+                // 디버깅용 로그 (처음 5개 원자만)
+                if (atom.residueNumber <= 5) {
+                    Log.d(TAG, "Secondary Structure: ${atom.secondaryStructure.name} -> Color: $color")
+                }
+                color
+            }
+        }
+    }
+
+    private fun getVanDerWaalsRadius(element: String): Float {
+        return when (element.uppercase()) {
+            "H" -> 1.20f
+            "C" -> 1.70f
+            "N" -> 1.55f
+            "O" -> 1.52f
+            "S" -> 1.80f
+            "P" -> 1.80f
+            "F" -> 1.47f
+            "CL" -> 1.75f
+            "BR" -> 1.85f
+            "I" -> 1.98f
+            else -> 1.50f // 기본값
+        }
+    }
+
+    private fun createSphereMesh(center: Vector3, radius: Float, segments: Int): MeshData {
+        val vertices = mutableListOf<Float>()
+        val normals = mutableListOf<Float>()
+        val indices = mutableListOf<Short>()
+        
+        val rings = segments / 2
+        val ringVertices = segments + 1
+        
+        // 정점 생성 (아이폰과 동일한 방식)
+        for (i in 0..rings) {
+            val phi = Math.PI * i / rings
+            val y = (Math.cos(phi) * radius).toFloat()
+            val sinPhi = Math.sin(phi)
+            
+            for (j in 0..segments) {
+                val theta = 2.0 * Math.PI * j / segments
+                val x = (Math.cos(theta) * sinPhi * radius).toFloat()
+                val z = (Math.sin(theta) * sinPhi * radius).toFloat()
+                
+                vertices.addAll(listOf(
+                    center.x + x,
+                    center.y + y,
+                    center.z + z
+                ))
+                
+                // 법선 벡터 (중심에서 정점으로의 단위 벡터)
+                val normalLength = Math.sqrt((x*x + y*y + z*z).toDouble()).toFloat()
+                normals.addAll(listOf(
+                    x / normalLength,
+                    y / normalLength,
+                    z / normalLength
+                ))
+            }
+        }
+        
+        // 인덱스 생성 (아이폰과 동일한 삼각형 패턴)
+        for (i in 0 until rings) {
+            for (j in 0 until segments) {
+                val current = i * ringVertices + j
+                val next = current + ringVertices
+                val currentNext = if (j < segments) current + 1 else current - segments
+                val nextNext = if (j < segments) next + 1 else next - segments
+                
+                // 첫 번째 삼각형
+                indices.addAll(listOf(
+                    current.toShort(),
+                    currentNext.toShort(),
+                    next.toShort()
+                ))
+                
+                // 두 번째 삼각형
+                indices.addAll(listOf(
+                    currentNext.toShort(),
+                    nextNext.toShort(),
+                    next.toShort()
+                ))
+            }
+        }
+        
+        return MeshData(vertices, normals, indices)
+    }
+
+    private fun createSmoothSphereMesh(center: Vector3, radius: Float, segments: Int): MeshData {
+        val vertices = mutableListOf<Float>()
+        val normals = mutableListOf<Float>()
+        val indices = mutableListOf<Short>()
+        
+        // 극도로 간단한 팔면체 구체 (6개 정점, 8개 삼각형)
+        val octahedronVertices = listOf(
+            // 팔면체의 6개 정점
+            Vector3(0f, radius, 0f),      // 위쪽 정점
+            Vector3(radius, 0f, 0f),      // 오른쪽 정점
+            Vector3(0f, 0f, radius),      // 앞쪽 정점
+            Vector3(-radius, 0f, 0f),     // 왼쪽 정점
+            Vector3(0f, 0f, -radius),     // 뒤쪽 정점
+            Vector3(0f, -radius, 0f)      // 아래쪽 정점
+        )
+        
+        // 정점 추가
+        octahedronVertices.forEach { vertex ->
+            vertices.addAll(listOf(
+                center.x + vertex.x,
+                center.y + vertex.y,
+                center.z + vertex.z
+            ))
+            // 모든 법선을 동일하게 (무늬 제거)
+            normals.addAll(listOf(0f, 0f, 1f))
+        }
+        
+        // 팔면체 인덱스 (8개 삼각형)
+        val octahedronIndices = listOf(
+            // 위쪽 4개 삼각형
+            0, 1, 2,  // 위-오른쪽-앞
+            0, 2, 3,  // 위-앞-왼쪽
+            0, 3, 4,  // 위-왼쪽-뒤
+            0, 4, 1,  // 위-뒤-오른쪽
+            // 아래쪽 4개 삼각형
+            5, 2, 1,  // 아래-앞-오른쪽
+            5, 3, 2,  // 아래-왼쪽-앞
+            5, 4, 3,  // 아래-뒤-왼쪽
+            5, 1, 4   // 아래-오른쪽-뒤
+        )
+        
+        indices.addAll(octahedronIndices.map { it.toShort() })
+        
+        return MeshData(vertices, normals, indices)
+    }
+
+    private fun createCylinderMesh(start: Vector3, end: Vector3, radius: Float, segments: Int): MeshData {
+        val vertices = mutableListOf<Float>()
+        val normals = mutableListOf<Float>()
+        val indices = mutableListOf<Short>()
+        
+        val direction = Vector3(
+            end.x - start.x,
+            end.y - start.y,
+            end.z - start.z
+        )
+        val length = Math.sqrt((direction.x*direction.x + direction.y*direction.y + direction.z*direction.z).toDouble()).toFloat()
+        
+        // 정규화된 방향 벡터
+        val normalizedDirection = Vector3(
+            direction.x / length,
+            direction.y / length,
+            direction.z / length
+        )
+        
+        // 원통의 중심축에 수직인 두 개의 벡터 찾기
+        val up = Vector3(0f, 1f, 0f)
+        val rightX = normalizedDirection.y * up.z - normalizedDirection.z * up.y
+        val rightY = normalizedDirection.z * up.x - normalizedDirection.x * up.z
+        val rightZ = normalizedDirection.x * up.y - normalizedDirection.y * up.x
+        val rightLength = Math.sqrt((rightX*rightX + rightY*rightY + rightZ*rightZ).toDouble()).toFloat()
+        val right = Vector3(rightX / rightLength, rightY / rightLength, rightZ / rightLength)
+        
+        val forward = Vector3(
+            normalizedDirection.y * right.z - normalizedDirection.z * right.y,
+            normalizedDirection.z * right.x - normalizedDirection.x * right.z,
+            normalizedDirection.x * right.y - normalizedDirection.y * right.x
+        )
+        
+        // 원통의 원형 단면 정점들 생성
+        for (i in 0..segments) {
+            val angle = 2.0 * Math.PI * i / segments
+            val cos = Math.cos(angle).toFloat()
+            val sin = Math.sin(angle).toFloat()
+            
+            val offset = Vector3(
+                right.x * cos + forward.x * sin,
+                right.y * cos + forward.y * sin,
+                right.z * cos + forward.z * sin
+            )
+            
+            // 시작점과 끝점
+            vertices.addAll(listOf(
+                start.x + offset.x * radius,
+                start.y + offset.y * radius,
+                start.z + offset.z * radius
+            ))
+            vertices.addAll(listOf(
+                end.x + offset.x * radius,
+                end.y + offset.y * radius,
+                end.z + offset.z * radius
+            ))
+            
+            // 법선 벡터
+            normals.addAll(listOf(offset.x, offset.y, offset.z))
+            normals.addAll(listOf(offset.x, offset.y, offset.z))
+        }
+        
+        // 인덱스 생성
+        for (i in 0 until segments) {
+            val current = i * 2
+            val next = ((i + 1) % (segments + 1)) * 2
+            
+            // 첫 번째 삼각형
+            indices.addAll(listOf(
+                current.toShort(),
+                (current + 1).toShort(),
+                next.toShort()
+            ))
+            
+            // 두 번째 삼각형
+            indices.addAll(listOf(
+                (current + 1).toShort(),
+                (next + 1).toShort(),
+                next.toShort()
+            ))
+        }
+        
+        return MeshData(vertices, normals, indices)
+    }
+
+    private fun createCartoonTubeMesh(splinePoints: List<SplinePoint>, segments: Int): MeshData {
+        val vertices = mutableListOf<Float>()
+        val normals = mutableListOf<Float>()
+        val indices = mutableListOf<Short>()
+        
+        var vertexOffset = 0
+        
+        for (i in 0 until splinePoints.size - 1) {
+            val current = splinePoints[i]
+            val next = splinePoints[i + 1]
+            
+            // 2차 구조에 따라 다른 굵기 적용
+            val radius = when (current.secondaryStructure) {
+                SecondaryStructure.HELIX -> ribbonRadius * 2.0f  // α-helix: 두꺼운 원통
+                SecondaryStructure.SHEET -> ribbonRadius * 2.5f  // β-sheet: 넓은 화살표
+                SecondaryStructure.COIL -> ribbonRadius * 1.8f    // coil: 굵은 튜브
+                else -> ribbonRadius * 1.5f                     // 기본: 중간 굵기
+            }
+            
+            // 원통 메쉬 생성
+            val cylinderMesh = createCylinderMesh(current.position, next.position, radius, segments)
+            
+            // 메쉬 데이터 추가
+            vertices.addAll(cylinderMesh.vertices)
+            normals.addAll(cylinderMesh.normals)
+            
+            // 인덱스 오프셋 적용
+            cylinderMesh.indices.forEach { index ->
+                indices.add((index + vertexOffset).toShort())
+            }
+            
+            vertexOffset += cylinderMesh.vertices.size / 3
+        }
+        
+        return MeshData(vertices, normals, indices)
+    }
+
+    data class MeshData(
+        val vertices: List<Float>,
+        val normals: List<Float>,
+        val indices: List<Short>
+    )
+
+    private fun uploadSurfaceStructure(structure: PDBStructure) {
+        // Surface: 단일 매끄러운 표면 (개별 구체가 아닌 연결된 표면)
+        val atoms = structure.atoms
+        
+        if (atoms.isEmpty()) {
+            Log.w(TAG, "No atoms found for surface rendering")
+            indexCount = 0
+            return
+        }
+
+        Log.d(TAG, "Found ${atoms.size} atoms for surface rendering")
+
+        // 바운딩 박스 계산 (카메라 설정은 초기 로드 시에만)
+        // setupCamera(atoms) // 버튼 선택 시 자동 확대 방지
+
+        val allVertices = mutableListOf<Float>()
+        val allColors = mutableListOf<Float>()
+        val allNormals = mutableListOf<Float>()
+        val allIndices = mutableListOf<Short>()
+        
+        var vertexOffset = 0
+
+        // Surface: 큰 구체들로 매끄러운 표면 효과 (개별 구체가 아닌 연결된 표면)
+        atoms.forEach { atom ->
+            // Surface는 단일 회색 색상 사용
+            val surfaceColor = listOf(0.7f, 0.7f, 0.7f, 1.0f) // 회색
+            
+            // 체인 하이라이트 상태 확인
+            val chainKey = "chain:${atom.chain}"
+            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            
+            // Highlight 효과 적용
+            var finalColor = surfaceColor
+            if (hasAnyHighlight) {
+                if (isHighlighted) {
+                    // Highlighted: 밝고 선명하게
+                    finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                } else {
+                    // Not highlighted: 매우 희미하게
+                    finalColor = finalColor.map { it * 0.15f }
+                }
+            }
+            
+            // 큰 구체로 매끄러운 표면 효과 (캐시된 메쉬 사용)
+            val radius = getVanDerWaalsRadius(atom.element) * 1.2f // 약간 더 크게
+            val center = Vector3(atom.position.x, atom.position.y, atom.position.z)
+            val cachedMesh = getCachedSphereMesh(radius, 20) // 간단한 표면 (색으로 칠하기)
+            val sphereMesh = MeshData(
+                cachedMesh.vertices.mapIndexed { index, value ->
+                    when (index % 3) {
+                        0 -> value + center.x
+                        1 -> value + center.y
+                        2 -> value + center.z
+                        else -> value
+                    }
+                },
+                cachedMesh.normals,
+                cachedMesh.indices
+            )
+            
+            // 메쉬 데이터 추가
+            allVertices.addAll(sphereMesh.vertices)
+            allNormals.addAll(sphereMesh.normals)
+            
+            // 모든 정점에 색상 적용
+            repeat(sphereMesh.vertices.size / 3) {
+                allColors.addAll(finalColor)
+            }
+            
+            // 인덱스 오프셋 적용
+            sphereMesh.indices.forEach { index ->
+                allIndices.add((index + vertexOffset).toShort())
+            }
+            
+            vertexOffset += sphereMesh.vertices.size / 3
+        }
+
+        indexCount = allIndices.size
+
+        // 버퍼에 업로드
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
+
+        Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for surface")
+    }
+
+    private fun uploadRibbonStructure(structure: PDBStructure) {
         // CA (alpha carbon) 원자만 필터링
         val caAtoms = structure.atoms.filter { atom ->
             atom.name.trim().equals("CA", ignoreCase = true)
@@ -223,33 +955,42 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             val isHighlighted = currentHighlightedChains.contains(chainKey)
             val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
             
-            // 체인 색상
-            val chainColor = getChainColor(chain)
+            // 색상 모드에 따른 색상 결정 (첫 번째 원자 기준)
+            val firstAtom = sortedAtoms.first()
+            Log.d(TAG, "Ribbon: Getting color for chain $chain, atom ${firstAtom.residueNumber}, colorMode: $currentColorMode")
+            val atomColor = getAtomColor(firstAtom)
+            val chainColor = listOf(atomColor[0], atomColor[1], atomColor[2])
+            Log.d(TAG, "Ribbon: Chain $chain color: $chainColor")
             
             // 메쉬 데이터 추가
             allVertices.addAll(mesh.vertices)
             allNormals.addAll(mesh.normals)
             
-            // 2차 구조에 따라 색상 블렌딩 + Highlight 효과
+            // 색상 모드에 따른 색상 적용 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
             splinePoints.forEachIndexed { index, splinePoint ->
-                val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
-                var blendedColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                var finalColor = chainColor
+                
+                // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
+                if (currentColorMode != ColorMode.UNIFORM) {
+                    val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                    finalColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                }
                 
                 // Highlight 효과 (iPhone과 동일)
                 if (hasAnyHighlight) {
                     if (isHighlighted) {
                         // Highlighted: 밝고 선명하게 (saturation x1.4, brightness x1.3)
-                        blendedColor = blendedColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                        finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
                     } else {
                         // Not highlighted: 매우 희미하게 (alpha = 0.15)
-                        blendedColor = blendedColor.map { it * 0.15f }
+                        finalColor = finalColor.map { it * 0.15f }
                     }
                 }
                 
                 // 각 스플라인 포인트의 원형 단면 정점들에 색상 적용
                 repeat(verticesPerSplinePoint) {
-                    allColors.addAll(blendedColor)
+                    allColors.addAll(finalColor)
                 }
             }
             
@@ -298,7 +1039,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         camera.setTarget(centerX, centerY, centerZ)
         val distance = boundingRadius / tan(Math.toRadians((camera.fovDeg * 0.5f).toDouble())).toFloat()
-        camera.configure(distance = distance * 1.4f, minDistance = boundingRadius * 0.3f + 1f, maxDistance = boundingRadius * 15f)
+        camera.configure(distance = distance * 2.5f, minDistance = boundingRadius * 0.5f + 1f, maxDistance = boundingRadius * 20f)
     }
 
     // Catmull-Rom 스플라인 곡선 생성
@@ -548,10 +1289,8 @@ in vec3 vColor;
 in vec3 vNormal;
 out vec4 fragColor;
 void main() {
-    // 간단한 조명 계산
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diffuse = max(dot(normalize(vNormal), lightDir), 0.3);
-    fragColor = vec4(vColor * diffuse, 1.0);
+    // Material 효과 제거 - 단순한 색상 렌더링
+    fragColor = vec4(vColor, 1.0);
 }"""
 
         private fun createProgram(vertexSrc: String, fragmentSrc: String): Int {
