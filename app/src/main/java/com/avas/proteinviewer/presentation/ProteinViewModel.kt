@@ -22,6 +22,7 @@ data class ProteinUiState(
     val renderStyle: RenderStyle = RenderStyle.RIBBON,
     val colorMode: ColorMode = ColorMode.ELEMENT,
     val highlightedChains: Set<String> = emptySet(),
+    val focusedElement: String? = null, // 아이폰과 동일: "Chain A" 등
     val showSideMenu: Boolean = false,
     val showProteinLibrary: Boolean = false,
     val selectedInfoTab: InfoTab = InfoTab.OVERVIEW,

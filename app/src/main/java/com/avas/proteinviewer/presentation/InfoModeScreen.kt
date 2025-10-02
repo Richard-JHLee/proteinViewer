@@ -90,25 +90,75 @@ fun InfoModeScreen(
                     }
                 )
                 
-                // Clear highlights button
-                if (uiState.highlightedChains.isNotEmpty()) {
+                // Focus/Clear 영역 - 아이폰과 동일 (헤더 아래 고정)
+                if (uiState.focusedElement != null || uiState.highlightedChains.isNotEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Button(
-                            onClick = { viewModel.clearHighlights() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.Clear, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear")
+                        // Focus 인디케이터 (녹색 배지)
+                        if (uiState.focusedElement != null) {
+                            Row(
+                                modifier = Modifier
+                                    .background(
+                                        Color(0xFF4CAF50).copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Focused: ${uiState.focusedElement}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.width(1.dp))
+                        }
+                        
+                        // Clear 버튼 (빨간색 배지)
+                        if (uiState.highlightedChains.isNotEmpty() || uiState.focusedElement != null) {
+                            Button(
+                                onClick = { viewModel.clearHighlights() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFF44336)
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Clear",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
                         }
                     }
+                    Divider()
                 }
             }
         }
