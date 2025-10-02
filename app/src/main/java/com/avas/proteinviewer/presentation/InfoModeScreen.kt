@@ -211,12 +211,9 @@ fun InfoModeScreen(
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                             )
                     ) {
-                        ProteinCanvas3DView(
+                        // OpenGL ES 3.0 렌더러 사용 (아이폰 SceneKit과 동일)
+                        ProteinOpenGLView(
                             structure = uiState.structure,
-                            renderStyle = uiState.renderStyle,
-                            colorMode = uiState.colorMode,
-                            highlightedChains = uiState.highlightedChains,
-                            focusedElement = uiState.focusedElement, // Focus 전달
                             modifier = Modifier.fillMaxSize()
                         )
                     }

@@ -34,13 +34,9 @@ fun ProteinViewerScreen(
     var selectedPanel by remember { mutableStateOf(ViewerPanel.NONE) }
     
     Box(modifier = Modifier.fillMaxSize()) {
-        // 전체 화면 3D 뷰어 (아이폰과 동일)
-        ProteinCanvas3DView(
+        // 전체 화면 3D 뷰어 - OpenGL ES 3.0 (아이폰 SceneKit과 동일)
+        ProteinOpenGLView(
             structure = structure,
-            renderStyle = renderStyle,
-            colorMode = colorMode,
-            highlightedChains = highlightedChains,
-            focusedElement = null, // Viewer Mode에서는 Focus 없음 (아이폰과 동일)
             modifier = Modifier.fillMaxSize()
         )
         
