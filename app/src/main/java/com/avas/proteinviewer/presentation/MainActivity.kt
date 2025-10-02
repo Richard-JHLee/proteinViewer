@@ -32,6 +32,13 @@ fun ProteinViewerApp() {
     val viewModel: ProteinViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     
+    // 아이폰과 동일: 앱 시작 시 기본 단백질 자동 로딩
+    LaunchedEffect(Unit) {
+        if (uiState.structure == null) {
+            viewModel.loadDefaultProtein()
+        }
+    }
+    
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
@@ -40,7 +47,17 @@ fun ProteinViewerApp() {
         drawerContent = {
             SideMenuContent(
                 onMenuItemClick = { menuItem ->
-                    // Handle menu item clicks
+                    when (menuItem) {
+                        MenuItem.PROTEIN_LIBRARY -> {
+                            viewModel.toggleProteinLibrary()
+                            viewModel.loadCategoryCounts()
+                            // iOS와 동일: selectedCategory를 null로 설정하여 카테고리 그리드 바로 표시
+                            viewModel.selectCategory(null)
+                        }
+                        else -> {
+                            // Handle other menu items
+                        }
+                    }
                     scope.launch {
                         drawerState.close()
                     }
@@ -52,8 +69,13 @@ fun ProteinViewerApp() {
             uiState.showProteinLibrary -> {
                 ProteinLibraryScreen(
                     proteins = uiState.searchResults,
+                    selectedCategory = uiState.selectedCategory,
+                    showCategoryGrid = uiState.showCategoryGrid,
+                    categoryCounts = uiState.categoryProteinCounts,
                     onSearch = viewModel::searchProteins,
                     onProteinClick = viewModel::selectProtein,
+                    onCategorySelect = viewModel::selectCategory,
+                    onShowAllCategories = viewModel::showAllCategories,
                     onDismiss = { viewModel.toggleProteinLibrary() }
                 )
             }

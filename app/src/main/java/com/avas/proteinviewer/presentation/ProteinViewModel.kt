@@ -25,7 +25,12 @@ data class ProteinUiState(
     val showSideMenu: Boolean = false,
     val showProteinLibrary: Boolean = false,
     val selectedInfoTab: InfoTab = InfoTab.OVERVIEW,
-    val viewMode: ViewMode = ViewMode.INFO
+    val viewMode: ViewMode = ViewMode.INFO,
+    // 카테고리 관련 상태 추가
+    val selectedCategory: ProteinCategory? = null,
+    val showCategoryGrid: Boolean = false,
+    val categoryProteinCounts: Map<String, Int> = emptyMap(),
+    val isLoadingCategoryCounts: Boolean = false
 )
 
 enum class InfoTab {
@@ -197,5 +202,89 @@ class ProteinViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    // 카테고리 관련 함수들
+    fun selectCategory(category: ProteinCategory?) {
+        _uiState.update { 
+            it.copy(
+                selectedCategory = category,
+                showCategoryGrid = false
+            ) 
+        }
+        
+        // 아이폰과 동일: 카테고리 선택 시 해당 카테고리의 단백질 로드
+        if (category != null) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                try {
+                    // TODO: 카테고리별 단백질 검색 API 호출
+                    // 현재는 일반 검색으로 대체
+                    repository.searchProteins(category.displayName)
+                        .catch { e ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    error = e.message ?: "Failed to load proteins"
+                                )
+                            }
+                        }
+                        .collect { proteins ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    searchResults = proteins.take(30) // 아이폰과 동일: 30개씩
+                                )
+                            }
+                        }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "Failed to load proteins"
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    fun showAllCategories() {
+        _uiState.update { 
+            it.copy(
+                selectedCategory = null,
+                showCategoryGrid = true
+            ) 
+        }
+    }
+    
+    fun hideCategoryGrid() {
+        _uiState.update { it.copy(showCategoryGrid = false) }
+    }
+    
+    fun loadCategoryCounts() {
+        // 하드코딩된 카테고리별 protein count (iOS와 동일)
+        val categoryCounts = mapOf(
+            "Enzymes" to 45000,
+            "Structural" to 32000,
+            "Transport" to 25000,
+            "Storage" to 5000,
+            "Hormonal" to 8000,
+            "Defense" to 18000,
+            "Regulatory" to 12000,
+            "Motor" to 6000,
+            "Receptor" to 15000,
+            "Signaling" to 12000,
+            "Metabolic" to 38000,
+            "Binding" to 22000
+        )
+        
+        _uiState.update { 
+            it.copy(
+                categoryProteinCounts = categoryCounts,
+                isLoadingCategoryCounts = false
+            ) 
+        }
     }
 }

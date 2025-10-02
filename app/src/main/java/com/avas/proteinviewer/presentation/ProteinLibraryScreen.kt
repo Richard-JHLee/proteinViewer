@@ -32,29 +32,16 @@ import com.avas.proteinviewer.domain.model.ProteinCategory
 @Composable
 fun ProteinLibraryScreen(
     proteins: List<ProteinInfo>,
+    selectedCategory: ProteinCategory?,
+    showCategoryGrid: Boolean,
+    categoryCounts: Map<String, Int>,
     onSearch: (String) -> Unit,
     onProteinClick: (String) -> Unit,
+    onCategorySelect: (ProteinCategory?) -> Unit,
+    onShowAllCategories: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<ProteinCategory?>(null) }
-    var showCategoryGrid by remember { mutableStateOf(false) }
-    
-    // 하드코딩된 카테고리별 protein count (iOS와 동일)
-    val categoryCounts = mapOf(
-        "Enzymes" to 45000,
-        "Structural" to 32000,
-        "Transport" to 25000,
-        "Storage" to 5000,
-        "Hormonal" to 8000,
-        "Defense" to 18000,
-        "Regulatory" to 12000,
-        "Motor" to 6000,
-        "Receptor" to 15000,
-        "Signaling" to 12000,
-        "Metabolic" to 38000,
-        "Binding" to 22000
-    )
     
     Scaffold(
         topBar = {
@@ -98,43 +85,51 @@ fun ProteinLibraryScreen(
                     selectedCategory = selectedCategory,
                     showCategoryGrid = showCategoryGrid,
                     categoryCounts = categoryCounts,
-                    onCategorySelect = { category ->
-                        selectedCategory = category
-                        showCategoryGrid = false
-                    },
-                    onShowAllCategories = {
-                        showCategoryGrid = true
-                        selectedCategory = null
-                    }
+                    onCategorySelect = onCategorySelect,
+                    onShowAllCategories = onShowAllCategories
                 )
             }
             
-            // Protein List
-            if (proteins.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (searchQuery.isEmpty()) 
-                            "Enter a search query to find proteins" 
-                        else 
-                            "No proteins found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(proteins) { protein ->
-                        ProteinCard(
-                            protein = protein,
-                            onClick = { onProteinClick(protein.id) }
+            // Protein List - 카테고리 선택 시 또는 검색 결과가 있을 때 표시
+            if (selectedCategory != null || searchQuery.isNotEmpty()) {
+                if (proteins.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (searchQuery.isEmpty()) 
+                                "No proteins found in this category" 
+                            else 
+                                "No proteins found",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // 선택된 카테고리 헤더 (카테고리가 선택된 경우)
+                        if (selectedCategory != null) {
+                            SelectedCategoryView(
+                                category = selectedCategory,
+                                proteinCount = proteins.size,
+                                onBack = { onCategorySelect(null) }
+                            )
+                        }
+                        
+                        // 단백질 리스트
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(proteins) { protein ->
+                                ProteinCard(
+                                    protein = protein,
+                                    onClick = { onProteinClick(protein.id) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -241,7 +236,7 @@ private fun CategorySelectionSection(
     selectedCategory: ProteinCategory?,
     showCategoryGrid: Boolean,
     categoryCounts: Map<String, Int>,
-    onCategorySelect: (ProteinCategory) -> Unit,
+    onCategorySelect: (ProteinCategory?) -> Unit,
     onShowAllCategories: () -> Unit
 ) {
     Column(
@@ -249,38 +244,40 @@ private fun CategorySelectionSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // All Categories 버튼
-        Button(
-            onClick = onShowAllCategories,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (showCategoryGrid) MaterialTheme.colorScheme.primary 
-                               else MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Icon(
-                Icons.Default.GridView,
-                contentDescription = null,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Text("All Categories")
-        }
-        
-        // 카테고리 그리드 또는 선택된 카테고리 표시
-        if (showCategoryGrid) {
-            CategoryGridView(
-                categories = ProteinCategory.values().toList(),
-                categoryCounts = categoryCounts,
-                onCategorySelect = onCategorySelect
-            )
-        } else if (selectedCategory != null) {
-            SelectedCategoryView(
-                category = selectedCategory,
-                proteinCount = categoryCounts[selectedCategory.displayName] ?: 0,
-                onBack = { onShowAllCategories() }
-            )
+        if (selectedCategory == null) {
+            // All Categories - 카테고리 그리드 바로 표시 (iOS와 동일)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.padding(top = 20.dp)
+            ) {
+                // 헤더
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Choose a Category",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Text(
+                        text = "Explore proteins by their biological function",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                // 카테고리 그리드
+                CategoryGridView(
+                    categories = ProteinCategory.values().toList(),
+                    categoryCounts = categoryCounts,
+                    onCategorySelect = onCategorySelect
+                )
+            }
         }
     }
 }
@@ -290,7 +287,7 @@ private fun CategorySelectionSection(
 private fun CategoryGridView(
     categories: List<ProteinCategory>,
     categoryCounts: Map<String, Int>,
-    onCategorySelect: (ProteinCategory) -> Unit
+    onCategorySelect: (ProteinCategory?) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),

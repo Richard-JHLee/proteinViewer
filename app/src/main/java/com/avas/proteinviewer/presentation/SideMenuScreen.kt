@@ -18,6 +18,7 @@ enum class MenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val description: String
 ) {
+    PROTEIN_LIBRARY("Protein Library", Icons.Default.LibraryBooks, "Browse protein database"),
     ABOUT("About", Icons.Default.Info, "App information and version"),
     USER_GUIDE("User Guide", Icons.Default.Book, "User guide"),
     FEATURES("Features", Icons.Default.Star, "Key features"),
