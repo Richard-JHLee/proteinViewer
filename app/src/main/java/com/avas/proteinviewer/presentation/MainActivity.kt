@@ -105,6 +105,7 @@ fun ProteinViewerApp() {
                     onStyleChange = viewModel::setRenderStyle,
                     onColorModeChange = viewModel::setColorMode,
                     onChainToggle = viewModel::toggleChainHighlight,
+                    onHighlightAllToggle = viewModel::toggleHighlightAll,
                     onBackToInfo = { viewModel.setViewMode(ViewMode.INFO) }
                 )
             }

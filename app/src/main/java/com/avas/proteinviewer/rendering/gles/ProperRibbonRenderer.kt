@@ -47,6 +47,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var currentStructure: PDBStructure? = null
     private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
     private var currentColorMode: ColorMode = ColorMode.CHAIN
+    private var currentHighlightedChains: Set<String> = emptySet()
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated - Proper Ribbon Renderer")
@@ -156,6 +157,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             uploadStructure(it)
         }
     }
+    
+    fun updateHighlightedChains(highlightedChains: Set<String>) {
+        currentHighlightedChains = highlightedChains
+        Log.d(TAG, "Highlighted chains updated: $highlightedChains")
+        // Highlight가 변경되면 버퍼 재생성 필요 (색상/투명도 변경)
+        currentStructure?.let {
+            uploadStructure(it)
+        }
+    }
 
     fun orbit(deltaX: Float, deltaY: Float) {
         camera.orbit(deltaX, deltaY)
@@ -212,6 +222,11 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             // 튜브 메쉬 생성
             val mesh = createTubeMesh(splinePoints, ribbonRadius, tubeSegments)
             
+            // 체인 하이라이트 상태 확인 (iPhone과 동일)
+            val chainKey = "chain:$chain"
+            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            
             // 체인 색상
             val chainColor = getChainColor(chain)
             
@@ -219,11 +234,22 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             allVertices.addAll(mesh.vertices)
             allNormals.addAll(mesh.normals)
             
-            // 2차 구조에 따라 색상 블렌딩
+            // 2차 구조에 따라 색상 블렌딩 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
             splinePoints.forEachIndexed { index, splinePoint ->
                 val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
-                val blendedColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                var blendedColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                
+                // Highlight 효과 (iPhone과 동일)
+                if (hasAnyHighlight) {
+                    if (isHighlighted) {
+                        // Highlighted: 밝고 선명하게 (saturation x1.4, brightness x1.3)
+                        blendedColor = blendedColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                    } else {
+                        // Not highlighted: 매우 희미하게 (alpha = 0.15)
+                        blendedColor = blendedColor.map { it * 0.15f }
+                    }
+                }
                 
                 // 각 스플라인 포인트의 원형 단면 정점들에 색상 적용
                 repeat(verticesPerSplinePoint) {

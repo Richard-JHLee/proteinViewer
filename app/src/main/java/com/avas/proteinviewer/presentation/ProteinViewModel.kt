@@ -248,6 +248,31 @@ class ProteinViewModel @Inject constructor(
             it.copy(focusedElement = newFocus)
         }
     }
+    
+    // Highlight All 기능 (iPhone과 동일)
+    fun toggleHighlightAll() {
+        _uiState.update { state ->
+            val currentStructure = state.structure
+            if (currentStructure == null) {
+                android.util.Log.d("ProteinViewModel", "toggleHighlightAll - no structure loaded")
+                return@update state
+            }
+            
+            // 현재 모든 체인이 하이라이트되어 있는지 확인
+            val allChains = currentStructure.chains.map { "chain:$it" }.toSet()
+            val allHighlighted = allChains.isNotEmpty() && allChains.all { chain -> chain in state.highlightedChains }
+            
+            android.util.Log.d("ProteinViewModel", "toggleHighlightAll - allHighlighted: $allHighlighted, chains: ${currentStructure.chains}")
+            
+            if (allHighlighted) {
+                // 모두 하이라이트되어 있으면 모두 해제
+                state.copy(highlightedChains = emptySet())
+            } else {
+                // 일부 또는 전부 해제되어 있으면 모두 하이라이트
+                state.copy(highlightedChains = allChains)
+            }
+        }
+    }
 
     fun toggleSideMenu() {
         _uiState.update { it.copy(showSideMenu = !it.showSideMenu) }

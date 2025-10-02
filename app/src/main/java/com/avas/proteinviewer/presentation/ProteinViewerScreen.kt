@@ -35,18 +35,26 @@ fun ProteinViewerScreen(
     onStyleChange: (RenderStyle) -> Unit,
     onColorModeChange: (ColorMode) -> Unit,
     onChainToggle: (String) -> Unit,
+    onHighlightAllToggle: () -> Unit,
     onBackToInfo: () -> Unit
 ) {
     var selectedSecondaryPanel by remember { mutableStateOf(SecondaryPanelType.NONE) }
-    var highlightAllChains by remember { mutableStateOf(false) }
+    
+    // Highlight All 상태 계산 (모든 체인이 하이라이트되어 있는지)
+    val allChains = structure.chains.map { "chain:$it" }.toSet()
+    val highlightAllChains = allChains.isNotEmpty() && allChains.all { it in highlightedChains }
     
     Box(modifier = Modifier.fillMaxSize()) {
         // 전체 화면 3D 뷰어 - OpenGL ES 3.0 (아이폰 SceneKit과 동일)
+        // Secondary 패널과 관계없이 항상 전체 화면 크기 유지
         ProteinOpenGLView(
             structure = structure,
             renderStyle = renderStyle,
             colorMode = colorMode,
-            modifier = Modifier.fillMaxSize()
+            highlightedChains = highlightedChains,
+            modifier = Modifier
+                .fillMaxSize()
+                .align(Alignment.Center)
         )
         
         // 우상단 버튼들 (아이폰과 동일)
@@ -134,10 +142,7 @@ fun ProteinViewerScreen(
                                     // Secondary bar 유지 (iPhone과 동일)
                                 },
                                 highlightAllChains = highlightAllChains,
-                                onHighlightAllToggle = {
-                                    highlightAllChains = !highlightAllChains
-                                    // TODO: 모든 체인 하이라이트 토글
-                                }
+                                onHighlightAllToggle = onHighlightAllToggle
                             )
                         }
                         SecondaryPanelType.COLOR_MODES -> {

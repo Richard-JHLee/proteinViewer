@@ -87,6 +87,14 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         }
         requestRender()
     }
+    
+    fun updateHighlightedChains(highlightedChains: Set<String>) {
+        queueEvent {
+            renderer.updateHighlightedChains(highlightedChains)
+            android.util.Log.d("OpenGL30SurfaceView", "Highlighted chains updated: $highlightedChains")
+        }
+        requestRender()
+    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val pointerCount = event.pointerCount
