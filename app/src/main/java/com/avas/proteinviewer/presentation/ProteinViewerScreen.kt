@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -100,18 +101,21 @@ fun ProteinViewerScreen(
             }
         }
         
-        // 하단 컨트롤 (아이폰과 동일)
+        // 하단 컨트롤 (iPhone과 동일, 깔끔한 디자인)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
-            // 2차 패널 (슬라이드 업)
+            // Secondary 패널 (슬라이드 업)
             if (selectedPanel != ViewerPanel.NONE) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    tonalElevation = 8.dp
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 0.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                    tonalElevation = 12.dp,
+                    shadowElevation = 8.dp
                 ) {
                     when (selectedPanel) {
                         ViewerPanel.RENDERING -> {
@@ -139,23 +143,26 @@ fun ProteinViewerScreen(
                 }
             }
             
-            // 메인 컨트롤 바
+            // Primary 컨트롤 바 (깔끔한 디자인)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                tonalElevation = 3.dp
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                tonalElevation = 4.dp,
+                shadowElevation = 4.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .navigationBarsPadding(), // 안전 영역 확보
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     ViewerControlButton(
                         icon = Icons.Default.Brush,
                         label = "Rendering",
                         isSelected = selectedPanel == ViewerPanel.RENDERING,
-                        selectedColor = Color(0xFFF44336), // 빨강
+                        selectedColor = Color(0xFF2196F3), // Blue
                         onClick = {
                             selectedPanel = if (selectedPanel == ViewerPanel.RENDERING)
                                 ViewerPanel.NONE
@@ -168,7 +175,7 @@ fun ProteinViewerScreen(
                         icon = Icons.Default.MoreVert,
                         label = "Options",
                         isSelected = selectedPanel == ViewerPanel.OPTIONS,
-                        selectedColor = Color(0xFFFF9800), // 주황
+                        selectedColor = Color(0xFFFF9800), // Orange
                         onClick = {
                             selectedPanel = if (selectedPanel == ViewerPanel.OPTIONS)
                                 ViewerPanel.NONE
@@ -181,7 +188,7 @@ fun ProteinViewerScreen(
                         icon = Icons.Default.Palette,
                         label = "Colors",
                         isSelected = selectedPanel == ViewerPanel.COLOR,
-                        selectedColor = Color(0xFF4CAF50), // 녹색
+                        selectedColor = Color(0xFF4CAF50), // Green
                         onClick = {
                             selectedPanel = if (selectedPanel == ViewerPanel.COLOR)
                                 ViewerPanel.NONE
@@ -203,28 +210,35 @@ private fun ViewerControlButton(
     selectedColor: Color,
     onClick: () -> Unit
 ) {
-    Button(
+    // iPhone과 동일한 깔끔한 버튼 디자인
+    Surface(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = if (isSelected) selectedColor else Color.Gray
-        ),
-        contentPadding = PaddingValues(8.dp),
-        modifier = Modifier.size(width = 100.dp, height = 56.dp)
+        modifier = Modifier
+            .width(100.dp)
+            .height(60.dp),
+        color = if (isSelected) selectedColor.copy(alpha = 0.12f) else Color.Transparent,
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                icon,
+                imageVector = icon,
                 contentDescription = label,
-                modifier = Modifier.size(24.dp)
+                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(26.dp)
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                label,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 11.sp,
+                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
             )
         }
     }
@@ -238,18 +252,20 @@ private fun RenderingStylePanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
             "Rendering Style",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             RenderStyle.values().forEach { style ->
                 StyleOptionCard(
@@ -271,18 +287,20 @@ private fun ColorModePanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
             "Color Mode",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ColorMode.values().forEach { mode ->
                 StyleOptionCard(
@@ -313,14 +331,27 @@ private fun OptionsPanel(
     var ribbonWidth by remember { mutableStateOf(3.0f) }
     var ribbonFlatness by remember { mutableStateOf(0.5f) }
     
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
+        Text(
+            "Options",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // 1. Rotation Toggle
         OptionToggleButton(
             icon = if (rotationEnabled) Icons.Default.AutoMode else Icons.Default.RadioButtonUnchecked,
@@ -407,6 +438,7 @@ private fun OptionsPanel(
                 ribbonFlatness = 0.5f
             }
         )
+        }
     }
 }
 
