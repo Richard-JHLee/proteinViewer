@@ -6,6 +6,7 @@ import com.avas.proteinviewer.domain.model.ProteinDetail
 import com.avas.proteinviewer.domain.model.ProteinInfo
 import com.avas.proteinviewer.domain.repository.ProteinRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -23,8 +24,10 @@ import javax.inject.Singleton
 class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(45, TimeUnit.SECONDS)  // DNS 해석 시간 증가
+        .readTimeout(45, TimeUnit.SECONDS)     // 데이터 읽기 시간 증가
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)        // 연결 실패 시 자동 재시도
         .build()
 
     override fun searchProteins(query: String): Flow<List<ProteinInfo>> = flow {
@@ -114,24 +117,93 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
 
     override suspend fun loadPDBStructure(proteinId: String, onProgress: (String) -> Unit): PDBStructure {
         return withContext(Dispatchers.IO) {
-            onProgress("Downloading PDB file...")
+            onProgress("Downloading protein data...")
             
-            val pdbUrl = "https://files.rcsb.org/download/${proteinId.uppercase()}.pdb"
-            val request = Request.Builder()
-                .url(pdbUrl)
-                .header("User-Agent", "ProteinViewer/1.0")
-                .build()
+            // Multiple URL attempts (fallback mechanism)
+            val urls = listOf(
+                "https://files.rcsb.org/download/${proteinId.uppercase()}.pdb",
+                "https://files.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb${proteinId.lowercase()}.ent.gz",
+                "http://files.rcsb.org/download/${proteinId.uppercase()}.pdb" // HTTP fallback
+            )
+            
+            var lastException: Exception? = null
+            
+            for ((index, pdbUrl) in urls.withIndex()) {
+                try {
+                    val serverName = when {
+                        pdbUrl.contains("files.rcsb.org") -> "RCSB"
+                        pdbUrl.contains("files.wwpdb.org") -> "wwPDB"
+                        else -> "Mirror"
+                    }
+                    onProgress("Connecting to $serverName server... (${index + 1}/${urls.size})")
+                    android.util.Log.d("ProteinRepository", "Attempting to download from: $pdbUrl")
+                    
+                    val request = Request.Builder()
+                        .url(pdbUrl)
+                        .header("User-Agent", "ProteinViewer/1.0")
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            
-            if (!response.isSuccessful) {
-                throw Exception("Failed to download PDB file: ${response.code}")
+                    val response = httpClient.newCall(request).execute()
+                    
+                    if (response.isSuccessful) {
+                        onProgress("Receiving data...")
+                        val pdbText = if (pdbUrl.endsWith(".gz")) {
+                            // Decompress gzip if needed
+                            onProgress("Decompressing data...")
+                            val gzipInputStream = java.util.zip.GZIPInputStream(response.body?.byteStream())
+                            gzipInputStream.bufferedReader().use { it.readText() }
+                        } else {
+                            response.body?.string() ?: throw Exception("Empty file")
+                        }
+                        
+                        if (pdbText.isNotEmpty()) {
+                            onProgress("Parsing protein structure...")
+                            android.util.Log.d("ProteinRepository", "Successfully downloaded from: $pdbUrl")
+                            return@withContext PDBParser.parse(pdbText)
+                        }
+                    } else {
+                        android.util.Log.w("ProteinRepository", "Failed: ${response.code} from $pdbUrl")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ProteinRepository", "Error downloading from $pdbUrl: ${e.message}")
+                    lastException = e
+                    if (index < urls.size - 1) {
+                        onProgress("Trying alternative server...")
+                        delay(500) // Brief wait before retry
+                    }
+                }
             }
-
-            val pdbText = response.body?.string() ?: throw Exception("Empty PDB file")
             
-            onProgress("Parsing PDB structure...")
-            PDBParser.parse(pdbText)
+            // All URLs failed - User-friendly error message
+            val errorMessage = when {
+                lastException?.message?.contains("No address associated with hostname") == true ||
+                lastException?.message?.contains("Unable to resolve host") == true -> {
+                    "Network Connection Error\n\n" +
+                    "Please check:\n" +
+                    "• Wi-Fi or mobile data is enabled\n" +
+                    "• Internet connection is active\n" +
+                    "• Try disabling VPN if active"
+                }
+                lastException?.message?.contains("timeout") == true -> {
+                    "Connection Timeout\n\n" +
+                    "The server is not responding:\n" +
+                    "• Your network may be slow\n" +
+                    "• Please try again later"
+                }
+                lastException?.message?.contains("Connection refused") == true -> {
+                    "Server Connection Failed\n\n" +
+                    "Unable to reach PDB servers:\n" +
+                    "• Servers may be under maintenance\n" +
+                    "• Please try again later"
+                }
+                else -> {
+                    "Download Failed\n\n" +
+                    "Could not download protein data:\n" +
+                    "• Tried ${urls.size} different servers\n" +
+                    "• Error: ${lastException?.message?.take(80) ?: "Unknown error"}"
+                }
+            }
+            throw Exception(errorMessage)
         }
     }
 

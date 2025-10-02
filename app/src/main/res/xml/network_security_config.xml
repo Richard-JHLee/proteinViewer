@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext (HTTP) traffic for PDB servers -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">files.rcsb.org</domain>
+        <domain includeSubdomains="true">rcsb.org</domain>
+        <domain includeSubdomains="true">wwpdb.org</domain>
+        <domain includeSubdomains="true">files.wwpdb.org</domain>
+    </domain-config>
+    
+    <!-- Default: only allow HTTPS -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+
