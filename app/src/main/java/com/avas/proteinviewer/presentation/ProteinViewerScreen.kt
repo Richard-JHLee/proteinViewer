@@ -18,7 +18,11 @@ import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
 
 enum class ViewerPanel {
-    NONE, RENDERING, COLOR, OPTIONS
+    NONE, STYLE, OPTIONS, COLORS
+}
+
+enum class SecondaryPanelType {
+    NONE, RENDERING_STYLES, OPTIONS_MENU, COLOR_MODES
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,7 +37,8 @@ fun ProteinViewerScreen(
     onChainToggle: (String) -> Unit,
     onBackToInfo: () -> Unit
 ) {
-    var selectedPanel by remember { mutableStateOf(ViewerPanel.NONE) }
+    var selectedSecondaryPanel by remember { mutableStateOf(SecondaryPanelType.NONE) }
+    var highlightAllChains by remember { mutableStateOf(false) }
     
     Box(modifier = Modifier.fillMaxSize()) {
         // 전체 화면 3D 뷰어 - OpenGL ES 3.0 (아이폰 SceneKit과 동일)
@@ -101,14 +106,14 @@ fun ProteinViewerScreen(
             }
         }
         
-        // 하단 컨트롤 (iPhone과 동일, 깔끔한 디자인)
+        // 하단 컨트롤 (iPhone과 동일: Primary=6개 Style 버튼, Secondary=3개 카테고리)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
-            // Secondary 패널 (슬라이드 업)
-            if (selectedPanel != ViewerPanel.NONE) {
+            // Secondary 패널 (슬라이드 업) - iPhone처럼 3개 카테고리
+            if (selectedSecondaryPanel != SecondaryPanelType.NONE) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -117,24 +122,32 @@ fun ProteinViewerScreen(
                     tonalElevation = 12.dp,
                     shadowElevation = 8.dp
                 ) {
-                    when (selectedPanel) {
-                        ViewerPanel.RENDERING -> {
-                            RenderingStylePanel(
+                    when (selectedSecondaryPanel) {
+                        SecondaryPanelType.RENDERING_STYLES -> {
+                            // iPhone처럼: 5개 Rendering Style + Highlight All
+                            SecondaryRenderingStyleBar(
                                 selectedStyle = renderStyle,
-                                onStyleSelect = onStyleChange
+                                onStyleSelect = { style ->
+                                    onStyleChange(style)
+                                    // Secondary bar 유지 (iPhone과 동일)
+                                },
+                                highlightAllChains = highlightAllChains,
+                                onHighlightAllToggle = {
+                                    highlightAllChains = !highlightAllChains
+                                    // TODO: 모든 체인 하이라이트 토글
+                                }
                             )
                         }
-                        ViewerPanel.COLOR -> {
-                            ColorModePanel(
+                        SecondaryPanelType.COLOR_MODES -> {
+                            // iPhone처럼: 4개 Color Mode
+                            SecondaryColorModeBar(
                                 selectedMode = colorMode,
                                 onModeSelect = onColorModeChange
                             )
                         }
-                        ViewerPanel.OPTIONS -> {
-                            OptionsPanel(
-                                chains = structure.chains.sorted(),
-                                highlightedChains = highlightedChains,
-                                onChainToggle = onChainToggle,
+                        SecondaryPanelType.OPTIONS_MENU -> {
+                            // iPhone처럼: Sliders (Rotation, Zoom, Opacity, Size, Ribbon Width/Flatness)
+                            SecondaryOptionsBar(
                                 renderStyle = renderStyle
                             )
                         }
@@ -143,7 +156,7 @@ fun ProteinViewerScreen(
                 }
             }
             
-            // Primary 컨트롤 바 (깔끔한 디자인)
+            // Primary 컨트롤 바 - iPhone처럼 3개 카테고리 버튼으로 변경
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -158,42 +171,43 @@ fun ProteinViewerScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ViewerControlButton(
-                        icon = Icons.Default.Brush,
-                        label = "Rendering",
-                        isSelected = selectedPanel == ViewerPanel.RENDERING,
+                    // iPhone과 동일: 3개 Secondary 카테고리 버튼
+                    PrimarySecondaryButton(
+                        icon = Icons.Default.GridOn, // 4 dots icon
+                        label = "Style",
+                        isSelected = selectedSecondaryPanel == SecondaryPanelType.RENDERING_STYLES,
                         selectedColor = Color(0xFF2196F3), // Blue
                         onClick = {
-                            selectedPanel = if (selectedPanel == ViewerPanel.RENDERING)
-                                ViewerPanel.NONE
+                            selectedSecondaryPanel = if (selectedSecondaryPanel == SecondaryPanelType.RENDERING_STYLES)
+                                SecondaryPanelType.NONE
                             else
-                                ViewerPanel.RENDERING
+                                SecondaryPanelType.RENDERING_STYLES
                         }
                     )
                     
-                    ViewerControlButton(
-                        icon = Icons.Default.MoreVert,
+                    PrimarySecondaryButton(
+                        icon = Icons.Default.MoreHoriz, // 3 dots icon
                         label = "Options",
-                        isSelected = selectedPanel == ViewerPanel.OPTIONS,
+                        isSelected = selectedSecondaryPanel == SecondaryPanelType.OPTIONS_MENU,
                         selectedColor = Color(0xFFFF9800), // Orange
                         onClick = {
-                            selectedPanel = if (selectedPanel == ViewerPanel.OPTIONS)
-                                ViewerPanel.NONE
+                            selectedSecondaryPanel = if (selectedSecondaryPanel == SecondaryPanelType.OPTIONS_MENU)
+                                SecondaryPanelType.NONE
                             else
-                                ViewerPanel.OPTIONS
+                                SecondaryPanelType.OPTIONS_MENU
                         }
                     )
                     
-                    ViewerControlButton(
-                        icon = Icons.Default.Palette,
+                    PrimarySecondaryButton(
+                        icon = Icons.Default.Public, // Globe icon
                         label = "Colors",
-                        isSelected = selectedPanel == ViewerPanel.COLOR,
+                        isSelected = selectedSecondaryPanel == SecondaryPanelType.COLOR_MODES,
                         selectedColor = Color(0xFF4CAF50), // Green
                         onClick = {
-                            selectedPanel = if (selectedPanel == ViewerPanel.COLOR)
-                                ViewerPanel.NONE
+                            selectedSecondaryPanel = if (selectedSecondaryPanel == SecondaryPanelType.COLOR_MODES)
+                                SecondaryPanelType.NONE
                             else
-                                ViewerPanel.COLOR
+                                SecondaryPanelType.COLOR_MODES
                         }
                     )
                 }
@@ -202,115 +216,196 @@ fun ProteinViewerScreen(
     }
 }
 
+// iPhone 스타일: Primary 버튼 (하단 3개 카테고리 버튼)
 @Composable
-private fun ViewerControlButton(
+private fun PrimarySecondaryButton(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
     selectedColor: Color,
     onClick: () -> Unit
 ) {
-    // iPhone과 동일한 깔끔한 버튼 디자인
-    Surface(
+    Button(
         onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent
+        ),
+        contentPadding = PaddingValues(0.dp),
         modifier = Modifier
             .width(100.dp)
-            .height(60.dp),
-        color = if (isSelected) selectedColor.copy(alpha = 0.12f) else Color.Transparent,
-        shape = RoundedCornerShape(12.dp)
+            .height(44.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.size(26.dp)
+                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = 11.sp,
-                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Normal
             )
         }
     }
 }
 
+// iPhone 스타일: Secondary 버튼 (Rendering Style, Color Mode 등)
 @Composable
-private fun RenderingStylePanel(
-    selectedStyle: RenderStyle,
-    onStyleSelect: (RenderStyle) -> Unit
+private fun RowScope.SecondaryStyleButton(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    selectedColor: Color = Color(0xFF2196F3), // Default Blue
+    onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+    // iPhone과 동일: 선택 시 배경색 0.1 alpha, 텍스트/아이콘은 해당 색상
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) selectedColor.copy(alpha = 0.1f) else Color.Transparent
+        ),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.weight(1f)
     ) {
-        Text(
-            "Rendering Style",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            RenderStyle.values().forEach { style ->
-                StyleOptionCard(
-                    label = style.name,
-                    isSelected = selectedStyle == style,
-                    onClick = { onStyleSelect(style) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                // iPhone과 동일: 선택 시 색상, 미선택 시 primary (검정)
+                tint = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 11.sp,
+                maxLines = 1,
+                // iPhone과 동일: 선택 시 색상, 미선택 시 primary
+                color = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
 
+// iPhone 스타일: Secondary Rendering Style Bar (5개 + Highlight All)
 @Composable
-private fun ColorModePanel(
+private fun SecondaryRenderingStyleBar(
+    selectedStyle: RenderStyle,
+    onStyleSelect: (RenderStyle) -> Unit,
+    highlightAllChains: Boolean,
+    onHighlightAllToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(60.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        // 5개 Rendering Style 버튼
+        RenderStyle.values().forEach { style ->
+            SecondaryStyleButton(
+                icon = getStyleIcon(style),
+                label = style.displayName,
+                isSelected = selectedStyle == style,
+                selectedColor = Color(0xFF2196F3), // Blue (iPhone과 동일)
+                onClick = { onStyleSelect(style) }
+            )
+        }
+        
+        // Highlight All 버튼 (iPhone과 동일: Yellow)
+        SecondaryStyleButton(
+            icon = if (highlightAllChains) Icons.Default.Lightbulb else Icons.Default.Lightbulb,
+            label = "Highlight All",
+            isSelected = highlightAllChains,
+            selectedColor = Color(0xFFFFEB3B), // Yellow
+            onClick = onHighlightAllToggle
+        )
+    }
+}
+
+// iPhone 스타일: Secondary Color Mode Bar (4개)
+@Composable
+private fun SecondaryColorModeBar(
     selectedMode: ColorMode,
     onModeSelect: (ColorMode) -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(60.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(
-            "Color Mode",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ColorMode.values().forEach { mode ->
-                StyleOptionCard(
-                    label = mode.name,
-                    isSelected = selectedMode == mode,
-                    onClick = { onModeSelect(mode) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+        ColorMode.values().forEach { mode ->
+            SecondaryStyleButton(
+                icon = getColorModeIcon(mode),
+                label = mode.displayName,
+                isSelected = selectedMode == mode,
+                selectedColor = Color(0xFF4CAF50), // Green (iPhone과 동일)
+                onClick = { onModeSelect(mode) }
+            )
         }
+    }
+}
+
+// iPhone 스타일: Secondary Options Bar (Sliders)
+@Composable
+private fun SecondaryOptionsBar(
+    renderStyle: RenderStyle
+) {
+    var rotationEnabled by remember { mutableStateOf(false) }
+    var zoomLevel by remember { mutableStateOf(1.0f) }
+    var transparency by remember { mutableStateOf(0.7f) }
+    var atomSize by remember { mutableStateOf(1.0f) }
+    var ribbonWidth by remember { mutableStateOf(3.0f) }
+    var ribbonFlatness by remember { mutableStateOf(0.5f) }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(60.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        // TODO: iPhone과 동일한 슬라이더 구현 예정
+        Text("Options Sliders (TODO)", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+// 아이콘 매핑 함수들
+private fun getStyleIcon(style: RenderStyle): ImageVector {
+    return when (style) {
+        RenderStyle.RIBBON -> Icons.Default.ShowChart // waveform.path.ecg
+        RenderStyle.SPHERES -> Icons.Default.Circle // circle.fill
+        RenderStyle.STICKS -> Icons.Default.ViewHeadline // line.3.horizontal
+        RenderStyle.CARTOON -> Icons.Default.WaterfallChart // waveform.path
+        RenderStyle.SURFACE -> Icons.Default.Public // globe
+    }
+}
+
+private fun getColorModeIcon(mode: ColorMode): ImageVector {
+    return when (mode) {
+        ColorMode.ELEMENT -> Icons.Default.Science // atom
+        ColorMode.CHAIN -> Icons.Default.Link // link
+        ColorMode.UNIFORM -> Icons.Default.Brush // paintbrush
+        ColorMode.SECONDARY_STRUCTURE -> Icons.Default.WaterfallChart // waveform
     }
 }
 
@@ -322,8 +417,7 @@ private fun OptionsPanel(
     onChainToggle: (String) -> Unit,
     renderStyle: RenderStyle = RenderStyle.RIBBON
 ) {
-    // iPhone과 동일: Options Secondary Bar
-    // Rotation, Zoom, Opacity, Size, Ribbon Width/Flatness, Reset
+    // 이 함수는 더 이상 사용하지 않음 (SecondaryOptionsBar로 대체)
     var rotationEnabled by remember { mutableStateOf(false) }
     var zoomLevel by remember { mutableStateOf(1.0f) }
     var transparency by remember { mutableStateOf(0.7f) }
