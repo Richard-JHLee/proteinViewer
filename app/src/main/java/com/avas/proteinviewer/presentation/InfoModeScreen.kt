@@ -299,13 +299,15 @@ fun InfoModeScreen(
                     .padding(horizontal = 16.dp, vertical = 6.dp) // 아이폰과 동일
             ) {
                 if (uiState.structure != null) {
-                    InfoPanel(
-                        structure = uiState.structure,
-                        selectedTab = uiState.selectedInfoTab,
-                        onTabChange = { tab -> viewModel.setInfoTab(tab) },
-                        onClose = {},
-                        proteinInfo = uiState.currentProteinInfo // API 데이터 전달
-                    )
+                            InfoPanel(
+                                structure = uiState.structure,
+                                selectedTab = uiState.selectedInfoTab,
+                                onTabChange = { tab -> viewModel.setInfoTab(tab) },
+                                onClose = {},
+                                proteinInfo = uiState.currentProteinInfo, // API 데이터 전달
+                                viewModel = viewModel, // ViewModel 전달
+                                uiState = uiState // UI State 전달
+                            )
                 }
             }
         }

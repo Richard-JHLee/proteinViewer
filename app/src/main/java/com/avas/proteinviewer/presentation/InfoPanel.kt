@@ -28,7 +28,9 @@ fun InfoPanel(
     selectedTab: InfoTab,
     onTabChange: (InfoTab) -> Unit,
     onClose: () -> Unit,
-    proteinInfo: ProteinInfo? = null // API에서 받은 추가 정보
+    proteinInfo: ProteinInfo? = null, // API에서 받은 추가 정보
+    viewModel: ProteinViewModel, // ViewModel 추가
+    uiState: ProteinUiState // UI State 추가
 ) {
     Column(
         modifier = Modifier
@@ -307,28 +309,43 @@ fun InfoPanel(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
+                                    val isHighlighted = uiState.highlightedChains.contains("chain:$chain")
+                                    val isFocused = uiState.focusedElement == "chain:$chain"
+                                    
                                     Button(
-                                        onClick = { /* TODO: Toggle highlight */ },
+                                        onClick = { viewModel.toggleChainHighlight(chain) },
                                         modifier = Modifier.weight(1f),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF2196F3)
-                                        )
+                                            containerColor = if (isHighlighted) Color(0xFF2196F3) else Color(0xFF2196F3).copy(alpha = 0.1f),
+                                            contentColor = if (isHighlighted) Color.White else Color(0xFF2196F3)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
                                     ) {
-                                        Icon(Icons.Default.Star, contentDescription = null)
+                                        Icon(
+                                            if (isHighlighted) Icons.Default.CheckCircle else Icons.Default.Star,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Highlight")
+                                        Text(if (isHighlighted) "Unhighlight" else "Highlight")
                                     }
                                     
                                     Button(
-                                        onClick = { /* TODO: Focus */ },
+                                        onClick = { viewModel.toggleChainFocus(chain) },
                                         modifier = Modifier.weight(1f),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF4CAF50)
-                                        )
+                                            containerColor = if (isFocused) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.1f),
+                                            contentColor = if (isFocused) Color.White else Color(0xFF4CAF50)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
                                     ) {
-                                        Icon(Icons.Default.Search, contentDescription = null)
+                                        Icon(
+                                            if (isFocused) Icons.Default.CheckCircle else Icons.Default.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Focus")
+                                        Text(if (isFocused) "Unfocus" else "Focus")
                                     }
                                 }
                             }
@@ -599,17 +616,49 @@ fun InfoPanel(
                                         }
                                     }
                                     
-                                    // Highlight Button
-                                    Button(
-                                        onClick = { /* TODO: Highlight ligand */ },
+                                    // Highlight and Focus Buttons (아이폰과 동일)
+                                    Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF2196F3)
-                                        )
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Icon(Icons.Default.Star, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Highlight Ligand")
+                                        val isHighlighted = uiState.highlightedChains.contains("ligand:$ligandName")
+                                        val isFocused = uiState.focusedElement == "ligand:$ligandName"
+                                        
+                                        Button(
+                                            onClick = { viewModel.toggleLigandHighlight(ligandName) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isHighlighted) Color(0xFFFF9800) else Color(0xFFFF9800).copy(alpha = 0.1f),
+                                                contentColor = if (isHighlighted) Color.White else Color(0xFFFF9800)
+                                            ),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Icon(
+                                                if (isHighlighted) Icons.Default.CheckCircle else Icons.Default.Star,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isHighlighted) "Unhighlight" else "Highlight")
+                                        }
+                                        
+                                        Button(
+                                            onClick = { viewModel.toggleLigandFocus(ligandName) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isFocused) Color(0xFF2196F3) else Color(0xFF2196F3).copy(alpha = 0.1f),
+                                                contentColor = if (isFocused) Color.White else Color(0xFF2196F3)
+                                            ),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Icon(
+                                                if (isFocused) Icons.Default.CheckCircle else Icons.Default.Search,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isFocused) "Unfocus" else "Focus")
+                                        }
                                     }
                                 }
                             }
@@ -800,17 +849,49 @@ fun InfoPanel(
                                         }
                                     }
                                     
-                                    // Highlight Button
-                                    Button(
-                                        onClick = { /* TODO: Highlight pocket */ },
+                                    // Highlight and Focus Buttons (아이폰과 동일)
+                                    Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF9C27B0)
-                                        )
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Icon(Icons.Default.Star, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Highlight Pocket")
+                                        val isHighlighted = uiState.highlightedChains.contains("pocket:$pocketName")
+                                        val isFocused = uiState.focusedElement == "pocket:$pocketName"
+                                        
+                                        Button(
+                                            onClick = { viewModel.togglePocketHighlight(pocketName) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isHighlighted) Color(0xFF9C27B0) else Color(0xFF9C27B0).copy(alpha = 0.1f),
+                                                contentColor = if (isHighlighted) Color.White else Color(0xFF9C27B0)
+                                            ),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Icon(
+                                                if (isHighlighted) Icons.Default.CheckCircle else Icons.Default.Star,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isHighlighted) "Unhighlight" else "Highlight")
+                                        }
+                                        
+                                        Button(
+                                            onClick = { viewModel.togglePocketFocus(pocketName) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isFocused) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.1f),
+                                                contentColor = if (isFocused) Color.White else Color(0xFF4CAF50)
+                                            ),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Icon(
+                                                if (isFocused) Icons.Default.CheckCircle else Icons.Default.Search,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isFocused) "Unfocus" else "Focus")
+                                        }
                                     }
                                 }
                             }

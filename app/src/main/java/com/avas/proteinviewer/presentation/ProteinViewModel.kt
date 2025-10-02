@@ -169,20 +169,70 @@ class ProteinViewModel @Inject constructor(
         _uiState.update { it.copy(colorMode = mode) }
     }
 
+    // Highlight functions for different element types
     fun toggleChainHighlight(chain: String) {
         _uiState.update {
             val newHighlights = it.highlightedChains.toMutableSet()
-            if (chain in newHighlights) {
-                newHighlights.remove(chain)
+            if ("chain:$chain" in newHighlights) {
+                newHighlights.remove("chain:$chain")
             } else {
-                newHighlights.add(chain)
+                newHighlights.add("chain:$chain")
             }
             it.copy(highlightedChains = newHighlights)
         }
     }
     
     fun clearHighlights() {
-        _uiState.update { it.copy(highlightedChains = emptySet()) }
+        _uiState.update { it.copy(
+            highlightedChains = emptySet(),
+            focusedElement = null
+        ) }
+    }
+    
+    fun toggleLigandHighlight(ligandName: String) {
+        _uiState.update {
+            val newHighlights = it.highlightedChains.toMutableSet()
+            if ("ligand:$ligandName" in newHighlights) {
+                newHighlights.remove("ligand:$ligandName")
+            } else {
+                newHighlights.add("ligand:$ligandName")
+            }
+            it.copy(highlightedChains = newHighlights)
+        }
+    }
+    
+    fun togglePocketHighlight(pocketName: String) {
+        _uiState.update {
+            val newHighlights = it.highlightedChains.toMutableSet()
+            if ("pocket:$pocketName" in newHighlights) {
+                newHighlights.remove("pocket:$pocketName")
+            } else {
+                newHighlights.add("pocket:$pocketName")
+            }
+            it.copy(highlightedChains = newHighlights)
+        }
+    }
+    
+    // Focus functions for different element types
+    fun toggleChainFocus(chain: String) {
+        _uiState.update {
+            val newFocus = if (it.focusedElement == "chain:$chain") null else "chain:$chain"
+            it.copy(focusedElement = newFocus)
+        }
+    }
+    
+    fun toggleLigandFocus(ligandName: String) {
+        _uiState.update {
+            val newFocus = if (it.focusedElement == "ligand:$ligandName") null else "ligand:$ligandName"
+            it.copy(focusedElement = newFocus)
+        }
+    }
+    
+    fun togglePocketFocus(pocketName: String) {
+        _uiState.update {
+            val newFocus = if (it.focusedElement == "pocket:$pocketName") null else "pocket:$pocketName"
+            it.copy(focusedElement = newFocus)
+        }
     }
 
     fun toggleSideMenu() {
