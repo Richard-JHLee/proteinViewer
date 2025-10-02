@@ -95,11 +95,17 @@ class Protein3DRenderer(
             
             val isHighlighted = highlightedChains.contains(atom.chain)
             
+            // 디버그: 초기 상태 확인
+            if (atom.id == 1) {
+                android.util.Log.d("Protein3DRenderer", "highlightedChains: $highlightedChains")
+                android.util.Log.d("Protein3DRenderer", "atom.chain: ${atom.chain}, isHighlighted: $isHighlighted")
+            }
+            
             // 투명도 계산 (iOS 방식)
             val baseOpacity = when {
                 isHighlighted -> 0.9f
-                highlightedChains.isEmpty() -> 0.4f
-                else -> 0.2f // dimmed
+                highlightedChains.isEmpty() -> 0.5f // 아이폰과 동일: 0.5f
+                else -> 0.15f // 아이폰과 동일: 0.15f (매우 희미)
             }
             
             val finalOpacity = baseOpacity * transparency
@@ -151,6 +157,7 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom1.chain)
+            // 아이폰과 동일: 초기 0.5f, 하이라이트 0.8f, 다른것 하이라이트시 0.15f
             val baseOpacity = if (isHighlighted) 0.8f else if (highlightedChains.isEmpty()) 0.5f else 0.15f
             val color = getAtomColor(atom1, isHighlighted, baseOpacity * transparency)
             
@@ -174,7 +181,8 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom.chain)
-            val baseOpacity = if (isHighlighted) 0.9f else if (highlightedChains.isEmpty()) 0.5f else 0.2f
+            // 아이폰과 동일
+            val baseOpacity = if (isHighlighted) 0.9f else if (highlightedChains.isEmpty()) 0.5f else 0.15f
             val color = getAtomColor(atom, isHighlighted, baseOpacity * transparency)
             
             drawScope.drawCircle(
@@ -213,9 +221,9 @@ class Protein3DRenderer(
             
             // 투명도 계산 (iOS 방식)
             val baseOpacity = when {
-                isChainHighlighted -> 0.95f
-                highlightedChains.isEmpty() -> 0.8f
-                else -> 0.2f
+                isChainHighlighted -> 1.0f // 아이폰과 동일
+                highlightedChains.isEmpty() -> 0.5f // 아이폰과 동일
+                else -> 0.15f // 아이폰과 동일
             }
             
             // 리본의 폭 계산
@@ -333,6 +341,7 @@ class Protein3DRenderer(
             )
             
             val isHighlighted = highlightedChains.contains(atom.chain)
+            // 아이폰과 동일
             val baseOpacity = if (isHighlighted) 0.6f else if (highlightedChains.isEmpty()) 0.3f else 0.1f
             
             val baseRadius = getAtomRadius(atom.element) * atomSize * 1.5f
