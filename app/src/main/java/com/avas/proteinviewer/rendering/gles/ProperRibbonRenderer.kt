@@ -196,9 +196,16 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             allVertices.addAll(mesh.vertices)
             allNormals.addAll(mesh.normals)
             
-            // 모든 정점에 같은 색상 적용
-            repeat(mesh.vertices.size / 3) {
-                allColors.addAll(chainColor)
+            // 2차 구조에 따라 색상 블렌딩
+            val verticesPerSplinePoint = (tubeSegments + 1)
+            splinePoints.forEachIndexed { index, splinePoint ->
+                val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                val blendedColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                
+                // 각 스플라인 포인트의 원형 단면 정점들에 색상 적용
+                repeat(verticesPerSplinePoint) {
+                    allColors.addAll(blendedColor)
+                }
             }
             
             // 인덱스 오프셋 적용
@@ -408,6 +415,23 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             "F" -> listOf(0.0f, 0.8f, 0.8f) // Teal
             else -> listOf(0.6f, 0.6f, 0.6f) // Gray
         }
+    }
+
+    private fun getSecondaryStructureColor(structure: SecondaryStructure): List<Float> {
+        return when (structure) {
+            SecondaryStructure.HELIX -> listOf(1.0f, 0.2f, 0.2f) // Red
+            SecondaryStructure.SHEET -> listOf(1.0f, 1.0f, 0.2f) // Yellow
+            SecondaryStructure.COIL -> listOf(0.6f, 0.6f, 0.6f) // Gray
+            SecondaryStructure.UNKNOWN -> listOf(0.7f, 0.7f, 0.7f) // Light Gray
+        }
+    }
+
+    private fun blendColors(chainColor: List<Float>, structureColor: List<Float>, alpha: Float = 0.7f): List<Float> {
+        return listOf(
+            chainColor[0] * alpha + structureColor[0] * (1 - alpha),
+            chainColor[1] * alpha + structureColor[1] * (1 - alpha),
+            chainColor[2] * alpha + structureColor[2] * (1 - alpha)
+        )
     }
 
     // 데이터 클래스
