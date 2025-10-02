@@ -44,6 +44,7 @@ fun ProteinViewerApp() {
     
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = false, // 스와이프 제스처 비활성화 (햄버거 버튼으로만 열림)
         drawerContent = {
             SideMenuContent(
                 onMenuItemClick = { menuItem ->
@@ -58,6 +59,11 @@ fun ProteinViewerApp() {
                             // Handle other menu items
                         }
                     }
+                    scope.launch {
+                        drawerState.close()
+                    }
+                },
+                onClose = {
                     scope.launch {
                         drawerState.close()
                     }

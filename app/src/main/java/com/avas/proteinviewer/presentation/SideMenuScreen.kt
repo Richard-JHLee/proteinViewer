@@ -32,7 +32,8 @@ enum class MenuItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SideMenuContent(
-    onMenuItemClick: (MenuItem) -> Unit
+    onMenuItemClick: (MenuItem) -> Unit,
+    onClose: () -> Unit = {}
 ) {
     ModalDrawerSheet {
         Column(
@@ -40,7 +41,7 @@ fun SideMenuContent(
                 .fillMaxSize()
                 .padding(vertical = 16.dp)
         ) {
-            // Header
+            // Header with Close Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -54,7 +55,7 @@ fun SideMenuContent(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "ProteinViewerApp",
                         style = MaterialTheme.typography.titleLarge,
@@ -66,15 +67,23 @@ fun SideMenuContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                // Close Button
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close menu",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
             
             Divider(modifier = Modifier.padding(horizontal = 16.dp))
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Menu Items
+            // Menu Items (PROTEIN_LIBRARY 제외)
             LazyColumn {
-                items(MenuItem.values()) { menuItem ->
+                items(MenuItem.values().filter { it != MenuItem.PROTEIN_LIBRARY }) { menuItem ->
                     MenuItem(
                         item = menuItem,
                         onClick = { onMenuItemClick(menuItem) }
