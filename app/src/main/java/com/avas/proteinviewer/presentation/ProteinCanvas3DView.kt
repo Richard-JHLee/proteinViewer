@@ -26,12 +26,28 @@ fun ProteinCanvas3DView(
     var offsetY by remember { mutableStateOf(0f) }
     
     // iOS 스타일 렌더러 생성
-    val renderer = remember(structure, renderStyle, colorMode, highlightedChains) {
+    // highlightedChains에서 "chain:", "ligand:", "pocket:" 접두사 제거하여 순수 ID만 추출
+    val cleanedHighlights = remember(highlightedChains) {
+        android.util.Log.d("ProteinCanvas3DView", "Original highlightedChains: $highlightedChains")
+        val cleaned = highlightedChains.mapNotNull { 
+            when {
+                it.startsWith("chain:") -> it.removePrefix("chain:")
+                it.startsWith("ligand:") -> it.removePrefix("ligand:")
+                it.startsWith("pocket:") -> it.removePrefix("pocket:")
+                else -> it
+            }
+        }.toSet()
+        android.util.Log.d("ProteinCanvas3DView", "Cleaned highlights for renderer: $cleaned")
+        cleaned
+    }
+    
+    val renderer = remember(structure, renderStyle, colorMode, cleanedHighlights) {
+        android.util.Log.d("ProteinCanvas3DView", "Creating renderer with highlights: $cleanedHighlights")
         Protein3DRenderer(
             structure = structure,
             renderStyle = renderStyle,
             colorMode = colorMode,
-            highlightedChains = highlightedChains
+            highlightedChains = cleanedHighlights
         )
     }
 

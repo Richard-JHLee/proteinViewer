@@ -47,6 +47,8 @@ class ProteinViewModel @Inject constructor(
     val uiState: StateFlow<ProteinUiState> = _uiState.asStateFlow()
 
     init {
+        android.util.Log.d("ProteinViewModel", "ViewModel initialized")
+        android.util.Log.d("ProteinViewModel", "Initial highlightedChains: ${_uiState.value.highlightedChains}")
         loadDefaultProtein()
     }
 
@@ -173,11 +175,23 @@ class ProteinViewModel @Inject constructor(
     fun toggleChainHighlight(chain: String) {
         _uiState.update {
             val newHighlights = it.highlightedChains.toMutableSet()
-            if ("chain:$chain" in newHighlights) {
-                newHighlights.remove("chain:$chain")
+            val key = "chain:$chain"
+            
+            // 디버그: 현재 상태 확인
+            android.util.Log.d("ProteinViewModel", "toggleChainHighlight - chain: $chain")
+            android.util.Log.d("ProteinViewModel", "Before: $newHighlights")
+            android.util.Log.d("ProteinViewModel", "Contains '$key': ${key in newHighlights}")
+            
+            // 올바른 토글 로직: contains가 true면 제거, false면 추가
+            if (key in newHighlights) {
+                newHighlights.remove(key)
+                android.util.Log.d("ProteinViewModel", "Action: REMOVE")
             } else {
-                newHighlights.add("chain:$chain")
+                newHighlights.add(key)
+                android.util.Log.d("ProteinViewModel", "Action: ADD")
             }
+            
+            android.util.Log.d("ProteinViewModel", "After: $newHighlights")
             it.copy(highlightedChains = newHighlights)
         }
     }
