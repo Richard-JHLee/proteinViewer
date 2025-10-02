@@ -4,6 +4,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.avas.proteinviewer.domain.model.PDBStructure
+import com.avas.proteinviewer.domain.model.RenderStyle
+import com.avas.proteinviewer.domain.model.ColorMode
 import com.avas.proteinviewer.presentation.components.OpenGL30SurfaceView
 
 /**
@@ -13,6 +15,8 @@ import com.avas.proteinviewer.presentation.components.OpenGL30SurfaceView
 @Composable
 fun ProteinOpenGLView(
     structure: PDBStructure,
+    renderStyle: RenderStyle = RenderStyle.RIBBON,
+    colorMode: ColorMode = ColorMode.CHAIN,
     modifier: Modifier = Modifier
 ) {
     AndroidView(
@@ -21,8 +25,10 @@ fun ProteinOpenGLView(
             OpenGL30SurfaceView(context)
         },
         update = { view ->
-            // 구조 업데이트
+            // 구조, 렌더 스타일, 컬러 모드 업데이트
             view.updateStructure(structure)
+            view.updateRenderStyle(renderStyle)
+            view.updateColorMode(colorMode)
         },
         modifier = modifier
     )

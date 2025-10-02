@@ -7,6 +7,8 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import com.avas.proteinviewer.domain.model.PDBStructure
+import com.avas.proteinviewer.domain.model.RenderStyle
+import com.avas.proteinviewer.domain.model.ColorMode
 import com.avas.proteinviewer.rendering.gles.ProperRibbonRenderer
 
 /**
@@ -66,6 +68,22 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         queueEvent {
             renderer.updateStructure(structure)
             android.util.Log.d("OpenGL30SurfaceView", "Structure updated: ${structure?.atoms?.size ?: 0} atoms")
+        }
+        requestRender()
+    }
+    
+    fun updateRenderStyle(style: RenderStyle) {
+        queueEvent {
+            renderer.updateRenderStyle(style)
+            android.util.Log.d("OpenGL30SurfaceView", "Render style updated: $style")
+        }
+        requestRender()
+    }
+    
+    fun updateColorMode(mode: ColorMode) {
+        queueEvent {
+            renderer.updateColorMode(mode)
+            android.util.Log.d("OpenGL30SurfaceView", "Color mode updated: $mode")
         }
         requestRender()
     }

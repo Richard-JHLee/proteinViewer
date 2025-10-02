@@ -44,6 +44,8 @@ fun ProteinViewerScreen(
         // 전체 화면 3D 뷰어 - OpenGL ES 3.0 (아이폰 SceneKit과 동일)
         ProteinOpenGLView(
             structure = structure,
+            renderStyle = renderStyle,
+            colorMode = colorMode,
             modifier = Modifier.fillMaxSize()
         )
         

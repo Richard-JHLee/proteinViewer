@@ -7,6 +7,8 @@ import android.util.Log
 import com.avas.proteinviewer.domain.model.PDBStructure
 import com.avas.proteinviewer.domain.model.Atom
 import com.avas.proteinviewer.domain.model.SecondaryStructure
+import com.avas.proteinviewer.domain.model.RenderStyle
+import com.avas.proteinviewer.domain.model.ColorMode
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.microedition.khronos.egl.EGLConfig
@@ -42,6 +44,9 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
     private var buffersReady = false
     private var pendingStructure: PDBStructure? = null
+    private var currentStructure: PDBStructure? = null
+    private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
+    private var currentColorMode: ColorMode = ColorMode.CHAIN
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated - Proper Ribbon Renderer")
@@ -126,12 +131,30 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     }
 
     fun updateStructure(structure: PDBStructure?) {
+        currentStructure = structure
         pendingStructure = structure
         if (!buffersReady) {
             indexCount = 0
             return
         }
         uploadStructure(structure)
+    }
+    
+    fun updateRenderStyle(style: RenderStyle) {
+        currentRenderStyle = style
+        Log.d(TAG, "Render style changed to: $style")
+        // 현재는 Ribbon만 지원, 나중에 다른 스타일 구현 예정
+        // TODO: Spheres, Sticks, Cartoon, Surface 구현
+    }
+    
+    fun updateColorMode(mode: ColorMode) {
+        val oldMode = currentColorMode
+        currentColorMode = mode
+        Log.d(TAG, "Color mode changed from $oldMode to: $mode")
+        // Color mode가 변경되면 버퍼 재생성 필요
+        currentStructure?.let {
+            uploadStructure(it)
+        }
     }
 
     fun orbit(deltaX: Float, deltaY: Float) {
@@ -406,14 +429,32 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     }
 
     private fun getChainColor(chain: String): List<Float> {
-        return when (chain.uppercase()) {
-            "A" -> listOf(0.2f, 0.3f, 1.0f) // Blue
-            "B" -> listOf(1.0f, 0.5f, 0.0f) // Orange
-            "C" -> listOf(0.0f, 0.8f, 0.4f) // Green
-            "D" -> listOf(0.8f, 0.2f, 0.8f) // Purple
-            "E" -> listOf(1.0f, 0.4f, 0.6f) // Pink
-            "F" -> listOf(0.0f, 0.8f, 0.8f) // Teal
-            else -> listOf(0.6f, 0.6f, 0.6f) // Gray
+        return when (currentColorMode) {
+            ColorMode.CHAIN -> {
+                // Chain별 고유 색상
+                when (chain.uppercase()) {
+                    "A" -> listOf(0.2f, 0.3f, 1.0f) // Blue
+                    "B" -> listOf(1.0f, 0.5f, 0.0f) // Orange
+                    "C" -> listOf(0.0f, 0.8f, 0.4f) // Green
+                    "D" -> listOf(0.8f, 0.2f, 0.8f) // Purple
+                    "E" -> listOf(1.0f, 0.4f, 0.6f) // Pink
+                    "F" -> listOf(0.0f, 0.8f, 0.8f) // Teal
+                    else -> listOf(0.6f, 0.6f, 0.6f) // Gray
+                }
+            }
+            ColorMode.UNIFORM -> {
+                // 단일 색상 (파란색)
+                listOf(0.3f, 0.5f, 1.0f)
+            }
+            ColorMode.ELEMENT -> {
+                // Element 색상은 uploadStructure에서 atom별로 처리
+                // 여기서는 기본 색상 반환
+                listOf(0.6f, 0.6f, 0.6f)
+            }
+            ColorMode.SECONDARY_STRUCTURE -> {
+                // Secondary Structure 색상은 getSecondaryStructureColor에서 처리
+                listOf(0.6f, 0.6f, 0.6f)
+            }
         }
     }
 
