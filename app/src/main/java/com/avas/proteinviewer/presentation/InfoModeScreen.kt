@@ -3,6 +3,7 @@ package com.avas.proteinviewer.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -94,11 +95,11 @@ fun InfoModeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 3D Structure Preview Section - 화면의 35% 차지
+            // 3D Structure Preview Section - 아이폰과 동일: 220dp 고정 높이
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.35f) // 화면의 35%를 3D 프리뷰에 할당
+                    .height(270.dp) // 제목(30dp) + 3D 뷰어(220dp) + padding(20dp)
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(16.dp)
             ) {
@@ -110,14 +111,14 @@ fun InfoModeScreen(
                 )
                 
                 if (uiState.structure != null) {
-                    // 3D Preview with actual rendering - 남은 공간 모두 사용
+                    // 3D Preview - 아이폰과 동일: 220dp 고정 높이
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f) // 타이틀 제외한 남은 공간 모두 사용
+                            .height(220.dp) // 아이폰과 동일
                             .background(
-                                MaterialTheme.colorScheme.surface,
-                                shape = MaterialTheme.shapes.medium
+                                Color(0xFFEEEEEE), // systemGray6와 유사한 연한 회색
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                             )
                     ) {
                         ProteinCanvas3DView(
@@ -199,12 +200,13 @@ fun InfoModeScreen(
             
             Divider()
             
-            // Scrollable Tab Content - 화면의 65% 차지
+            // Scrollable Tab Content - 아이폰과 동일: 남은 공간 모두 사용
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.65f) // 화면의 65%를 정보 패널에 할당
+                    .weight(1f) // 3D 프리뷰 제외한 남은 공간 모두 사용
                     .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 6.dp) // 아이폰과 동일
             ) {
                 if (uiState.structure != null) {
                     InfoPanel(
