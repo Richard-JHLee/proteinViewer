@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
 
 enum class ViewerPanel {
@@ -129,7 +130,8 @@ fun ProteinViewerScreen(
                             OptionsPanel(
                                 chains = structure.chains.sorted(),
                                 highlightedChains = highlightedChains,
-                                onChainToggle = onChainToggle
+                                onChainToggle = onChainToggle,
+                                renderStyle = renderStyle
                             )
                         }
                         else -> {}
@@ -299,31 +301,206 @@ private fun ColorModePanel(
 private fun OptionsPanel(
     chains: List<String>,
     highlightedChains: Set<String>,
-    onChainToggle: (String) -> Unit
+    onChainToggle: (String) -> Unit,
+    renderStyle: RenderStyle = RenderStyle.RIBBON
 ) {
-    Column(
+    // iPhone과 동일: Options Secondary Bar
+    // Rotation, Zoom, Opacity, Size, Ribbon Width/Flatness, Reset
+    var rotationEnabled by remember { mutableStateOf(false) }
+    var zoomLevel by remember { mutableStateOf(1.0f) }
+    var transparency by remember { mutableStateOf(0.7f) }
+    var atomSize by remember { mutableStateOf(1.0f) }
+    var ribbonWidth by remember { mutableStateOf(3.0f) }
+    var ribbonFlatness by remember { mutableStateOf(0.5f) }
+    
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .height(60.dp)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "Chain Selection",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+        // 1. Rotation Toggle
+        OptionToggleButton(
+            icon = if (rotationEnabled) Icons.Default.AutoMode else Icons.Default.RadioButtonUnchecked,
+            label = "Rotate",
+            isEnabled = rotationEnabled,
+            color = Color(0xFFFF9800), // Orange
+            onToggle = {
+                rotationEnabled = !rotationEnabled
+                // TODO: 실제 rotation 적용
+            }
         )
         
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // 2. Zoom Level
+        OptionSliderControl(
+            label = "Zoom",
+            value = zoomLevel,
+            onValueChange = { zoomLevel = it },
+            range = 0.5f..3.0f,
+            color = Color(0xFF2196F3), // Blue
+            startIcon = Icons.Default.Remove,
+            endIcon = Icons.Default.Add
+        )
+        
+        // 3. Transparency (Opacity)
+        OptionSliderControl(
+            label = "Opacity",
+            value = transparency,
+            onValueChange = { transparency = it },
+            range = 0.1f..1.0f,
+            color = Color(0xFF9C27B0), // Purple
+            startIcon = Icons.Default.VisibilityOff,
+            endIcon = Icons.Default.Visibility
+        )
+        
+        // 4. Atom Size
+        OptionSliderControl(
+            label = "Size",
+            value = atomSize,
+            onValueChange = { atomSize = it },
+            range = 0.5f..2.0f,
+            color = Color(0xFF4CAF50), // Green
+            startIcon = Icons.Default.Circle,
+            endIcon = Icons.Default.Circle
+        )
+        
+        // 5. Ribbon Width (Ribbon 모드일 때만)
+        if (renderStyle == RenderStyle.RIBBON) {
+            OptionSliderControl(
+                label = "Width",
+                value = ribbonWidth,
+                onValueChange = { ribbonWidth = it },
+                range = 1.0f..8.0f,
+                color = Color(0xFF9C27B0), // Purple
+                startIcon = Icons.Default.UnfoldLess,
+                endIcon = Icons.Default.UnfoldMore
+            )
+        }
+        
+        // 6. Ribbon Flatness (Ribbon 모드일 때만)
+        if (renderStyle == RenderStyle.RIBBON) {
+            OptionSliderControl(
+                label = "Flat",
+                value = ribbonFlatness,
+                onValueChange = { ribbonFlatness = it },
+                range = 0.0f..1.0f,
+                color = Color(0xFFFF5722), // Deep Orange
+                startIcon = Icons.Default.CropSquare,
+                endIcon = Icons.Default.CropSquare
+            )
+        }
+        
+        // 7. Reset Button
+        OptionToggleButton(
+            icon = Icons.Default.RestartAlt,
+            label = "Reset",
+            isEnabled = false,
+            color = Color(0xFFF44336), // Red
+            onToggle = {
+                rotationEnabled = false
+                zoomLevel = 1.0f
+                transparency = 0.7f
+                atomSize = 1.0f
+                ribbonWidth = 3.0f
+                ribbonFlatness = 0.5f
+            }
+        )
+    }
+}
+
+@Composable
+private fun OptionToggleButton(
+    icon: ImageVector,
+    label: String,
+    isEnabled: Boolean,
+    color: Color,
+    onToggle: () -> Unit
+) {
+    Button(
+        onClick = onToggle,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isEnabled) color.copy(alpha = 0.1f) else Color.Transparent
+        ),
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .heightIn(max = 52.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            chains.forEach { chain ->
-                FilterChip(
-                    selected = highlightedChains.contains(chain),
-                    onClick = { onChainToggle(chain) },
-                    label = { Text("Chain $chain") }
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isEnabled) color else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 10.sp,
+                color = if (isEnabled) color else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun OptionSliderControl(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float>,
+    color: Color,
+    startIcon: ImageVector,
+    endIcon: ImageVector
+) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .heightIn(max = 52.dp),
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.width(60.dp)
+            ) {
+                Icon(
+                    imageVector = startIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(12.dp)
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = endIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(12.dp)
                 )
             }
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = range,
+                modifier = Modifier.width(60.dp)
+            )
         }
     }
 }

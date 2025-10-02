@@ -32,19 +32,21 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         }
     })
 
+    private var lastX = 0f
+    private var lastY = 0f
+    private var isMultiTouch = false
+    
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean = true
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            val pointerCount = e2.pointerCount
-            queueEvent {
-                if (pointerCount >= 2 && !scaleDetector.isInProgress) {
-                    renderer.pan(-distanceX, distanceY)
-                } else {
+            // Single finger만 orbit (두 손가락은 onTouchEvent에서 처리)
+            if (e2.pointerCount == 1 && !isMultiTouch) {
+                queueEvent {
                     renderer.orbit(distanceX, distanceY)
                 }
+                requestRender()
             }
-            requestRender()
             return true
         }
     })
@@ -71,8 +73,58 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val pointerCount = event.pointerCount
         
-        scaleDetector.onTouchEvent(event)
-        gestureDetector.onTouchEvent(event)
+        // Zoom 제스처 처리 (항상 먼저)
+        val scaledHandled = scaleDetector.onTouchEvent(event)
+        
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastX = event.x
+                lastY = event.y
+                isMultiTouch = false
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                // 두 번째 손가락 감지
+                if (pointerCount == 2) {
+                    isMultiTouch = true
+                    lastX = (event.getX(0) + event.getX(1)) / 2
+                    lastY = (event.getY(0) + event.getY(1)) / 2
+                    android.util.Log.d("OpenGL30SurfaceView", "Multi-touch detected for PAN")
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (pointerCount == 2 && isMultiTouch && !scaleDetector.isInProgress) {
+                    // 두 손가락 Pan (Zoom 중이 아닐 때)
+                    val currentX = (event.getX(0) + event.getX(1)) / 2
+                    val currentY = (event.getY(0) + event.getY(1)) / 2
+                    val dx = currentX - lastX
+                    val dy = currentY - lastY
+                    
+                    queueEvent {
+                        renderer.pan(-dx, dy)
+                    }
+                    requestRender()
+                    
+                    lastX = currentX
+                    lastY = currentY
+                    android.util.Log.d("OpenGL30SurfaceView", "PAN: dx=$dx, dy=$dy")
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                // 손가락 하나가 떼어졌을 때
+                if (pointerCount == 2) {
+                    isMultiTouch = false
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isMultiTouch = false
+            }
+        }
+        
+        // Single finger 제스처 (orbit)
+        if (pointerCount == 1 && !isMultiTouch) {
+            gestureDetector.onTouchEvent(event)
+        }
+        
         return true
     }
 
