@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.domain.model.PDBStructure
 import com.avas.proteinviewer.domain.model.ProteinInfo
+import com.avas.proteinviewer.domain.model.AnnotationType
+import com.avas.proteinviewer.domain.model.SecondaryStructure
 import com.avas.proteinviewer.presentation.ProteinViewModel
 import com.avas.proteinviewer.presentation.ProteinUiState
 
@@ -100,10 +102,21 @@ fun InfoPanel(
                     backgroundColor = Color(0xFFFF9800).copy(alpha = 0.1f),
                     borderColor = Color(0xFFFF9800).copy(alpha = 0.3f),
                     content = {
-                        InfoRow("Structure Type", "Protein", "This is a protein structure determined by experimental methods")
-                        InfoRow("Data Source", "PDB", "Protein Data Bank - worldwide repository of 3D structure data")
-                        InfoRow("Resolution", proteinInfo?.resolution?.toString() ?: "N/A", "Experimental resolution in Angstroms")
-                        InfoRow("Method", "X-ray Crystallography", "Experimental method used to determine structure")
+                        val structureType = proteinInfo?.classification ?: 
+                            structure.annotations.find { it.type == AnnotationType.FUNCTION }?.value ?: "Protein"
+                        InfoRow("Structure Type", structureType, "Classification of this structure")
+                        val dataSource = if (proteinInfo?.id?.startsWith("1") == true || proteinInfo?.id?.startsWith("2") == true) {
+                            "PDB (Protein Data Bank)"
+                        } else {
+                            "PDB (Protein Data Bank)"
+                        }
+                        InfoRow("Data Source", dataSource, "Worldwide repository of 3D structure data")
+                        val resolution = proteinInfo?.resolution?.toString() ?: 
+                            structure.annotations.find { it.type == AnnotationType.RESOLUTION }?.value ?: "N/A"
+                        InfoRow("Resolution", resolution, "Experimental resolution in Angstroms")
+                        val experimentalMethod = proteinInfo?.experimentalMethod ?: 
+                            structure.annotations.find { it.type == AnnotationType.EXPERIMENTAL_METHOD }?.value ?: "Unknown"
+                        InfoRow("Method", experimentalMethod, "Experimental method used to determine structure")
                     }
                 )
             }
@@ -143,10 +156,10 @@ fun InfoPanel(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 
-                                // Secondary Structure Information (간단하게 표시)
-                                val helixAtoms = 0 // 임시로 0으로 설정
-                                val sheetAtoms = 0 // 임시로 0으로 설정
-                                val coilAtoms = chainAtoms.size // 전체를 coil로 표시
+                                // Secondary Structure Information (실제 데이터 사용)
+                                val helixAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.HELIX }
+                                val sheetAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.SHEET }
+                                val coilAtoms = chainAtoms.count { it.secondaryStructure == SecondaryStructure.COIL }
                                 
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),

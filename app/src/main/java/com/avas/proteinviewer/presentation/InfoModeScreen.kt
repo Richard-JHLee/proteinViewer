@@ -224,7 +224,10 @@ fun InfoModeScreen(
                         // Clear 버튼 (빨간색 배지)
                         if (uiState.highlightedChains.isNotEmpty() || uiState.focusedElement != null) {
                             Button(
-                                onClick = { viewModel.clearHighlights() },
+                                onClick = { 
+                                    startInfoUpdating()
+                                    viewModel.clearHighlights()
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFFF44336)
                                 ),
@@ -306,19 +309,29 @@ fun InfoModeScreen(
                         )
                         
                         // 이미지 위에 "Loading..." 오버레이 표시
-                        if (!is3DRenderingCompleted) {
+                        if (!is3DRenderingCompleted || isInfoModeUpdating) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(Color.Black.copy(alpha = 0.3f)), // 반투명 배경
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "Loading...",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 3.dp,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Text(
+                                        text = "Loading...",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
