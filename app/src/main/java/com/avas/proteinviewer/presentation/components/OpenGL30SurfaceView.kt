@@ -45,13 +45,14 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         override fun onDown(e: MotionEvent): Boolean = true
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            // Single finger만 orbit (두 손가락은 onTouchEvent에서 처리)
-            // Info 모드이거나 Viewer 모드에서는 항상 회전 허용
+            // Single finger만 rotate (두 손가락은 onTouchEvent에서 처리)
+            // Info 모드와 Viewer 모드 모두 항상 회전 허용
             if (e2.pointerCount == 1 && !isMultiTouch) {
                 queueEvent {
-                    renderer.orbit(distanceX, distanceY)
+                    renderer.rotate(distanceX, distanceY)
                 }
                 requestRender()
+                android.util.Log.d("OpenGL30SurfaceView", "ROTATE: distanceX=$distanceX, distanceY=$distanceY, isInfoMode=$isInfoMode, rotationEnabled=$rotationEnabled")
             }
             return true
         }
@@ -158,12 +159,8 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                // Info 모드에서는 scaleDetector 체크 우회, Viewer 모드에서는 기존 로직 유지
-                val shouldAllowPan = if (isInfoMode) {
-                    pointerCount == 2 && isMultiTouch
-                } else {
-                    pointerCount == 2 && isMultiTouch && !scaleDetector.isInProgress
-                }
+                // Info 모드와 Viewer 모드 모두 동일하게 팬 제스처 허용
+                val shouldAllowPan = pointerCount == 2 && isMultiTouch && !scaleDetector.isInProgress
                 
                 if (shouldAllowPan) {
                     // 두 손가락 Pan

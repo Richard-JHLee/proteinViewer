@@ -62,6 +62,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var currentColorMode: ColorMode = ColorMode.CHAIN
     private var currentHighlightedChains: Set<String> = emptySet()
     private var currentFocusedElement: String? = null
+    private var isInfoMode: Boolean = false
     
     // Options values
     private var rotationEnabled: Boolean = false
@@ -241,20 +242,16 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val spanZ = maxZ - minZ
         val boundingRadius = maxOf(spanX, spanY, spanZ) * 0.5f
         
-        // 카메라 타겟 설정 (Info 모드에서만 원점으로, Viewer 모드에서는 구조물 중심으로)
-        if (isInfoMode) {
-            camera.setTarget(0f, 0f, 0f) // Info 모드: 원점을 바라봄
-        } else {
-            camera.setTarget(centerX, centerY, centerZ) // Viewer 모드: 구조물 중심을 바라봄
-        }
+        // 카메라 타겟 설정 (Info 모드와 Viewer 모드 모두 구조물 중심을 바라봄)
+        camera.setTarget(centerX, centerY, centerZ) // Info 모드와 Viewer 모드 모두 구조물 중심을 바라봄
         
         // 정확한 카메라 거리 계산 (GLESProteinRenderer와 동일한 방식)
         val distance = boundingRadius / Math.tan(Math.toRadians((camera.fovDeg * 0.5f).toDouble())).toFloat()
         val optimalDistance = distance * 1.4f
         
         // Info 모드와 zoomLevel을 고려한 최종 거리 설정
-        // Info 모드와 Viewer 모드 간의 차이를 줄여서 부드러운 전환
-        val baseDistance = if (isInfoMode) optimalDistance * 0.9f else optimalDistance
+        // Info 모드에서도 적절한 거리로 설정하여 너무 가깝지 않도록 함
+        val baseDistance = if (isInfoMode) optimalDistance * 1.5f else optimalDistance * 1.8f // Info 모드도 적절한 거리로
         // zoomLevel의 영향을 줄여서 갑작스러운 확대 방지
         val adjustedZoomLevel = 1.0f + (zoomLevel - 1.0f) * 0.3f // zoomLevel 영향 30%로 제한
         val finalDistance = baseDistance / adjustedZoomLevel
@@ -294,7 +291,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     }
     
     private var structureScale = 1f // 구조물 스케일 팩터
-    private var isInfoMode = false // Info 모드 여부
     private var structureCenterX = 0f // 구조물 중심 X
     private var structureCenterY = 0f // 구조물 중심 Y  
     private var structureCenterZ = 0f // 구조물 중심 Z
@@ -323,8 +319,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         // 렌더 스타일 변경 후에도 카메라 설정을 다시 적용 (Info 모드 고려)
         if (currentStructure != null) {
             adjustCameraForStructure(currentStructure!!)
-            // 렌더링 완료 콜백 대기 상태 설정
-            pendingRenderingComplete = true
         }
     }
     
@@ -351,8 +345,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         // 구조가 있으면 다시 업로드
         currentStructure?.let { 
             uploadStructure(it)
-            // 렌더링 완료 콜백 대기 상태 설정
-            pendingRenderingComplete = true
         }
     }
     
@@ -373,8 +365,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         if (currentStructure != null) {
             uploadStructure(currentStructure)
             Log.d(TAG, "Structure re-uploaded for color mode change")
-            // 렌더링 완료 콜백 대기 상태 설정
-            pendingRenderingComplete = true
         } else {
             Log.w(TAG, "Cannot update color mode: currentStructure is null")
         }
@@ -385,8 +375,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "Highlighted chains updated: $highlightedChains")
         // 구조를 다시 업로드하여 하이라이트 효과 적용
         uploadStructure(currentStructure)
-        // 렌더링 완료 콜백 대기 상태 설정
-        pendingRenderingComplete = true
     }
     
     fun updateFocusedElement(focusedElement: String?) {
@@ -394,20 +382,21 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "Focused element updated: $focusedElement")
         // 구조를 다시 업로드하여 포커스 효과 적용
         uploadStructure(currentStructure)
-        // 렌더링 완료 콜백 대기 상태 설정
-        pendingRenderingComplete = true
     }
 
-    fun orbit(deltaX: Float, deltaY: Float) {
+    fun rotate(deltaX: Float, deltaY: Float) {
         camera.orbit(deltaX, deltaY)
+        Log.d(TAG, "Camera rotated: deltaX=$deltaX, deltaY=$deltaY")
     }
 
     fun pan(deltaX: Float, deltaY: Float) {
         camera.pan(deltaX, deltaY)
+        Log.d(TAG, "Camera panned: deltaX=$deltaX, deltaY=$deltaY")
     }
 
     fun zoom(scaleFactor: Float) {
         camera.zoom(scaleFactor)
+        Log.d(TAG, "Camera zoomed: scaleFactor=$scaleFactor")
     }
 
     private fun uploadStructure(structure: PDBStructure?) {
@@ -430,6 +419,9 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             RenderStyle.CARTOON -> uploadCartoonStructure(structure)
             RenderStyle.SURFACE -> uploadSurfaceStructure(structure)
         }
+        
+        // 렌더링 완료 콜백 대기 상태 설정
+        pendingRenderingComplete = true
     }
     
     private fun uploadSpheresStructure(structure: PDBStructure) {
@@ -695,7 +687,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 }
                 
                 // Highlight 효과
-                if (hasAnyHighlight) {
+                if (isInfoMode && !hasAnyHighlight) {
+                    // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
+                    finalColor = finalColor.map { it * 0.3f }
+                } else if (hasAnyHighlight) {
                     if (isHighlighted) {
                         finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
                     } else {
@@ -936,6 +931,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                             // Focused: 매우 밝고 선명하게 (카메라가 해당 요소로 이동)
                             originalColor.map { (it * 2.0f).coerceAtMost(1.0f) }
                         }
+                        isInfoMode && !hasAnyHighlight -> {
+                            // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
+                            originalColor.map { it * 0.3f }
+                        }
                         hasAnyHighlight -> {
                             if (isHighlighted) {
                                 // Highlighted: 밝고 선명하게
@@ -1058,7 +1057,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 }
                 
                 // Highlight 효과 (iPhone과 동일)
-                if (hasAnyHighlight) {
+                if (isInfoMode && !hasAnyHighlight) {
+                    // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
+                    finalColor = finalColor.map { it * 0.3f }
+                } else if (hasAnyHighlight) {
                     if (isHighlighted) {
                         // Highlighted: 밝고 선명하게 (saturation x1.4, brightness x1.3)
                         finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }

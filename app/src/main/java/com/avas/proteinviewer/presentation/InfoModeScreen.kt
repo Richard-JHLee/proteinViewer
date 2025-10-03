@@ -372,15 +372,13 @@ fun InfoModeScreen(
             ) {
                 if (uiState.structure != null) {
                             InfoPanel(
-                                structure = uiState.structure,
                                 selectedTab = uiState.selectedInfoTab,
-                                onTabChange = { tab -> viewModel.setInfoTab(tab) },
-                                onClose = {},
-                                proteinInfo = uiState.currentProteinInfo, // API 데이터 전달
-                                viewModel = viewModel, // ViewModel 전달
-                                uiState = uiState, // UI State 전달
-                                onStartUpdating = { startInfoUpdating() }, // 로딩 시작
-                                onStopUpdating = { stopInfoUpdating() } // 로딩 종료
+                                structure = uiState.structure,
+                                proteinInfo = uiState.currentProteinInfo,
+                                viewModel = viewModel,
+                                uiState = uiState,
+                                onStartUpdating = { startInfoUpdating() },
+                                onStopUpdating = { stopInfoUpdating() }
                             )
                 }
             }
