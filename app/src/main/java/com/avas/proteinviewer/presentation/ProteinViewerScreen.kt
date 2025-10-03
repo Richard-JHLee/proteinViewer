@@ -57,6 +57,11 @@ fun ProteinViewerScreen(
     // 로딩 상태
     var isUpdating by remember { mutableStateOf(false) }
     
+    // 구조가 변경될 때마다 로딩 시작
+    LaunchedEffect(structure) {
+        isUpdating = true
+    }
+    
     // 로딩 상태 관리 함수들
     fun startUpdating() {
         isUpdating = true

@@ -46,8 +46,8 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
             // Single finger만 orbit (두 손가락은 onTouchEvent에서 처리)
-            // Info 모드이거나 rotationEnabled가 true일 때 회전 허용
-            if (e2.pointerCount == 1 && !isMultiTouch && (isInfoMode || rotationEnabled)) {
+            // Info 모드이거나 Viewer 모드에서는 항상 회전 허용
+            if (e2.pointerCount == 1 && !isMultiTouch) {
                 queueEvent {
                     renderer.orbit(distanceX, distanceY)
                 }
@@ -119,6 +119,14 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         queueEvent {
             renderer.updateHighlightedChains(highlightedChains)
             android.util.Log.d("OpenGL30SurfaceView", "Highlighted chains updated: $highlightedChains")
+        }
+        requestRender()
+    }
+    
+    fun updateFocusedElement(focusedElement: String?) {
+        queueEvent {
+            renderer.updateFocusedElement(focusedElement)
+            android.util.Log.d("OpenGL30SurfaceView", "Focused element updated: $focusedElement")
         }
         requestRender()
     }

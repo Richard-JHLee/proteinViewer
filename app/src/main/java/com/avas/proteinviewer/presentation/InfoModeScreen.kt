@@ -258,6 +258,7 @@ fun InfoModeScreen(
                             renderStyle = uiState.renderStyle,
                             colorMode = uiState.colorMode,
                             highlightedChains = uiState.highlightedChains,
+                            focusedElement = uiState.focusedElement, // 포커스 요소 전달
                             isInfoMode = true, // Info 모드로 설정
                             onRenderingComplete = { stopInfoUpdating() }, // 렌더링 완료 시 로딩 해제
                             modifier = Modifier.fillMaxSize()

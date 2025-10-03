@@ -50,6 +50,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var indexCount = 0
     private val ribbonRadius = 0.2f  // 얇은 리본을 위해 더 작게
     private val tubeSegments = 8 // 원통의 분할 수
+    
 
     private var buffersReady = false
     private var pendingStructure: PDBStructure? = null
@@ -60,11 +61,14 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
     private var currentColorMode: ColorMode = ColorMode.CHAIN
     private var currentHighlightedChains: Set<String> = emptySet()
+    private var currentFocusedElement: String? = null
     
     // Options values
     private var rotationEnabled: Boolean = false
     private var zoomLevel: Float = 1.0f
     private var transparency: Float = 1.0f
+    private var ligandTransparency: Float = 0.7f // Ligands 투명도 (70% 불투명)
+    private var pocketTransparency: Float = 0.7f // Pockets 투명도 (70% 불투명)
     private var atomSize: Float = 1.0f
     private var ribbonWidth: Float = 1.2f
     private var ribbonFlatness: Float = 0.5f
@@ -179,6 +183,9 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glDisableVertexAttribArray(aColorHandle)
         GLES30.glBindVertexArray(0)
         
+        // Ligands와 Pockets는 별도 렌더링 대신 메인 구조에 포함시켜 렌더링
+        // (현재는 구현하지 않음 - 향후 개선 예정)
+        
         // 렌더링 완료 콜백 호출 (구조 업데이트가 완료된 경우에만)
         if (pendingRenderingComplete) {
             pendingRenderingComplete = false
@@ -246,8 +253,11 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val optimalDistance = distance * 1.4f
         
         // Info 모드와 zoomLevel을 고려한 최종 거리 설정
-        val baseDistance = if (isInfoMode) optimalDistance * 0.7f else optimalDistance
-        val finalDistance = baseDistance / zoomLevel // zoomLevel이 클수록 가까이 (확대)
+        // Info 모드와 Viewer 모드 간의 차이를 줄여서 부드러운 전환
+        val baseDistance = if (isInfoMode) optimalDistance * 0.9f else optimalDistance
+        // zoomLevel의 영향을 줄여서 갑작스러운 확대 방지
+        val adjustedZoomLevel = 1.0f + (zoomLevel - 1.0f) * 0.3f // zoomLevel 영향 30%로 제한
+        val finalDistance = baseDistance / adjustedZoomLevel
         
         camera.configure(
             distance = finalDistance,
@@ -378,6 +388,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         // 렌더링 완료 콜백 대기 상태 설정
         pendingRenderingComplete = true
     }
+    
+    fun updateFocusedElement(focusedElement: String?) {
+        currentFocusedElement = focusedElement
+        Log.d(TAG, "Focused element updated: $focusedElement")
+        // 구조를 다시 업로드하여 포커스 효과 적용
+        uploadStructure(currentStructure)
+        // 렌더링 완료 콜백 대기 상태 설정
+        pendingRenderingComplete = true
+    }
 
     fun orbit(deltaX: Float, deltaY: Float) {
         camera.orbit(deltaX, deltaY)
@@ -424,23 +443,107 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         Log.d(TAG, "Found ${atoms.size} atoms for spheres rendering")
 
-        // SphereRenderer를 사용하여 구체 렌더링 데이터 생성
-        val sphereData = sphereRenderer.createSphereRenderData(
-            atoms = atoms,
-            colorMode = currentColorMode,
-            radius = 0.8f * atomSize, // atomSize 적용
-            segments = 16  // 매끄러운 구체 (회전 시 각진 모서리 제거)
-        )
+        // Ligands와 Pockets를 작고 투명하게 렌더링하기 위해 분리
+        val proteinAtoms = atoms.filter { !it.isLigand && !it.isPocket }
+        val ligandAtoms = atoms.filter { it.isLigand }
+        val pocketAtoms = atoms.filter { it.isPocket }
+        
+        // 메인 단백질 구조 렌더링
+        val sphereData = if (proteinAtoms.isNotEmpty()) {
+            sphereRenderer.createSphereRenderData(
+                atoms = proteinAtoms,
+                colorMode = currentColorMode,
+                radius = 0.8f * atomSize, // atomSize 적용
+                segments = 16  // 매끄러운 구체 (회전 시 각진 모서리 제거)
+            )
+        } else {
+            // 모든 원자가 Ligand/Pocket인 경우 기본 처리
+            sphereRenderer.createSphereRenderData(
+                atoms = atoms,
+                colorMode = currentColorMode,
+                radius = 0.8f * atomSize,
+                segments = 16
+            )
+        }
+        
+        // Ligands를 작고 투명하게 추가 렌더링
+        val ligandData = if (ligandAtoms.isNotEmpty()) {
+            sphereRenderer.createSphereRenderData(
+                atoms = ligandAtoms,
+                colorMode = ColorMode.UNIFORM, // 주황색으로 통일
+                radius = 0.3f, // 매우 작은 크기
+                segments = 8
+            )
+        } else null
+        
+        // Pockets를 작고 투명하게 추가 렌더링
+        val pocketData = if (pocketAtoms.isNotEmpty()) {
+            sphereRenderer.createSphereRenderData(
+                atoms = pocketAtoms,
+                colorMode = ColorMode.UNIFORM, // 보라색으로 통일
+                radius = 0.3f, // 매우 작은 크기
+                segments = 8
+            )
+        } else null
 
-        // Highlight 효과 적용
-        val highlightedColors = applyHighlightEffect(sphereData.colors, atoms)
+        // 메인 구조와 Ligands/Pockets 데이터 합치기
+        val combinedVertices = sphereData.vertices.toMutableList()
+        val combinedColors = sphereData.colors.toMutableList()
+        val combinedNormals = sphereData.normals.toMutableList()
+        val combinedIndices = sphereData.indices.toMutableList()
+        
+        var indexOffset = sphereData.vertices.size / 3
+        
+        // Ligands 데이터 추가
+        ligandData?.let { data ->
+            combinedVertices.addAll(data.vertices)
+            // Ligands는 주황색으로 설정 (투명도 적용)
+            val orangeColors = FloatArray(data.colors.size) { i ->
+                when (i % 3) {
+                    0 -> 1.0f * ligandTransparency // R (투명도 적용)
+                    1 -> 0.5f * ligandTransparency // G (투명도 적용)
+                    2 -> 0.0f * ligandTransparency // B (투명도 적용)
+                    else -> data.colors[i]
+                }
+            }
+            combinedColors.addAll(orangeColors.toList())
+            combinedNormals.addAll(data.normals)
+            
+            // 인덱스 오프셋 적용
+            val adjustedIndices = data.indices.map { it + indexOffset }
+            combinedIndices.addAll(adjustedIndices)
+            indexOffset += data.vertices.size / 3
+        }
+        
+        // Pockets 데이터 추가
+        pocketData?.let { data ->
+            combinedVertices.addAll(data.vertices)
+            // Pockets는 보라색으로 설정 (투명도 적용)
+            val purpleColors = FloatArray(data.colors.size) { i ->
+                when (i % 3) {
+                    0 -> 0.6f * pocketTransparency // R (투명도 적용)
+                    1 -> 0.2f * pocketTransparency // G (투명도 적용)
+                    2 -> 0.7f * pocketTransparency // B (투명도 적용)
+                    else -> data.colors[i]
+                }
+            }
+            combinedColors.addAll(purpleColors.toList())
+            combinedNormals.addAll(data.normals)
+            
+            // 인덱스 오프셋 적용
+            val adjustedIndices = data.indices.map { it + indexOffset }
+            combinedIndices.addAll(adjustedIndices)
+        }
+        
+        // Highlight 효과 적용 (메인 구조만)
+        val highlightedColors = applyHighlightEffect(combinedColors, atoms)
 
-        indexCount = sphereData.indices.size
+        indexCount = combinedIndices.size
 
         // 버퍼에 업로드
-        uploadToGPU(sphereData.vertices, highlightedColors, sphereData.normals, sphereData.indices)
+        uploadToGPU(combinedVertices, highlightedColors.toList(), combinedNormals, combinedIndices)
 
-        Log.d(TAG, "Uploaded ${sphereData.vertices.size / 3} vertices, $indexCount indices for spheres")
+        Log.d(TAG, "Uploaded ${combinedVertices.size / 3} vertices, $indexCount indices for spheres (including ligands and pockets)")
     }
 
     private fun uploadSticksStructure(structure: PDBStructure) {
@@ -798,7 +901,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     }
 
     /**
-     * Highlight 효과를 적용하는 함수
+     * Highlight와 Focus 효과를 적용하는 함수
      */
     private fun applyHighlightEffect(colors: List<Float>, atoms: List<Atom>): List<Float> {
         val highlightedColors = mutableListOf<Float>()
@@ -806,24 +909,43 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         
         atoms.forEach { atom ->
             val chainKey = "chain:${atom.chain}"
-            val isHighlighted = currentHighlightedChains.contains(chainKey)
+            val ligandKey = "ligand:${atom.residueName}"
+            val pocketKey = "pocket:${atom.residueName}"
+            
+            val isHighlighted = currentHighlightedChains.contains(chainKey) || 
+                               currentHighlightedChains.contains(ligandKey) ||
+                               currentHighlightedChains.contains(pocketKey)
+            
+            val isFocused = when {
+                atom.isLigand && currentFocusedElement == ligandKey -> true
+                atom.isPocket && currentFocusedElement == pocketKey -> true
+                currentFocusedElement == chainKey -> true
+                else -> false
+            }
+            
             val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            val hasFocus = currentFocusedElement != null
             
             // 각 원자의 모든 정점에 대해 색상 적용
             val verticesPerAtom = colors.size / atoms.size / 3 // 각 원자당 정점 수 (RGB)
             repeat(verticesPerAtom) {
                 if (colorIndex < colors.size) {
                     val originalColor = colors.subList(colorIndex, colorIndex + 3)
-                    val finalColor = if (hasAnyHighlight) {
-                        if (isHighlighted) {
-                            // Highlighted: 밝고 선명하게
-                            originalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
-                        } else {
-                            // Not highlighted: 매우 희미하게
-                            originalColor.map { it * 0.15f }
+                    val finalColor = when {
+                        isFocused -> {
+                            // Focused: 매우 밝고 선명하게 (카메라가 해당 요소로 이동)
+                            originalColor.map { (it * 2.0f).coerceAtMost(1.0f) }
                         }
-                    } else {
-                        originalColor
+                        hasAnyHighlight -> {
+                            if (isHighlighted) {
+                                // Highlighted: 밝고 선명하게
+                                originalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
+                            } else {
+                                // Not highlighted: 매우 희미하게
+                                originalColor.map { it * 0.15f }
+                            }
+                        }
+                        else -> originalColor
                     }
                     highlightedColors.addAll(finalColor)
                     colorIndex += 3
@@ -1327,5 +1449,7 @@ void main() {
             return shader
         }
     }
+    
+    
 }
 

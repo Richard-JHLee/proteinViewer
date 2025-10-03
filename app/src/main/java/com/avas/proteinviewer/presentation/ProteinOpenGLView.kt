@@ -18,6 +18,7 @@ fun ProteinOpenGLView(
     renderStyle: RenderStyle = RenderStyle.RIBBON,
     colorMode: ColorMode = ColorMode.CHAIN,
     highlightedChains: Set<String> = emptySet(),
+    focusedElement: String? = null,
     rotationEnabled: Boolean = false,
     zoomLevel: Float = 1.0f,
     transparency: Float = 1.0f,
@@ -34,11 +35,12 @@ fun ProteinOpenGLView(
             OpenGL30SurfaceView(context)
         },
         update = { view ->
-            // 구조, 렌더 스타일, 컬러 모드, 하이라이트 업데이트
+            // 구조, 렌더 스타일, 컬러 모드, 하이라이트, 포커스 업데이트
             view.updateStructure(structure)
             view.updateRenderStyle(renderStyle)
             view.updateColorMode(colorMode)
             view.updateHighlightedChains(highlightedChains)
+            view.updateFocusedElement(focusedElement)
             view.updateOptions(
                 rotationEnabled = rotationEnabled,
                 zoomLevel = zoomLevel,
