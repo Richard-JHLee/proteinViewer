@@ -59,22 +59,51 @@ fun InfoModeScreen(
                     ) {
                             InfoTab.values().forEach { tab ->
                                 val isSelected = uiState.selectedInfoTab == tab
+                                val tabIcon = when (tab) {
+                                    InfoTab.OVERVIEW -> Icons.Default.Info
+                                    InfoTab.CHAINS -> Icons.Default.Link
+                                    InfoTab.RESIDUES -> Icons.Default.Circle
+                                    InfoTab.LIGANDS -> Icons.Default.Science
+                                    InfoTab.POCKETS -> Icons.Default.Place
+                                    InfoTab.SEQUENCE -> Icons.Default.List
+                                    InfoTab.ANNOTATIONS -> Icons.Default.Note
+                                }
+                                
+                                // 아이폰 스타일: 아이콘 위, 텍스트 아래
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { viewModel.setInfoTab(tab) },
                                     label = {
-                                        Text(
-                                            text = tab.name.replace("_", " ")
-                                                .lowercase()
-                                                .replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            // 아이콘 (위쪽)
+                                            Icon(
+                                                imageVector = tabIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = if (isSelected) Color.White else Color(0xFF2196F3)
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            // 텍스트 (아래쪽)
+                                            Text(
+                                                text = tab.name.replace("_", " ")
+                                                    .lowercase()
+                                                    .replaceFirstChar { it.uppercase() },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isSelected) Color.White else Color(0xFF2196F3),
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = Color(0xFF2196F3), // 파란색
-                                        selectedLabelColor = Color.White
-                                    )
+                                        selectedLabelColor = Color.Transparent, // 투명하게 설정 (내부에서 색상 제어)
+                                        containerColor = Color.Transparent
+                                    ),
+                                    modifier = Modifier.height(70.dp) // 아이콘과 텍스트를 위한 높이 증가
                                 )
                             }
                     }
