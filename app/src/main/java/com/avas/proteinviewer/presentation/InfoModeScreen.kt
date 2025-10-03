@@ -32,6 +32,8 @@ fun InfoModeScreen(
 ) {
     // Info 모드 전용 로딩 상태
     var isInfoModeUpdating by remember { mutableStateOf(false) }
+    var is3DRendering by remember { mutableStateOf(false) }
+    var is3DRenderingCompleted by remember { mutableStateOf(false) }
     
     // 로딩 상태 관리 함수들
     fun startInfoUpdating() {
@@ -40,6 +42,38 @@ fun InfoModeScreen(
     
     fun stopInfoUpdating() {
         isInfoModeUpdating = false
+    }
+    
+    // 3D 렌더링 상태 관리
+    fun start3DRendering() {
+        is3DRendering = true
+        is3DRenderingCompleted = false
+        android.util.Log.d("InfoModeScreen", "3D rendering started - loading bar should show")
+    }
+    
+    fun stop3DRendering() {
+        is3DRendering = false
+        is3DRenderingCompleted = true
+        android.util.Log.d("InfoModeScreen", "3D rendering stopped - loading bar should hide")
+    }
+    
+    // Viewer 모드에서 돌아오는 경우: 이미 렌더링된 이미지 재사용
+    if (uiState.currentProteinId.isNotEmpty() && 
+        uiState.structure != null && 
+        uiState.previousViewMode == ViewMode.VIEWER &&
+        !is3DRenderingCompleted) {
+        android.util.Log.d("InfoModeScreen", "Reusing rendered image from Viewer mode")
+        is3DRenderingCompleted = true
+    }
+    
+    // 새로운 단백질 로드 시: 3D 렌더링 시작
+    if (uiState.currentProteinId.isNotEmpty() && 
+        uiState.structure != null && 
+        uiState.previousViewMode != ViewMode.VIEWER &&
+        !is3DRendering && 
+        !is3DRenderingCompleted) {
+        android.util.Log.d("InfoModeScreen", "Starting 3D rendering - new protein loaded")
+        start3DRendering()
     }
     Scaffold(
         bottomBar = {
@@ -260,34 +294,31 @@ fun InfoModeScreen(
                             highlightedChains = uiState.highlightedChains,
                             focusedElement = uiState.focusedElement, // 포커스 요소 전달
                             isInfoMode = true, // Info 모드로 설정
-                            onRenderingComplete = { stopInfoUpdating() }, // 렌더링 완료 시 로딩 해제
+                            onRenderingStart = { 
+                                // 렌더링 시작 콜백 제거 - 조건문에서 자동 처리
+                            },
+                            onRenderingComplete = { 
+                                stopInfoUpdating() // Info 모드 로딩 해제
+                                stop3DRendering() // 3D 렌더링 완료
+                                viewModel.onRenderingComplete() // ViewModel 렌더링 완료 알림
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
                         
-                        // Info 모드 업데이트 중 로딩 표시
-                        if (isInfoModeUpdating) {
+                        // 이미지 위에 "Loading..." 오버레이 표시
+                        if (!is3DRenderingCompleted) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.5f))
-                                    .padding(16.dp),
+                                    .background(Color.Black.copy(alpha = 0.3f)), // 반투명 배경
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(32.dp),
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "Updating structure...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                Text(
+                                    text = "Loading...",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }

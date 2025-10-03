@@ -27,6 +27,7 @@ data class ProteinUiState(
     val showProteinLibrary: Boolean = false,
     val selectedInfoTab: InfoTab = InfoTab.OVERVIEW,
     val viewMode: ViewMode = ViewMode.INFO,
+    val previousViewMode: ViewMode? = null, // 이전 모드 추적
     // 카테고리 관련 상태 추가
     val selectedCategory: ProteinCategory? = null,
     val showCategoryGrid: Boolean = false,
@@ -141,6 +142,7 @@ class ProteinViewModel @Inject constructor(
                 
                 val detail = repository.getProteinDetail(proteinId).first()
                 
+                // 구조 로딩 완료 - 즉시 Info 모드로 전환
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -148,7 +150,8 @@ class ProteinViewModel @Inject constructor(
                         structure = structure,
                         selectedProtein = detail,
                         currentProteinId = proteinId,
-                        currentProteinName = detail.name
+                        currentProteinName = detail.name,
+                        viewMode = ViewMode.INFO // Info 모드로 전환
                     )
                 }
             } catch (e: Exception) {
@@ -161,6 +164,15 @@ class ProteinViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    /**
+     * 3D 렌더링 완료 시 호출되는 콜백
+     * 현재는 InfoModeScreen에서 직접 관리하므로 빈 함수
+     */
+    fun onRenderingComplete() {
+        // InfoModeScreen에서 3D 렌더링 상태를 직접 관리
+        android.util.Log.d("ProteinViewModel", "3D rendering completed")
     }
 
     fun setRenderStyle(style: RenderStyle) {
@@ -287,7 +299,14 @@ class ProteinViewModel @Inject constructor(
     }
     
     fun setViewMode(mode: ViewMode) {
-        _uiState.update { it.copy(viewMode = mode) }
+        val currentMode = _uiState.value.viewMode
+        _uiState.update { 
+            it.copy(
+                viewMode = mode,
+                previousViewMode = currentMode // 현재 모드를 이전 모드로 저장
+            ) 
+        }
+        android.util.Log.d("ProteinViewModel", "View mode changed from $currentMode to $mode")
     }
 
     fun clearError() {

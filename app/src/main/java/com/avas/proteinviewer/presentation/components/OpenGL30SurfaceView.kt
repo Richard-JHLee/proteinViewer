@@ -24,6 +24,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     private var rotationEnabled = false
     private var isInfoMode = false
     private var onRenderingCompleteCallback: (() -> Unit)? = null
+    private var onRenderingStartCallback: (() -> Unit)? = null
     
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -224,6 +225,11 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     fun setOnRenderingCompleteCallback(callback: (() -> Unit)?) {
         onRenderingCompleteCallback = callback
         renderer.setOnRenderingCompleteCallback(callback)
+    }
+    
+    fun setOnRenderingStartCallback(callback: (() -> Unit)?) {
+        onRenderingStartCallback = callback
+        android.util.Log.d("OpenGL30SurfaceView", "Rendering start callback set: ${callback != null}")
     }
     
 }

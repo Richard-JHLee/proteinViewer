@@ -192,6 +192,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             pendingRenderingComplete = false
             onRenderingCompleteCallback?.let { callback ->
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.util.Log.d("ProperRibbonRenderer", "Rendering complete callback invoked")
                     callback()
                 }
             }
@@ -303,11 +304,11 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun setInfoMode(isInfoMode: Boolean) {
         this.isInfoMode = isInfoMode
         Log.d(TAG, "Info mode set to: $isInfoMode")
-        // Info 모드가 변경되면 카메라 설정을 즉시 다시 적용
+        // Info 모드가 변경되면 카메라 설정만 조정하고 이미 렌더링된 이미지 재사용
         if (currentStructure != null) {
             adjustCameraForStructure(currentStructure!!)
-            // 구조물을 다시 업로드하여 새로운 설정 적용
-            uploadStructure(currentStructure)
+            // 구조물을 다시 업로드하지 않고 기존 렌더링 결과 재사용
+            Log.d(TAG, "Reusing existing rendered image for Info mode")
         }
     }
     

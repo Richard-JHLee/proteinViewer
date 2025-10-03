@@ -27,6 +27,7 @@ fun ProteinOpenGLView(
     ribbonFlatness: Float = 0.5f,
     isInfoMode: Boolean = false, // Info 모드 여부
     onRenderingComplete: () -> Unit = {}, // 렌더링 완료 콜백
+    onRenderingStart: () -> Unit = {}, // 렌더링 시작 콜백
     modifier: Modifier = Modifier
 ) {
     AndroidView(
@@ -52,6 +53,7 @@ fun ProteinOpenGLView(
             view.setInfoMode(isInfoMode) // Info 모드 설정
             view.setAutoRotation(rotationEnabled) // 자동 회전 설정
             view.setOnRenderingCompleteCallback(onRenderingComplete) // 렌더링 완료 콜백 설정
+            view.setOnRenderingStartCallback(onRenderingStart) // 렌더링 시작 콜백 설정
         },
         modifier = modifier
     )
