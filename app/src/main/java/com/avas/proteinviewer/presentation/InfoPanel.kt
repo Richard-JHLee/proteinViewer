@@ -127,12 +127,20 @@ fun InfoPanel(
                     backgroundColor = Color(0xFFFF9500).copy(alpha = 0.1f),
                     borderColor = Color(0xFFFF9500).copy(alpha = 0.3f),
                     content = {
-                        InfoRow("Structure Type", "Protein", "This is a protein structure determined by experimental methods")
+                        InfoRow("Structure Type", proteinInfo?.classification ?: "Protein", "This is a protein structure determined by experimental methods")
                         InfoRow("Data Source", "PDB", "Protein Data Bank - worldwide repository of 3D structure data")
-                        InfoRow("Quality", "Experimental", "Structure determined through experimental techniques like X-ray crystallography")
-                        val firstAtom = structure.atoms.firstOrNull()
-                        if (firstAtom != null) {
-                            InfoRow("First Residue", firstAtom.residueName, "Chain ${firstAtom.chain}")
+                        InfoRow("Quality", proteinInfo?.experimentalMethod ?: "Experimental", "Structure determined through experimental techniques like X-ray crystallography")
+                        proteinInfo?.resolution?.let { resolution ->
+                            InfoRow("Resolution", "${String.format("%.2f", resolution)} Å", "Crystallographic resolution of the structure")
+                        }
+                        proteinInfo?.organism?.let { organism ->
+                            InfoRow("Organism", organism, "Source organism of the protein")
+                        }
+                        proteinInfo?.depositionDate?.let { date ->
+                            InfoRow("Deposition Date", date, "Date when structure was deposited in PDB")
+                        }
+                        proteinInfo?.molecularWeight?.let { weight ->
+                            InfoRow("Molecular Weight", "${String.format("%.1f", weight)} kDa", "Calculated molecular weight of the protein")
                         }
                     }
                 )
@@ -162,14 +170,14 @@ fun InfoPanel(
                             color = Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "This structure does not contain any protein chains.",
+                            Text(
+                                "This structure does not contain any protein chains.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                            )
                         Spacer(modifier = Modifier.height(40.dp))
-                    }
+                        }
                 } else {
                     // 아이폰 스타일: 전체 통계 헤더
                     Card(
@@ -323,9 +331,9 @@ fun InfoPanel(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column {
-                                        Text(
+                                Text(
                                             "Length",
-                                            style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray
                                         )
                                         Text(
@@ -414,17 +422,17 @@ fun InfoPanel(
                                     val sidechainAtoms = chainAtoms.count { !it.isBackbone }
                                     
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
+                                ) {
+                                    Text(
                                             "Backbone atoms: $backboneAtoms",
-                                            style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray
-                                        )
-                                        Text(
+                                    )
+                                    Text(
                                             "Side chain atoms: $sidechainAtoms",
-                                            style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray
                                         )
                                     }
@@ -438,7 +446,7 @@ fun InfoPanel(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
+                                    Text(
                                             "α-helix: $helixCount atoms",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color(0xFFFF3B30)
@@ -450,9 +458,9 @@ fun InfoPanel(
                                         )
                                         Text(
                                             "Coil: $coilCount atoms",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.Gray
-                                        )
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
                                     }
                                 }
                                 
@@ -541,7 +549,7 @@ fun InfoPanel(
                             tint = Color.Gray
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
+                            Text(
                             "No Ligands Detected",
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.Gray
@@ -619,8 +627,8 @@ fun InfoPanel(
                         // 아이폰 스타일: 개별 리간드들
                         ligandGroups.keys.sorted().forEach { ligandName ->
                             val ligandAtoms = ligandGroups[ligandName] ?: emptyList()
-                            val uniqueChains = ligandAtoms.map { it.chain }.toSet()
-                            
+                        val uniqueChains = ligandAtoms.map { it.chain }.toSet()
+                        
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
@@ -745,57 +753,415 @@ fun InfoPanel(
                                     }
                                     
                                     // 아이폰 스타일: 인터랙티브 버튼들
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        val isHighlighted = uiState.highlightedChains.contains("ligand:$ligandName")
-                                        val isFocused = uiState.focusedElement == "ligand:$ligandName"
-                                        
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    val isHighlighted = uiState.highlightedChains.contains("ligand:$ligandName")
+                                    val isFocused = uiState.focusedElement == "ligand:$ligandName"
+                                    
                                         // Highlight 버튼 (아이폰 스타일)
-                                        Button(
-                                            onClick = { 
-                                                onStartUpdating()
-                                                viewModel.toggleLigandHighlight(ligandName)
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
+                                    Button(
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.toggleLigandHighlight(ligandName)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isHighlighted) Color(0xFF007AFF) else Color(0xFF007AFF).copy(alpha = 0.1f),
                                                 contentColor = if (isHighlighted) Color.White else Color(0xFF007AFF)
-                                            ),
-                                            shape = RoundedCornerShape(16.dp)
-                                        ) {
-                                            Icon(
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Icon(
                                                 if (isHighlighted) Icons.Default.Edit else Icons.Default.Edit,
-                                                contentDescription = null,
+                                            contentDescription = null,
                                                 modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 if (isHighlighted) "Unhighlight" else "Highlight",
                                                 style = MaterialTheme.typography.labelSmall
                                             )
-                                        }
-                                        
+                                    }
+                                    
                                         // Focus 버튼 (아이폰 스타일)
-                                        Button(
-                                            onClick = { 
-                                                onStartUpdating()
-                                                viewModel.toggleLigandFocus(ligandName)
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
+                                    Button(
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.toggleLigandFocus(ligandName)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isFocused) Color(0xFF34C759) else Color(0xFF34C759).copy(alpha = 0.1f),
                                                 contentColor = if (isFocused) Color.White else Color(0xFF34C759)
-                                            ),
-                                            shape = RoundedCornerShape(16.dp)
-                                        ) {
-                                            Icon(
-                                                if (isFocused) Icons.Default.MyLocation else Icons.Default.LocationOn,
-                                                contentDescription = null,
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Icon(
+                                            if (isFocused) Icons.Default.MyLocation else Icons.Default.LocationOn,
+                                            contentDescription = null,
                                                 modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                if (isFocused) "Unfocus" else "Focus",
+                                                style = MaterialTheme.typography.labelSmall
                                             )
-                                            Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                }
+                            }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            InfoTab.POCKETS -> {
+                val pockets = structure.atoms.filter { it.isPocket }
+                val pocketGroups = pockets.groupBy { it.residueName }
+                
+                if (pockets.isEmpty()) {
+                    // 아이폰 스타일: 빈 상태 메시지
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Spacer(modifier = Modifier.height(40.dp))
+                        Icon(
+                            Icons.Default.Explore,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                            "No Binding Pockets Detected",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "This structure does not contain any identified binding pockets or active sites.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(40.dp))
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // 아이폰 스타일: 포켓 개요
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFAF52DE).copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    "Binding Pocket Overview",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Column {
+                                        Text(
+                                            "Total Pockets",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.Gray
+                                        )
+                                        Text(
+                                            "${pocketGroups.size}",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFAF52DE)
+                                        )
+                                    }
+                                    
+                                    Column {
+                                    Text(
+                                        "Total Atoms",
+                                        style = MaterialTheme.typography.labelSmall,
+                                            color = Color.Gray
+                                    )
+                                    Text(
+                                        "${pockets.size}",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFFF9500)
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        
+                        // 아이폰 스타일: 개별 포켓들
+                        pocketGroups.keys.sorted().forEach { pocketName ->
+                            val pocketAtoms = pocketGroups[pocketName] ?: emptyList()
+                        val uniqueChains = pocketAtoms.map { it.chain }.toSet()
+                        
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    // 포켓 헤더
+                                    Text(
+                                        pocketName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    
+                                    // 포켓 정보
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Atoms",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                "${pocketAtoms.size}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Chains",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                uniqueChains.sorted().joinToString(", "),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        
+                                        // Element composition
+                                        val elementCounts = pocketAtoms.groupBy { it.element }
+                                            .mapValues { it.value.size }
+                                            .toList()
+                                            .sortedByDescending { it.second }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Elements",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                elementCounts.joinToString(", ") { "${it.first}${it.second}" },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    
+                                    // Pocket Characteristics
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            "Pocket Characteristics",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Accessibility",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                if (pocketAtoms.size > 10) "Surface exposed" else "Buried",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Size",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                "${pocketAtoms.size} atoms",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Depth",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                when {
+                                                    pocketAtoms.size < 5 -> "Shallow"
+                                                    pocketAtoms.size < 15 -> "Medium"
+                                                    else -> "Deep"
+                                                },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    }
+                                    
+                                    // Functional Importance
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            "Functional Importance",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Binding Potential",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                when {
+                                                    pocketAtoms.size > 20 -> "High"
+                                                    pocketAtoms.size > 10 -> "Medium"
+                                                    else -> "Low"
+                                                },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = when {
+                                                    pocketAtoms.size > 20 -> Color(0xFF34C759)
+                                                    pocketAtoms.size > 10 -> Color(0xFFFF9500)
+                                                    else -> Color(0xFFFF3B30)
+                                                }
+                                            )
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                "Conservation",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                if (pocketAtoms.any { it.residueName in listOf("ALA", "VAL", "ILE", "LEU", "MET", "PHE", "TRP") }) "Conserved" else "Variable",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (pocketAtoms.any { it.residueName in listOf("ALA", "VAL", "ILE", "LEU", "MET", "PHE", "TRP") }) Color(0xFF34C759) else Color.Gray
+                                            )
+                                        }
+                                    }
+                                    
+                                    // 아이폰 스타일: 인터랙티브 버튼들
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    val isHighlighted = uiState.highlightedChains.contains("pocket:$pocketName")
+                                    val isFocused = uiState.focusedElement == "pocket:$pocketName"
+                                    
+                                        // Highlight 버튼 (아이폰 스타일)
+                                    Button(
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.togglePocketHighlight(pocketName)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isHighlighted) Color(0xFF007AFF) else Color(0xFF007AFF).copy(alpha = 0.1f),
+                                                contentColor = if (isHighlighted) Color.White else Color(0xFF007AFF)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Icon(
+                                                if (isHighlighted) Icons.Default.Edit else Icons.Default.Edit,
+                                            contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                if (isHighlighted) "Unhighlight" else "Highlight",
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                    }
+                                    
+                                        // Focus 버튼 (아이폰 스타일)
+                                    Button(
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.togglePocketFocus(pocketName)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isFocused) Color(0xFF34C759) else Color(0xFF34C759).copy(alpha = 0.1f),
+                                                contentColor = if (isFocused) Color.White else Color(0xFF34C759)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Icon(
+                                            if (isFocused) Icons.Default.MyLocation else Icons.Default.LocationOn,
+                                            contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 if (isFocused) "Unfocus" else "Focus",
                                                 style = MaterialTheme.typography.labelSmall
@@ -805,118 +1171,6 @@ fun InfoPanel(
                                 }
                             }
                         }
-                    }
-                }
-            }
-            
-            InfoTab.POCKETS -> {
-                val pockets = structure.atoms.filter { it.isPocket }
-                    .groupBy { it.residueName }
-                    .mapValues { (_, atoms) -> atoms.first() }
-                
-                if (pockets.isEmpty()) {
-                    InfoCard(
-                        title = "No Pockets Found",
-                        content = {
-                            Text(
-                                "This structure does not contain any binding pockets.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    )
-                } else {
-                    InfoCard(
-                        title = "Binding Pockets Summary",
-                        backgroundColor = Color(0xFF9C27B0).copy(alpha = 0.1f),
-                        borderColor = Color(0xFF9C27B0).copy(alpha = 0.3f),
-                        content = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        "Total Atoms",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        "${pockets.size}",
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFE65100)
-                                    )
-                                }
-                            }
-                        }
-                    )
-                    
-                    pockets.forEach { (pocketName, _) ->
-                        val pocketAtoms = structure.atoms.filter { it.residueName == pocketName }
-                        val uniqueChains = pocketAtoms.map { it.chain }.toSet()
-                        
-                        InfoCard(
-                            title = "Pocket: $pocketName",
-                            backgroundColor = Color(0xFF9C27B0).copy(alpha = 0.1f),
-                            borderColor = Color(0xFF9C27B0).copy(alpha = 0.3f),
-                            content = {
-                                InfoRow("Atoms", "${pocketAtoms.size}", "Total number of atoms in this pocket")
-                                InfoRow("Chains", uniqueChains.sorted().joinToString(", "), "Chains that contain this pocket")
-                                
-                                val uniqueElements = pocketAtoms.map { it.element }.toSet()
-                                InfoRow("Elements", uniqueElements.sorted().joinToString(", "), "Chemical elements in this pocket")
-                                
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    val isHighlighted = uiState.highlightedChains.contains("pocket:$pocketName")
-                                    val isFocused = uiState.focusedElement == "pocket:$pocketName"
-                                    
-                                    Button(
-                                        onClick = { 
-                                            onStartUpdating()
-                                            viewModel.togglePocketHighlight(pocketName)
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isHighlighted) Color(0xFF9C27B0) else Color(0xFF9C27B0).copy(alpha = 0.1f),
-                                            contentColor = if (isHighlighted) Color.White else Color(0xFF9C27B0)
-                                        ),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Icon(
-                                            if (isHighlighted) Icons.Default.CheckCircle else Icons.Default.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(if (isHighlighted) "Unhighlight" else "Highlight")
-                                    }
-                                    
-                                    Button(
-                                        onClick = { 
-                                            onStartUpdating()
-                                            viewModel.togglePocketFocus(pocketName)
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isFocused) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.1f),
-                                            contentColor = if (isFocused) Color.White else Color(0xFF4CAF50)
-                                        ),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Icon(
-                                            if (isFocused) Icons.Default.MyLocation else Icons.Default.LocationOn,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(if (isFocused) "Unfocus" else "Focus")
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -1081,7 +1335,7 @@ fun InfoPanel(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
+                                Text(
                                 "Physical-Chemical Properties",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
@@ -1376,9 +1630,9 @@ fun InfoPanel(
                                                         "${(index * 60 + 1).toString().padStart(3)} $chunk",
                                                         style = MaterialTheme.typography.bodySmall,
                                                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-                                                }
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                                             }
                                         }
                                     }
@@ -1456,29 +1710,650 @@ fun InfoPanel(
                 }
             }
             
-            InfoTab.ANNOTATIONS -> {
-                if (structure.annotations.isEmpty()) {
-                    InfoCard(
-                        title = "No Annotations Found",
-                        content = {
+            InfoTab.SEQUENCE -> {
+                val chains = structure.atoms.map { it.chain }.toSet()
+                val totalResidues = structure.atoms.map { "${it.chain}:${it.residueNumber}" }.toSet().size
+                
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // 아이폰 스타일: 시퀀스 개요
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF007AFF).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             Text(
-                                "This structure does not contain any annotations.",
-                                style = MaterialTheme.typography.bodyMedium
+                                "Sequence Overview",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        "Chains",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        "${chains.size}",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF007AFF)
+                                    )
+                                }
+                                
+                                Column {
+                                    Text(
+                                        "Total Residues",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        "$totalResidues",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF34C759)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    
+                    // 아이폰 스타일: 개별 체인 시퀀스들
+                    chains.sorted().forEach { chain ->
+                        val chainAtoms = structure.atoms
+                            .filter { it.chain == chain }
+                            .sortedBy { it.residueNumber }
+                        
+                        val uniqueResidues = chainAtoms.map { it.residueNumber }.toSet().sorted()
+                        val sequence = uniqueResidues.map { resNum ->
+                            val resName = chainAtoms.first { it.residueNumber == resNum }?.residueName ?: "X"
+                            residueToSingleLetter(resName)
+                        }.joinToString("")
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF34C759).copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // 체인 헤더
+                                Text(
+                                    "Chain $chain Sequence",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                // 시퀀스 정보
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Length: ${sequence.length} amino acids",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        "Residues: ${uniqueResidues.size}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                                
+                                // 아이폰 스타일: 전체 시퀀스 표시
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.Gray.copy(alpha = 0.1f)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp)
+                                    ) {
+                                        Text(
+                                            "Full Sequence:",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            sequence,
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                
+                                // 아이폰 스타일: 시퀀스 구성
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "Sequence Composition",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    
+                                    val chainResidues = chainAtoms.map { it.residueName }
+                                    val composition = chainResidues.groupBy { it }
+                                        .mapValues { it.value.size }
+                                        .toList()
+                                        .sortedByDescending { it.second }
+                                        .take(10)
+                                    
+                                    composition.forEach { (residue, count) ->
+                                        val percentage = (count.toDouble() / chainResidues.size * 100)
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                residue,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.width(50.dp)
+                                            )
+                                            
+                                            Text(
+                                                "$count",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray,
+                                                modifier = Modifier.width(30.dp),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            
+                                            // 아이폰 스타일: 진행률 바
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(16.dp)
+                                                    .background(Color.Gray.copy(alpha = 0.2f))
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxHeight()
+                                                        .fillMaxWidth((percentage / 100f).toFloat())
+                                                        .background(
+                                                            color = getResidueColorForComposition(residue),
+                                                            shape = RoundedCornerShape(2.dp)
+                                                        )
+                                                )
+                                            }
+                                            
+                                            Text(
+                                                "${String.format("%.1f", percentage)}%",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray,
+                                                modifier = Modifier.width(40.dp),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 아이폰 스타일: 전체 시퀀스 분석
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFF9500).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Overall Sequence Analysis",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            val allResidues = structure.atoms.map { it.residueName }
+                            val composition = allResidues.groupBy { it }
+                                .mapValues { it.value.size }
+                                .toList()
+                                .sortedByDescending { it.second }
+                            
+                            // 가장 흔한 잔기들
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "Most Common Residues",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                
+                                composition.take(5).forEach { (residue, count) ->
+                                    val percentage = (count.toDouble() / allResidues.size * 100)
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            residue,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.width(60.dp)
+                                        )
+                                        
+                                        Text(
+                                            "$count",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.Gray,
+                                            modifier = Modifier.width(40.dp),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        
+                                        // 아이폰 스타일: 진행률 바 (더 큰 크기)
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(20.dp)
+                                                .background(Color.Gray.copy(alpha = 0.2f))
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth((percentage / 100f).toFloat())
+                                                    .background(
+                                                        color = getResidueColorForComposition(residue),
+                                                        shape = RoundedCornerShape(4.dp)
+                                                    )
+                                            )
+                                        }
+                                        
+                                        Text(
+                                            "${String.format("%.1f", percentage)}%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.Gray,
+                                            modifier = Modifier.width(50.dp),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            // 시퀀스 통계
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "Sequence Statistics",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Unique Residue Types",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        "${composition.size}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Average Residue Frequency",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        String.format("%.1f", allResidues.size.toDouble() / composition.size),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            InfoTab.ANNOTATIONS -> {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // 아이폰 스타일: Structure Information
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFAF52DE).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Structure Information",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            InfoRow(
+                                label = "PDB ID",
+                                value = proteinInfo?.id ?: "Unknown",
+                                description = "Protein Data Bank identifier - unique code for this structure"
+                            )
+                            
+                            InfoRow(
+                                label = "Total Atoms",
+                                value = "${structure.atoms.size}",
+                                description = "All atoms in the structure including protein and ligands"
+                            )
+                            
+                            InfoRow(
+                                label = "Total Bonds",
+                                value = "${structure.bonds.size}",
+                                description = "Chemical bonds connecting atoms in the structure"
+                            )
+                            
+                            val chainCount = structure.atoms.map { it.chain }.toSet().size
+                            InfoRow(
+                                label = "Chains",
+                                value = "$chainCount",
+                                description = "Number of polypeptide chains in the protein"
                             )
                         }
-                    )
-                } else {
-                    structure.annotations.forEach { annotation ->
-                        InfoCard(
-                            title = annotation.type.displayName,
-                            content = {
-                                Text(
-                                    text = annotation.value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.fillMaxWidth()
+                    }
+                    
+                    // 아이폰 스타일: Chemical Composition
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFF9500).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Chemical Composition",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            val uniqueElements = structure.atoms.map { it.element }.toSet()
+                            InfoRow(
+                                label = "Elements",
+                                value = "${uniqueElements.size}",
+                                description = "Number of different chemical elements present"
+                            )
+                            
+                            val elementList = uniqueElements.sorted().joinToString(", ")
+                            InfoRow(
+                                label = "Element Types",
+                                value = elementList,
+                                description = "Chemical elements found in this structure"
+                            )
+                            
+                            val chainList = structure.atoms.map { it.chain }.toSet().sorted().joinToString(", ")
+                            InfoRow(
+                                label = "Chain IDs",
+                                value = chainList,
+                                description = "Identifiers for each polypeptide chain"
+                            )
+                        }
+                    }
+                    
+                    // 아이폰 스타일: Protein Classification
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF00C7BE).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Protein Classification",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            val uniqueResidues = structure.atoms.map { it.residueName }.toSet()
+                            InfoRow(
+                                label = "Residue Types",
+                                value = "${uniqueResidues.size}",
+                                description = "Number of different amino acid types present"
+                            )
+                            
+                            val residueList = uniqueResidues.sorted().joinToString(", ")
+                            InfoRow(
+                                label = "Residue Names",
+                                value = residueList,
+                                description = "Three-letter codes of amino acids in this protein"
+                            )
+                            
+                            val totalResidues = structure.atoms.map { "${it.chain}:${it.residueNumber}" }.toSet().size
+                            InfoRow(
+                                label = "Total Residues",
+                                value = "$totalResidues",
+                                description = "Total number of amino acid residues across all chains"
+                            )
+                        }
+                    }
+                    
+                    // 아이폰 스타일: Biological Context
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF34C759).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Biological Context",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            InfoRow(
+                                label = "Structure Type",
+                                value = proteinInfo?.classification ?: "Protein",
+                                description = "This is a protein structure determined by experimental methods"
+                            )
+                            
+                            InfoRow(
+                                label = "Data Source",
+                                value = "PDB",
+                                description = "Protein Data Bank - worldwide repository of 3D structure data"
+                            )
+                            
+                            InfoRow(
+                                label = "Quality",
+                                value = proteinInfo?.experimentalMethod ?: "Experimental",
+                                description = "Structure determined through experimental techniques like X-ray crystallography"
+                            )
+                            
+                            val hasLigands = structure.atoms.any { it.isLigand }
+                            InfoRow(
+                                label = "Ligands",
+                                value = if (hasLigands) "Present" else "None",
+                                description = if (hasLigands) "Small molecules or ions bound to the protein" else "No small molecules detected in this structure"
+                            )
+                            
+                            // Resolution 정보 표시 (null이면 기본값으로 표시)
+                            proteinInfo?.resolution?.let { resolution ->
+                                InfoRow(
+                                    label = "Resolution",
+                                    value = "${String.format("%.2f", resolution)} Å",
+                                    description = "Crystallographic resolution of the structure"
                                 )
                             }
-                        )
+                            
+                            // Organism 정보 표시 (null이면 기본값으로 표시)
+                            proteinInfo?.organism?.let { organism ->
+                                InfoRow(
+                                    label = "Organism",
+                                    value = organism,
+                                    description = "Source organism of the protein"
+                                )
+                            }
+                            
+                            // Deposition Date 정보 표시
+                            proteinInfo?.depositionDate?.let { date ->
+                                InfoRow(
+                                    label = "Deposition Date",
+                                    value = date,
+                                    description = "Date when structure was deposited in PDB"
+                                )
+                            }
+                            
+                            // Molecular Weight 정보 표시
+                            proteinInfo?.molecularWeight?.let { weight ->
+                                InfoRow(
+                                    label = "Molecular Weight",
+                                    value = "${String.format("%.1f", weight)} kDa",
+                                    description = "Calculated molecular weight of the protein"
+                                )
+                            }
+                        }
+                    }
+                    
+                    // 아이폰 스타일: Additional Annotations (원본 어노테이션이 있는 경우)
+                    if (structure.annotations.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF5856D6).copy(alpha = 0.05f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Note,
+                                            contentDescription = null,
+                                            tint = Color(0xFF5856D6),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Text(
+                                            "Additional Annotations",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    
+                                    Text(
+                                        "${structure.annotations.size} items",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                                
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    structure.annotations.forEach { annotation ->
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                annotation.type.displayName,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            
+                                            Text(
+                                                annotation.value,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            
+                                            if (annotation.description.isNotEmpty()) {
+                                                Text(
+                                                    annotation.description,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1538,16 +2413,16 @@ private fun StatCard(
     modifier: Modifier = Modifier
 ) {
     // 아이폰 스타일: StatCard - 배경 없이 간단한 레이아웃
-    Column(
+        Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = title,
