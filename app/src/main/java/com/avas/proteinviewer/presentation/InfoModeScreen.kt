@@ -421,8 +421,7 @@ fun InfoModeScreen(
                                 proteinInfo = uiState.currentProteinInfo,
                                 viewModel = viewModel,
                                 uiState = uiState,
-                                onStartUpdating = { startInfoUpdating() },
-                                onStopUpdating = { stopInfoUpdating() }
+                                onStartUpdating = { startInfoUpdating() }
                             )
                 }
             }
