@@ -18,6 +18,14 @@ fun ProteinOpenGLView(
     renderStyle: RenderStyle = RenderStyle.RIBBON,
     colorMode: ColorMode = ColorMode.CHAIN,
     highlightedChains: Set<String> = emptySet(),
+    rotationEnabled: Boolean = false,
+    zoomLevel: Float = 1.0f,
+    transparency: Float = 1.0f,
+    atomSize: Float = 1.0f,
+    ribbonWidth: Float = 1.2f,
+    ribbonFlatness: Float = 0.5f,
+    isInfoMode: Boolean = false, // Info 모드 여부
+    onRenderingComplete: () -> Unit = {}, // 렌더링 완료 콜백
     modifier: Modifier = Modifier
 ) {
     AndroidView(
@@ -31,6 +39,17 @@ fun ProteinOpenGLView(
             view.updateRenderStyle(renderStyle)
             view.updateColorMode(colorMode)
             view.updateHighlightedChains(highlightedChains)
+            view.updateOptions(
+                rotationEnabled = rotationEnabled,
+                zoomLevel = zoomLevel,
+                transparency = transparency,
+                atomSize = atomSize,
+                ribbonWidth = ribbonWidth,
+                ribbonFlatness = ribbonFlatness
+            )
+            view.setInfoMode(isInfoMode) // Info 모드 설정
+            view.setAutoRotation(rotationEnabled) // 자동 회전 설정
+            view.setOnRenderingCompleteCallback(onRenderingComplete) // 렌더링 완료 콜백 설정
         },
         modifier = modifier
     )

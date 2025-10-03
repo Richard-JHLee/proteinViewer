@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 enum class ViewerPanel {
     NONE, STYLE, OPTIONS, COLORS
@@ -42,6 +46,26 @@ fun ProteinViewerScreen(
 ) {
     var selectedSecondaryPanel by remember { mutableStateOf(SecondaryPanelType.NONE) }
     
+    // Options values
+    var rotationEnabled by remember { mutableStateOf(false) }
+    var zoomLevel by remember { mutableStateOf(1.0f) }
+    var transparency by remember { mutableStateOf(1.0f) }
+    var atomSize by remember { mutableStateOf(1.0f) }
+    var ribbonWidth by remember { mutableStateOf(1.2f) }
+    var ribbonFlatness by remember { mutableStateOf(0.5f) }
+    
+    // 로딩 상태
+    var isUpdating by remember { mutableStateOf(false) }
+    
+    // 로딩 상태 관리 함수들
+    fun startUpdating() {
+        isUpdating = true
+    }
+    
+    fun stopUpdating() {
+        isUpdating = false
+    }
+    
     // Highlight All 상태 계산 (모든 체인이 하이라이트되어 있는지)
     val allChains = structure.chains.map { "chain:$it" }.toSet()
     val highlightAllChains = allChains.isNotEmpty() && allChains.all { it in highlightedChains }
@@ -54,10 +78,33 @@ fun ProteinViewerScreen(
             renderStyle = renderStyle,
             colorMode = colorMode,
             highlightedChains = highlightedChains,
+            rotationEnabled = rotationEnabled,
+            zoomLevel = zoomLevel,
+            transparency = transparency,
+            atomSize = atomSize,
+            ribbonWidth = ribbonWidth,
+            ribbonFlatness = ribbonFlatness,
+            onRenderingComplete = { stopUpdating() }, // 렌더링 완료 시 로딩 해제
             modifier = Modifier
                 .fillMaxSize()
                 .align(Alignment.Center)
         )
+        
+        // 로딩 인디케이터 (3D 뷰 위에 표시)
+        if (isUpdating) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .align(Alignment.Center)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White,
+                    strokeWidth = 4.dp
+                )
+            }
+        }
         
         // 우상단 버튼들 (아이폰과 동일)
         Row(
@@ -140,7 +187,9 @@ fun ProteinViewerScreen(
                             SecondaryRenderingStyleBar(
                                 selectedStyle = renderStyle,
                                 onStyleSelect = { style ->
+                                    startUpdating()
                                     onStyleChange(style)
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
                                     // Secondary bar 유지 (iPhone과 동일)
                                 },
                                 highlightAllChains = highlightAllChains,
@@ -151,13 +200,63 @@ fun ProteinViewerScreen(
                             // iPhone처럼: 4개 Color Mode
                             SecondaryColorModeBar(
                                 selectedMode = colorMode,
-                                onModeSelect = onColorModeChange
+                                onModeSelect = { mode ->
+                                    startUpdating()
+                                    onColorModeChange(mode)
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                }
                             )
                         }
                         SecondaryPanelType.OPTIONS_MENU -> {
                             // iPhone처럼: Sliders (Rotation, Zoom, Opacity, Size, Ribbon Width/Flatness)
                             SecondaryOptionsBar(
-                                renderStyle = renderStyle
+                                renderStyle = renderStyle,
+                                rotationEnabled = rotationEnabled,
+                                onRotationEnabledChange = { 
+                                    rotationEnabled = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                zoomLevel = zoomLevel,
+                                onZoomLevelChange = { 
+                                    zoomLevel = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                transparency = transparency,
+                                onTransparencyChange = { 
+                                    transparency = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                atomSize = atomSize,
+                                onAtomSizeChange = { 
+                                    atomSize = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                ribbonWidth = ribbonWidth,
+                                onRibbonWidthChange = { 
+                                    ribbonWidth = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                ribbonFlatness = ribbonFlatness,
+                                onRibbonFlatnessChange = { 
+                                    ribbonFlatness = it
+                                    startUpdating()
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                },
+                                onReset = {
+                                    startUpdating()
+                                    rotationEnabled = false
+                                    zoomLevel = 1.0f
+                                    transparency = 0.7f
+                                    atomSize = 1.0f
+                                    ribbonWidth = 3.0f
+                                    ribbonFlatness = 0.5f
+                                    // 렌더링 완료 콜백에서 자동으로 stopUpdating() 호출됨
+                                }
                             )
                         }
                         else -> {}
@@ -381,15 +480,21 @@ private fun SecondaryColorModeBar(
 // iPhone 스타일: Secondary Options Bar (Sliders)
 @Composable
 private fun SecondaryOptionsBar(
-    renderStyle: RenderStyle
+    renderStyle: RenderStyle,
+    rotationEnabled: Boolean,
+    onRotationEnabledChange: (Boolean) -> Unit,
+    zoomLevel: Float,
+    onZoomLevelChange: (Float) -> Unit,
+    transparency: Float,
+    onTransparencyChange: (Float) -> Unit,
+    atomSize: Float,
+    onAtomSizeChange: (Float) -> Unit,
+    ribbonWidth: Float,
+    onRibbonWidthChange: (Float) -> Unit,
+    ribbonFlatness: Float,
+    onRibbonFlatnessChange: (Float) -> Unit,
+    onReset: () -> Unit
 ) {
-    var rotationEnabled by remember { mutableStateOf(false) }
-    var zoomLevel by remember { mutableStateOf(1.0f) }
-    var transparency by remember { mutableStateOf(0.7f) }
-    var atomSize by remember { mutableStateOf(1.0f) }
-    var ribbonWidth by remember { mutableStateOf(3.0f) }
-    var ribbonFlatness by remember { mutableStateOf(0.5f) }
-    
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -404,7 +509,7 @@ private fun SecondaryOptionsBar(
             label = "Rotate",
             isToggle = true,
             toggleValue = rotationEnabled,
-            onToggleChange = { rotationEnabled = it },
+            onToggleChange = onRotationEnabledChange,
             modifier = Modifier.width(80.dp)
         )
         
@@ -413,8 +518,8 @@ private fun SecondaryOptionsBar(
             icon = Icons.Default.ZoomIn,
             label = "Zoom",
             sliderValue = zoomLevel,
-            sliderRange = 0.5f..2.0f,
-            onSliderChange = { zoomLevel = it },
+            sliderRange = 0.5f..3.0f, // iPhone과 동일한 범위
+            onSliderChange = onZoomLevelChange,
             modifier = Modifier.width(80.dp)
         )
         
@@ -424,7 +529,7 @@ private fun SecondaryOptionsBar(
             label = "Opacity",
             sliderValue = transparency,
             sliderRange = 0.1f..1.0f,
-            onSliderChange = { transparency = it },
+            onSliderChange = onTransparencyChange,
             modifier = Modifier.width(80.dp)
         )
         
@@ -434,7 +539,7 @@ private fun SecondaryOptionsBar(
             label = "Size",
             sliderValue = atomSize,
             sliderRange = 0.5f..2.0f,
-            onSliderChange = { atomSize = it },
+            onSliderChange = onAtomSizeChange,
             modifier = Modifier.width(80.dp)
         )
         
@@ -445,7 +550,7 @@ private fun SecondaryOptionsBar(
                 label = "Width",
                 sliderValue = ribbonWidth,
                 sliderRange = 1.0f..8.0f,
-                onSliderChange = { ribbonWidth = it },
+                onSliderChange = onRibbonWidthChange,
                 modifier = Modifier.width(80.dp)
             )
         }
@@ -456,10 +561,40 @@ private fun SecondaryOptionsBar(
                 icon = Icons.Default.Rectangle,
                 label = "Flat",
                 sliderValue = ribbonFlatness,
-                sliderRange = 0.0f..1.0f,
-                onSliderChange = { ribbonFlatness = it },
+                sliderRange = 0.1f..1.0f, // iPhone과 동일한 범위
+                onSliderChange = onRibbonFlatnessChange,
                 modifier = Modifier.width(80.dp)
             )
+        }
+        
+        // Reset Button (iPhone과 동일)
+        Button(
+            onClick = onReset,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF44336).copy(alpha = 0.1f)
+            ),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.width(100.dp) // 너비를 80dp에서 100dp로 증가
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset",
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Reset",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 11.sp,
+                    color = Color(0xFFF44336),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

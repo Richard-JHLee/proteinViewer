@@ -21,6 +21,9 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
 ) : GLSurfaceView(context, attrs) {
 
     private val renderer = ProperRibbonRenderer()
+    private var rotationEnabled = false
+    private var isInfoMode = false
+    private var onRenderingCompleteCallback: (() -> Unit)? = null
     
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -43,7 +46,8 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
             // Single finger만 orbit (두 손가락은 onTouchEvent에서 처리)
-            if (e2.pointerCount == 1 && !isMultiTouch) {
+            // Info 모드이거나 rotationEnabled가 true일 때 회전 허용
+            if (e2.pointerCount == 1 && !isMultiTouch && (isInfoMode || rotationEnabled)) {
                 queueEvent {
                     renderer.orbit(distanceX, distanceY)
                 }
@@ -88,6 +92,29 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         requestRender()
     }
     
+    fun updateOptions(
+        rotationEnabled: Boolean = false,
+        zoomLevel: Float = 1.0f,
+        transparency: Float = 1.0f,
+        atomSize: Float = 1.0f,
+        ribbonWidth: Float = 1.2f,
+        ribbonFlatness: Float = 0.5f
+    ) {
+        this.rotationEnabled = rotationEnabled // 상태 저장
+        queueEvent {
+            renderer.updateOptions(
+                rotationEnabled = rotationEnabled,
+                zoomLevel = zoomLevel,
+                transparency = transparency,
+                atomSize = atomSize,
+                ribbonWidth = ribbonWidth,
+                ribbonFlatness = ribbonFlatness
+            )
+            android.util.Log.d("OpenGL30SurfaceView", "Options updated: rotation=$rotationEnabled, zoom=$zoomLevel, transparency=$transparency, atomSize=$atomSize, ribbonWidth=$ribbonWidth, ribbonFlatness=$ribbonFlatness")
+        }
+        requestRender()
+    }
+    
     fun updateHighlightedChains(highlightedChains: Set<String>) {
         queueEvent {
             renderer.updateHighlightedChains(highlightedChains)
@@ -98,6 +125,11 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val pointerCount = event.pointerCount
+        
+        // Info 모드에서 제스처 디버깅
+        if (isInfoMode && pointerCount == 2) {
+            android.util.Log.d("OpenGL30SurfaceView", "Info mode PAN: action=${event.actionMasked}, pointers=$pointerCount, isMultiTouch=$isMultiTouch")
+        }
         
         // Zoom 제스처 처리 (항상 먼저)
         val scaledHandled = scaleDetector.onTouchEvent(event)
@@ -118,21 +150,28 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (pointerCount == 2 && isMultiTouch && !scaleDetector.isInProgress) {
-                    // 두 손가락 Pan (Zoom 중이 아닐 때)
+                // Info 모드에서는 scaleDetector 체크 우회, Viewer 모드에서는 기존 로직 유지
+                val shouldAllowPan = if (isInfoMode) {
+                    pointerCount == 2 && isMultiTouch
+                } else {
+                    pointerCount == 2 && isMultiTouch && !scaleDetector.isInProgress
+                }
+                
+                if (shouldAllowPan) {
+                    // 두 손가락 Pan
                     val currentX = (event.getX(0) + event.getX(1)) / 2
                     val currentY = (event.getY(0) + event.getY(1)) / 2
                     val dx = currentX - lastX
                     val dy = currentY - lastY
                     
                     queueEvent {
-                        renderer.pan(-dx, dy)
+                        renderer.pan(dx, -dy) // X축은 그대로, Y축만 반대로 처리
                     }
                     requestRender()
                     
                     lastX = currentX
                     lastY = currentY
-                    android.util.Log.d("OpenGL30SurfaceView", "PAN: dx=$dx, dy=$dy")
+                    android.util.Log.d("OpenGL30SurfaceView", "PAN: dx=$dx, dy=$dy, isInfoMode=$isInfoMode")
                 }
             }
             MotionEvent.ACTION_POINTER_UP -> {
@@ -162,6 +201,24 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     override fun onPause() {
         super.onPause()
         android.util.Log.d("OpenGL30SurfaceView", "Surface paused")
+    }
+    
+    fun setInfoMode(isInfoMode: Boolean) {
+        this.isInfoMode = isInfoMode // 상태 저장
+        queueEvent {
+            renderer.setInfoMode(isInfoMode)
+        }
+    }
+    
+    fun setAutoRotation(enabled: Boolean) {
+        queueEvent {
+            renderer.setAutoRotation(enabled)
+        }
+    }
+    
+    fun setOnRenderingCompleteCallback(callback: (() -> Unit)?) {
+        onRenderingCompleteCallback = callback
+        renderer.setOnRenderingCompleteCallback(callback)
     }
     
 }

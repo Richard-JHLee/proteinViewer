@@ -19,6 +19,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avas.proteinviewer.domain.model.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +34,9 @@ fun InfoPanel(
     onClose: () -> Unit,
     proteinInfo: ProteinInfo? = null, // API에서 받은 추가 정보
     viewModel: ProteinViewModel, // ViewModel 추가
-    uiState: ProteinUiState // UI State 추가
+    uiState: ProteinUiState, // UI State 추가
+    onStartUpdating: () -> Unit = {}, // 로딩 시작 함수
+    onStopUpdating: () -> Unit = {} // 로딩 종료 함수
 ) {
     Column(
         modifier = Modifier
@@ -313,7 +319,11 @@ fun InfoPanel(
                                     val isFocused = uiState.focusedElement == "chain:$chain"
                                     
                                     Button(
-                                        onClick = { viewModel.toggleChainHighlight(chain) },
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.toggleChainHighlight(chain)
+                                            // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                        },
                                         modifier = Modifier.weight(1f),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = if (isHighlighted) Color(0xFF2196F3) else Color(0xFF2196F3).copy(alpha = 0.1f),
@@ -331,7 +341,11 @@ fun InfoPanel(
                                     }
                                     
                                     Button(
-                                        onClick = { viewModel.toggleChainFocus(chain) },
+                                        onClick = { 
+                                            onStartUpdating()
+                                            viewModel.toggleChainFocus(chain)
+                                            // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                        },
                                         modifier = Modifier.weight(1f),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = if (isFocused) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.1f),
@@ -625,7 +639,11 @@ fun InfoPanel(
                                         val isFocused = uiState.focusedElement == "ligand:$ligandName"
                                         
                                         Button(
-                                            onClick = { viewModel.toggleLigandHighlight(ligandName) },
+                                            onClick = { 
+                                                onStartUpdating()
+                                                viewModel.toggleLigandHighlight(ligandName)
+                                                // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                            },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isHighlighted) Color(0xFFFF9800) else Color(0xFFFF9800).copy(alpha = 0.1f),
@@ -643,7 +661,11 @@ fun InfoPanel(
                                         }
                                         
                                         Button(
-                                            onClick = { viewModel.toggleLigandFocus(ligandName) },
+                                            onClick = { 
+                                                onStartUpdating()
+                                                viewModel.toggleLigandFocus(ligandName)
+                                                // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                            },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isFocused) Color(0xFF2196F3) else Color(0xFF2196F3).copy(alpha = 0.1f),
@@ -858,7 +880,11 @@ fun InfoPanel(
                                         val isFocused = uiState.focusedElement == "pocket:$pocketName"
                                         
                                         Button(
-                                            onClick = { viewModel.togglePocketHighlight(pocketName) },
+                                            onClick = { 
+                                                onStartUpdating()
+                                                viewModel.togglePocketHighlight(pocketName)
+                                                // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                            },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isHighlighted) Color(0xFF9C27B0) else Color(0xFF9C27B0).copy(alpha = 0.1f),
@@ -876,7 +902,11 @@ fun InfoPanel(
                                         }
                                         
                                         Button(
-                                            onClick = { viewModel.togglePocketFocus(pocketName) },
+                                            onClick = { 
+                                                onStartUpdating()
+                                                viewModel.togglePocketFocus(pocketName)
+                                                // 렌더링 완료 콜백에서 자동으로 stopInfoUpdating() 호출됨
+                                            },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = if (isFocused) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.1f),

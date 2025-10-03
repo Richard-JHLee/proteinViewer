@@ -1,6 +1,7 @@
 package com.avas.proteinviewer.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +30,17 @@ fun InfoModeScreen(
     viewModel: ProteinViewModel,
     onOpenDrawer: () -> Unit
 ) {
+    // Info 모드 전용 로딩 상태
+    var isInfoModeUpdating by remember { mutableStateOf(false) }
+    
+    // 로딩 상태 관리 함수들
+    fun startInfoUpdating() {
+        isInfoModeUpdating = true
+    }
+    
+    fun stopInfoUpdating() {
+        isInfoModeUpdating = false
+    }
     Scaffold(
         bottomBar = {
             // 아이폰과 동일: 하단 고정 탭바 (7개 탭)
@@ -214,8 +226,40 @@ fun InfoModeScreen(
                         // OpenGL ES 3.0 렌더러 사용 (아이폰 SceneKit과 동일)
                         ProteinOpenGLView(
                             structure = uiState.structure,
+                            renderStyle = uiState.renderStyle,
+                            colorMode = uiState.colorMode,
+                            highlightedChains = uiState.highlightedChains,
+                            isInfoMode = true, // Info 모드로 설정
+                            onRenderingComplete = { stopInfoUpdating() }, // 렌더링 완료 시 로딩 해제
                             modifier = Modifier.fillMaxSize()
                         )
+                        
+                        // Info 모드 업데이트 중 로딩 표시
+                        if (isInfoModeUpdating) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Updating structure...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
                     }
                 } else {
                     // 초기 화면 - 아이폰과 동일
@@ -304,7 +348,9 @@ fun InfoModeScreen(
                                 onClose = {},
                                 proteinInfo = uiState.currentProteinInfo, // API 데이터 전달
                                 viewModel = viewModel, // ViewModel 전달
-                                uiState = uiState // UI State 전달
+                                uiState = uiState, // UI State 전달
+                                onStartUpdating = { startInfoUpdating() }, // 로딩 시작
+                                onStopUpdating = { stopInfoUpdating() } // 로딩 종료
                             )
                 }
             }

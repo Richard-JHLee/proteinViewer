@@ -42,6 +42,11 @@ class ArcballCamera {
         targetY = y
         targetZ = z
     }
+    
+    fun setInitialAngles(yawDeg: Float, pitchDeg: Float) {
+        yawRad = Math.toRadians(yawDeg.toDouble()).toFloat()
+        pitchRad = Math.toRadians(pitchDeg.toDouble()).toFloat()
+    }
 
     fun orbit(deltaYawDeg: Float, deltaPitchDeg: Float) {
         val sensitivity = 0.005f

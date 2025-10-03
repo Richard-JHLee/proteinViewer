@@ -27,14 +27,23 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
     private val projectionMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
+    
+    private var onRenderingCompleteCallback: (() -> Unit)? = null
+    private var pendingRenderingComplete = false // 렌더링 완료 콜백 대기 상태
 
     private var program = 0
     private var aPositionHandle = 0
     private var aColorHandle = 0
+    private var aNormalHandle = 0
     private var uMvpHandle = 0
+    private var uModelHandle = 0
+    private var uTransparencyHandle = 0
+    private var uLightPosHandle = 0
+    private var uViewPosHandle = 0
 
     private var vertexVbo = 0
     private var colorVbo = 0
+    private var normalVbo = 0
     private var indexVbo = 0
     private var vao = 0
 
@@ -51,6 +60,14 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
     private var currentColorMode: ColorMode = ColorMode.CHAIN
     private var currentHighlightedChains: Set<String> = emptySet()
+    
+    // Options values
+    private var rotationEnabled: Boolean = false
+    private var zoomLevel: Float = 1.0f
+    private var transparency: Float = 1.0f
+    private var atomSize: Float = 1.0f
+    private var ribbonWidth: Float = 1.2f
+    private var ribbonFlatness: Float = 0.5f
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated - Proper Ribbon Renderer")
@@ -60,7 +77,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glClearColor(1f, 1f, 1f, 1f)
 
         try {
-            program = createProgram(VERT_SHADER, FRAG_SHADER)
+            program = createProgram(VERT_SHADER, FRAG_SHADER_FLAT)
         } catch (ex: RuntimeException) {
             Log.e(TAG, "Failed to create shader program", ex)
             program = 0
@@ -71,12 +88,14 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         aPositionHandle = GLES30.glGetAttribLocation(program, "aPosition")
         aColorHandle = GLES30.glGetAttribLocation(program, "aColor")
         uMvpHandle = GLES30.glGetUniformLocation(program, "uMvp")
+        uTransparencyHandle = GLES30.glGetUniformLocation(program, "uTransparency")
 
-        val buffers = IntArray(3)
-        GLES30.glGenBuffers(3, buffers, 0)
+        val buffers = IntArray(4)
+        GLES30.glGenBuffers(4, buffers, 0)
         vertexVbo = buffers[0]
         colorVbo = buffers[1]
-        indexVbo = buffers[2]
+        normalVbo = buffers[2]
+        indexVbo = buffers[3]
 
         val vaos = IntArray(1)
         GLES30.glGenVertexArrays(1, vaos, 0)
@@ -102,9 +121,42 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
         if (indexCount == 0 || program == 0 || !buffersReady) return
 
+        // 자동 회전 처리
+        if (autoRotationEnabled) {
+            val currentTime = System.currentTimeMillis()
+            val deltaTime = (currentTime - lastFrameTime) / 1000.0f // 초 단위
+            lastFrameTime = currentTime
+            
+            // Y축 주위로 자동 회전 (좌우 회전)
+            val rotationDelta = rotationSpeed * deltaTime
+            camera.orbit(rotationDelta * 50f, 0f) // 50f는 민감도 조정
+        }
+
         GLES30.glUseProgram(program)
         val viewMatrix = camera.viewMatrix()
-        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+        
+        // 모델 매트릭스 (구조물을 원점으로 이동 후 스케일 적용)
+        val modelMatrix = FloatArray(16)
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0)
+        
+        // Info 모드에서만 구조물을 원점으로 이동 (카메라가 원점을 바라보므로)
+        if (isInfoMode) {
+            android.opengl.Matrix.translateM(modelMatrix, 0, -structureCenterX, -structureCenterY, -structureCenterZ)
+        }
+        
+        // 스케일 적용
+        android.opengl.Matrix.scaleM(modelMatrix, 0, structureScale, structureScale, structureScale)
+        
+        // 디버그 로그 (첫 번째 프레임에서만)
+        if (indexCount > 0) {
+            Log.d(TAG, "Model matrix translation: (-$structureCenterX, -$structureCenterY, -$structureCenterZ)")
+            Log.d(TAG, "Model matrix scale: $structureScale")
+        }
+        
+        // MVP 매트릭스 계산 (Model * View * Projection)
+        val tempMatrix = FloatArray(16)
+        Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0)
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0)
 
         GLES30.glBindVertexArray(vao)
 
@@ -116,8 +168,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glEnableVertexAttribArray(aColorHandle)
         GLES30.glVertexAttribPointer(aColorHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
 
-
         GLES30.glUniformMatrix4fv(uMvpHandle, 1, false, mvpMatrix, 0)
+        GLES30.glUniform1f(uTransparencyHandle, transparency)
 
         // 삼각형 메쉬로 Ribbon 렌더링
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexVbo)
@@ -126,6 +178,16 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glDisableVertexAttribArray(aPositionHandle)
         GLES30.glDisableVertexAttribArray(aColorHandle)
         GLES30.glBindVertexArray(0)
+        
+        // 렌더링 완료 콜백 호출 (구조 업데이트가 완료된 경우에만)
+        if (pendingRenderingComplete) {
+            pendingRenderingComplete = false
+            onRenderingCompleteCallback?.let { callback ->
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    callback()
+                }
+            }
+        }
     }
 
     fun updateStructure(structure: PDBStructure?) {
@@ -136,6 +198,111 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             return
         }
         uploadStructure(structure)
+        
+        // 구조물 크기에 맞게 카메라 자동 조정
+        if (structure != null) {
+            adjustCameraForStructure(structure)
+        }
+    }
+    
+    private fun adjustCameraForStructure(structure: PDBStructure) {
+        // 모든 원자의 위치를 분석하여 바운딩 박스 계산
+        var minX = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = Float.MIN_VALUE
+        var minZ = Float.MAX_VALUE
+        var maxZ = Float.MIN_VALUE
+        
+        structure.atoms.forEach { atom ->
+            minX = minOf(minX, atom.position.x)
+            maxX = maxOf(maxX, atom.position.x)
+            minY = minOf(minY, atom.position.y)
+            maxY = maxOf(maxY, atom.position.y)
+            minZ = minOf(minZ, atom.position.z)
+            maxZ = maxOf(maxZ, atom.position.z)
+        }
+        
+        // 구조물의 중심점 계산
+        val centerX = (minX + maxX) / 2f
+        val centerY = (minY + maxY) / 2f
+        val centerZ = (minZ + maxZ) / 2f
+        
+        // 구조물의 경계 반지름 계산 (GLESProteinRenderer 방식)
+        val spanX = maxX - minX
+        val spanY = maxY - minY
+        val spanZ = maxZ - minZ
+        val boundingRadius = maxOf(spanX, spanY, spanZ) * 0.5f
+        
+        // 카메라 타겟 설정 (Info 모드에서만 원점으로, Viewer 모드에서는 구조물 중심으로)
+        if (isInfoMode) {
+            camera.setTarget(0f, 0f, 0f) // Info 모드: 원점을 바라봄
+        } else {
+            camera.setTarget(centerX, centerY, centerZ) // Viewer 모드: 구조물 중심을 바라봄
+        }
+        
+        // 정확한 카메라 거리 계산 (GLESProteinRenderer와 동일한 방식)
+        val distance = boundingRadius / Math.tan(Math.toRadians((camera.fovDeg * 0.5f).toDouble())).toFloat()
+        val optimalDistance = distance * 1.4f
+        
+        // Info 모드와 zoomLevel을 고려한 최종 거리 설정
+        val baseDistance = if (isInfoMode) optimalDistance * 0.7f else optimalDistance
+        val finalDistance = baseDistance / zoomLevel // zoomLevel이 클수록 가까이 (확대)
+        
+        camera.configure(
+            distance = finalDistance,
+            minDistance = boundingRadius * 0.3f + 1f,
+            maxDistance = boundingRadius * 15f
+        )
+        
+        // 카메라 초기 각도 설정 (구조물을 중앙에 잘 볼 수 있는 각도)
+        camera.setInitialAngles(0f, 0f) // yaw: 0도, pitch: 0도 (정면에서 보기)
+        
+        // Info 모드에서만 적절한 스케일링으로 확대 (스타일별 조정)
+        val scaleFactor = if (isInfoMode) {
+            when (currentRenderStyle) {
+                RenderStyle.SPHERES -> 1.5f // Spheres는 조금만 확대
+                RenderStyle.STICKS -> 1.5f // Sticks도 조금만 확대
+                RenderStyle.SURFACE -> 1.5f // Surface도 조금만 확대
+                else -> 2f // Ribbon, Cartoon은 2배 확대
+            }
+        } else {
+            1f // Viewer 모드: 기본 크기
+        }
+        
+        // 구조물 중심점 저장 (나중에 모델 매트릭스에서 사용)
+        structureCenterX = centerX
+        structureCenterY = centerY
+        structureCenterZ = centerZ
+        
+        // 스케일 팩터 적용
+        structureScale = scaleFactor
+        
+        Log.d(TAG, "Structure bounds: min=($minX, $minY, $minZ), max=($maxX, $maxY, $maxZ)")
+        Log.d(TAG, "Structure center: ($centerX, $centerY, $centerZ), boundingRadius=$boundingRadius")
+        Log.d(TAG, "Camera distance: $finalDistance, scale: $scaleFactor")
+    }
+    
+    private var structureScale = 1f // 구조물 스케일 팩터
+    private var isInfoMode = false // Info 모드 여부
+    private var structureCenterX = 0f // 구조물 중심 X
+    private var structureCenterY = 0f // 구조물 중심 Y  
+    private var structureCenterZ = 0f // 구조물 중심 Z
+    
+    // 자동 회전 관련
+    private var autoRotationEnabled = false
+    private var rotationSpeed = 0.5f // 회전 속도 (도/프레임)
+    private var lastFrameTime = System.currentTimeMillis()
+    
+    fun setInfoMode(isInfoMode: Boolean) {
+        this.isInfoMode = isInfoMode
+        Log.d(TAG, "Info mode set to: $isInfoMode")
+        // Info 모드가 변경되면 카메라 설정을 즉시 다시 적용
+        if (currentStructure != null) {
+            adjustCameraForStructure(currentStructure!!)
+            // 구조물을 다시 업로드하여 새로운 설정 적용
+            uploadStructure(currentStructure)
+        }
     }
     
     fun updateRenderStyle(style: RenderStyle) {
@@ -143,6 +310,49 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "Render style changed to: $style")
         // 구조를 다시 업로드하여 렌더링 스타일 변경 적용
         uploadStructure(currentStructure)
+        // 렌더 스타일 변경 후에도 카메라 설정을 다시 적용 (Info 모드 고려)
+        if (currentStructure != null) {
+            adjustCameraForStructure(currentStructure!!)
+            // 렌더링 완료 콜백 대기 상태 설정
+            pendingRenderingComplete = true
+        }
+    }
+    
+    fun updateOptions(
+        rotationEnabled: Boolean = this.rotationEnabled,
+        zoomLevel: Float = this.zoomLevel,
+        transparency: Float = this.transparency,
+        atomSize: Float = this.atomSize,
+        ribbonWidth: Float = this.ribbonWidth,
+        ribbonFlatness: Float = this.ribbonFlatness
+    ) {
+        this.rotationEnabled = rotationEnabled
+        this.zoomLevel = zoomLevel
+        this.transparency = transparency
+        this.atomSize = atomSize
+        this.ribbonWidth = ribbonWidth
+        this.ribbonFlatness = ribbonFlatness
+        
+        // 자동 회전 설정 업데이트
+        setAutoRotation(rotationEnabled)
+        
+        Log.d(TAG, "updateOptions: rotation=$rotationEnabled, zoom=$zoomLevel, transparency=$transparency, atomSize=$atomSize, ribbonWidth=$ribbonWidth, ribbonFlatness=$ribbonFlatness")
+        
+        // 구조가 있으면 다시 업로드
+        currentStructure?.let { 
+            uploadStructure(it)
+            // 렌더링 완료 콜백 대기 상태 설정
+            pendingRenderingComplete = true
+        }
+    }
+    
+    fun setAutoRotation(enabled: Boolean) {
+        autoRotationEnabled = enabled
+        Log.d(TAG, "Auto rotation ${if (enabled) "enabled" else "disabled"}")
+    }
+    
+    fun setOnRenderingCompleteCallback(callback: (() -> Unit)?) {
+        onRenderingCompleteCallback = callback
     }
     
     fun updateColorMode(mode: ColorMode) {
@@ -153,6 +363,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         if (currentStructure != null) {
             uploadStructure(currentStructure)
             Log.d(TAG, "Structure re-uploaded for color mode change")
+            // 렌더링 완료 콜백 대기 상태 설정
+            pendingRenderingComplete = true
         } else {
             Log.w(TAG, "Cannot update color mode: currentStructure is null")
         }
@@ -163,6 +375,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "Highlighted chains updated: $highlightedChains")
         // 구조를 다시 업로드하여 하이라이트 효과 적용
         uploadStructure(currentStructure)
+        // 렌더링 완료 콜백 대기 상태 설정
+        pendingRenderingComplete = true
     }
 
     fun orbit(deltaX: Float, deltaY: Float) {
@@ -214,7 +428,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val sphereData = sphereRenderer.createSphereRenderData(
             atoms = atoms,
             colorMode = currentColorMode,
-            radius = 0.8f,
+            radius = 0.8f * atomSize, // atomSize 적용
             segments = 16  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
@@ -224,7 +438,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         indexCount = sphereData.indices.size
 
         // 버퍼에 업로드
-        uploadToGPU(sphereData.vertices, highlightedColors, sphereData.indices)
+        uploadToGPU(sphereData.vertices, highlightedColors, sphereData.normals, sphereData.indices)
 
         Log.d(TAG, "Uploaded ${sphereData.vertices.size / 3} vertices, $indexCount indices for spheres")
     }
@@ -244,7 +458,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val sphereData = sphereRenderer.createSphereRenderData(
             atoms = atoms,
             colorMode = currentColorMode,
-            radius = 0.5f, // Sticks용 구체 크기 (Spheres보다 작게)
+            radius = 0.5f * atomSize, // Sticks용 구체 크기 (Spheres보다 작게) + atomSize 적용
             segments = 12  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
@@ -309,7 +523,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         indexCount = allIndices.size
 
         // 버퍼에 업로드
-        uploadToGPU(allVertices, allColors, allIndices)
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
 
         Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for sticks")
     }
@@ -403,7 +617,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         indexCount = allIndices.size
 
         // 버퍼에 업로드
-        uploadToGPU(allVertices, allColors, allIndices)
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
 
         Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for cartoon")
     }
@@ -641,7 +855,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val sphereData = sphereRenderer.createSphereRenderData(
             atoms = atoms,
             colorMode = ColorMode.UNIFORM, // Surface는 항상 회색
-            radius = 1.0f, // Surface용 큰 구체
+            radius = 1.0f * atomSize, // Surface용 큰 구체 + atomSize 적용
             segments = 20  // 매끄러운 구체 (회전 시 각진 모서리 제거)
         )
 
@@ -651,7 +865,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         indexCount = sphereData.indices.size
 
         // 버퍼에 업로드
-        uploadToGPU(sphereData.vertices, highlightedColors, sphereData.indices)
+        uploadToGPU(sphereData.vertices, highlightedColors, sphereData.normals, sphereData.indices)
 
         Log.d(TAG, "Uploaded ${sphereData.vertices.size / 3} vertices, $indexCount indices for surface")
     }
@@ -691,8 +905,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             // Catmull-Rom 스플라인으로 부드러운 곡선 생성
             val splinePoints = generateCatmullRomSpline(sortedAtoms, numSegments = 10)
             
-            // 튜브 메쉬 생성
-            val mesh = createTubeMesh(splinePoints, ribbonRadius, tubeSegments)
+            // 튜브 메쉬 생성 (ribbonWidth 적용)
+            val mesh = createTubeMesh(splinePoints, ribbonRadius * ribbonWidth, tubeSegments)
             
             // 체인 하이라이트 상태 확인 (iPhone과 동일)
             val chainKey = "chain:$chain"
@@ -749,7 +963,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         indexCount = allIndices.size
 
         // 버퍼에 업로드
-        uploadToGPU(allVertices, allColors, allIndices)
+        uploadToGPU(allVertices, allColors, allNormals, allIndices)
 
         Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices")
     }
@@ -866,13 +1080,17 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             val right = direction.cross(up).normalize()
             val normal = direction.cross(right).normalize()
 
-            // 원형 단면 생성
+            // 타원형 단면 생성 (ribbonFlatness 적용)
             for (j in 0..segments) {
                 val angle = (j.toFloat() / segments) * 2 * PI.toFloat()
                 val cosAngle = cos(angle)
                 val sinAngle = sin(angle)
 
-                val offset = (right * cosAngle + normal * sinAngle) * radius
+                // ribbonFlatness로 타원형 만들기 (0.1=매우 납작, 1.0=원형)
+                val horizontalRadius = radius
+                val verticalRadius = radius * ribbonFlatness
+
+                val offset = (right * cosAngle * horizontalRadius + normal * sinAngle * verticalRadius)
                 val vertex = p1 + offset
 
                 vertices.addAll(listOf(vertex.x, vertex.y, vertex.z))
@@ -900,6 +1118,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun uploadToGPU(
         vertices: List<Float>,
         colors: List<Float>,
+        normals: List<Float>,
         indices: List<Int>
     ) {
         val vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
@@ -910,6 +1129,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         colors.forEach { colorBuffer.put(it) }
         colorBuffer.flip()
 
+        val normalBuffer = ByteBuffer.allocateDirect(normals.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+        normals.forEach { normalBuffer.put(it) }
+        normalBuffer.flip()
+
         val indexBuffer = ByteBuffer.allocateDirect(indices.size * 4).order(ByteOrder.nativeOrder()).asIntBuffer()
         indices.forEach { indexBuffer.put(it) }
         indexBuffer.flip()
@@ -919,6 +1142,9 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, colorVbo)
         GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, colorBuffer.capacity() * 4, colorBuffer, GLES30.GL_STATIC_DRAW)
+
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, normalVbo)
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, normalBuffer.capacity() * 4, normalBuffer, GLES30.GL_STATIC_DRAW)
 
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexVbo)
         GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexBuffer.capacity() * 4, indexBuffer, GLES30.GL_STATIC_DRAW)
@@ -1009,20 +1235,63 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         private const val VERT_SHADER = """#version 300 es
 layout (location = 0) in vec3 aPosition;
 layout (location = 1) in vec3 aColor;
+layout (location = 2) in vec3 aNormal;
 uniform mat4 uMvp;
+uniform mat4 uModel;
 out vec3 vColor;
+out vec3 vNormal;
+out vec3 vPosition;
 void main() {
     gl_Position = uMvp * vec4(aPosition, 1.0);
     vColor = aColor;
+    vNormal = mat3(uModel) * aNormal;
+    vPosition = vec3(uModel * vec4(aPosition, 1.0));
 }"""
 
-        private const val FRAG_SHADER = """#version 300 es
+        private const val FRAG_SHADER_FLAT = """#version 300 es
 precision mediump float;
 in vec3 vColor;
+uniform float uTransparency;
 out vec4 fragColor;
 void main() {
-    // 완전히 단순한 색상 렌더링 (노멀 벡터 제거)
-    fragColor = vec4(vColor, 1.0);
+    // 플랫 색상 렌더링 (Ribbon/Cartoon용)
+    fragColor = vec4(vColor, uTransparency);
+}"""
+
+        private const val FRAG_SHADER_LIT = """#version 300 es
+precision mediump float;
+in vec3 vColor;
+in vec3 vNormal;
+in vec3 vPosition;
+uniform float uTransparency;
+uniform vec3 uLightPos;
+uniform vec3 uViewPos;
+out vec4 fragColor;
+void main() {
+    // 조명 위치가 (0,0,0)이면 플랫 색상 렌더링 (Ribbon/Cartoon용)
+    if (length(uLightPos) < 0.1) {
+        fragColor = vec4(vColor, uTransparency);
+        return;
+    }
+    
+    // 정규화된 노멀 벡터
+    vec3 normal = normalize(vNormal);
+    
+    // 조명 벡터들
+    vec3 lightDir = normalize(uLightPos - vPosition);
+    vec3 viewDir = normalize(uViewPos - vPosition);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    
+    // 조명 계산 (Phong 모델)
+    float ambient = 0.3; // 주변광
+    float diffuse = max(dot(normal, lightDir), 0.0); // 확산광
+    float specular = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); // 반사광
+    
+    // 최종 색상 계산
+    vec3 lighting = ambient + diffuse * 0.7 + specular * 0.3;
+    vec3 finalColor = vColor * lighting;
+    
+    fragColor = vec4(finalColor, uTransparency);
 }"""
 
         private fun createProgram(vertexSrc: String, fragmentSrc: String): Int {

@@ -68,8 +68,11 @@ class SphereRenderer {
                     center.z + z
                 ))
                 
-                // 모든 정점에 동일한 노멀 벡터 적용 (무늬 제거)
-                normals.addAll(listOf(0f, 0f, 1f))
+                // 실제 구체의 노멀 벡터 계산 (중심에서 정점으로의 정규화된 벡터)
+                val normalX = x / radius
+                val normalY = y / radius  
+                val normalZ = z / radius
+                normals.addAll(listOf(normalX, normalY, normalZ))
             }
         }
         
