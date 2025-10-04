@@ -1,5 +1,6 @@
 package com.avas.proteinviewer.data.repository
 
+import com.avas.proteinviewer.data.api.PDBAPIService
 import com.avas.proteinviewer.data.parser.PDBParser
 import com.avas.proteinviewer.domain.model.PDBStructure
 import com.avas.proteinviewer.domain.model.ProteinDetail
@@ -23,7 +24,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
+class ProteinRepositoryImpl @Inject constructor(
+    private val apiService: PDBAPIService
+) : ProteinRepository {
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(45, TimeUnit.SECONDS)  // DNS 해석 시간 증가
@@ -86,15 +89,16 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                     if (id.isNotEmpty()) {
                         // Fetch details for each protein
                         val detail = fetchProteinDetail(id)
-                        proteins.add(ProteinInfo(
+                        proteins.add(                        ProteinInfo(
                             id = id,
                             name = detail?.name ?: id,
+                            category = ProteinCategory.ENZYMES, // 기본값
                             description = detail?.description ?: "No Data",
                             organism = detail?.organism,
-                            resolution = detail?.resolution,
+                            resolution = detail?.resolution?.toFloat(),
                             experimentalMethod = detail?.experimentalMethod,
                             depositionDate = detail?.depositionDate,
-                            molecularWeight = detail?.molecularWeight
+                            molecularWeight = detail?.molecularWeight?.toFloat()
                         ))
                     }
                 }
@@ -280,47 +284,52 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
             ProteinInfo(
                 id = "1CRN",
                 name = "Crambin",
+                category = ProteinCategory.STRUCTURAL,
                 description = "Small plant seed protein",
                 organism = "Crambe abyssinica",
-                resolution = 0.54,
+                resolution = 0.54f,
                 experimentalMethod = "X-RAY DIFFRACTION",
-                molecularWeight = 4.7
+                molecularWeight = 4.7f
             ),
             ProteinInfo(
                 id = "1HHO",
                 name = "Hemoglobin",
+                category = ProteinCategory.TRANSPORT,
                 description = "Oxygen transport protein",
                 organism = "Homo sapiens",
-                resolution = 2.1,
+                resolution = 2.1f,
                 experimentalMethod = "X-RAY DIFFRACTION",
-                molecularWeight = 64.5
+                molecularWeight = 64.5f
             ),
             ProteinInfo(
                 id = "2LYZ",
                 name = "Lysozyme",
+                category = ProteinCategory.ENZYMES,
                 description = "Antibacterial enzyme",
                 organism = "Gallus gallus",
-                resolution = 1.5,
+                resolution = 1.5f,
                 experimentalMethod = "X-RAY DIFFRACTION",
-                molecularWeight = 14.3
+                molecularWeight = 14.3f
             ),
             ProteinInfo(
                 id = "4INS",
                 name = "Insulin",
+                category = ProteinCategory.HORMONES,
                 description = "Hormone regulating glucose metabolism",
                 organism = "Homo sapiens",
-                resolution = 1.9,
+                resolution = 1.9f,
                 experimentalMethod = "X-RAY DIFFRACTION",
-                molecularWeight = 5.8
+                molecularWeight = 5.8f
             ),
             ProteinInfo(
                 id = "1RXZ",
                 name = "Ribonuclease A",
+                category = ProteinCategory.ENZYMES,
                 description = "RNA degradation enzyme",
                 organism = "Bos taurus",
-                resolution = 1.26,
+                resolution = 1.26f,
                 experimentalMethod = "X-RAY DIFFRACTION",
-                molecularWeight = 13.7
+                molecularWeight = 13.7f
             )
         )
     }
@@ -364,7 +373,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                 
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string() ?: ""
-                    parseSearchResults(responseBody)
+                    parseSearchResults(responseBody, category)
                 } else {
                     // API 실패 시 샘플 데이터 반환
                     getSampleProteinsForCategory(category, limit)
@@ -450,7 +459,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
     }
     
     // 검색 결과 파싱
-    private fun parseSearchResults(responseBody: String): List<ProteinInfo> {
+    private fun parseSearchResults(responseBody: String, category: ProteinCategory): List<ProteinInfo> {
         return try {
             val jsonObject = JSONObject(responseBody)
             val resultSet = jsonObject.getJSONObject("result_set")
@@ -463,10 +472,12 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                     ProteinInfo(
                         id = pdbId,
                         name = "Protein $pdbId",
+                        category = category,
                         description = "Sample protein from ${pdbId} category",
                         organism = "Homo sapiens",
-                        resolution = 2.5,
-                        experimentalMethod = "X-RAY DIFFRACTION"
+                        resolution = 2.5f,
+                        experimentalMethod = "X-RAY DIFFRACTION",
+                        molecularWeight = 25.0f
                     )
                 )
             }
@@ -482,16 +493,16 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
         val baseCount = when (category) {
             ProteinCategory.ENZYMES -> 45000
             ProteinCategory.STRUCTURAL -> 32000
-            ProteinCategory.TRANSPORT -> 25000
-            ProteinCategory.STORAGE -> 5000
-            ProteinCategory.HORMONAL -> 8000
             ProteinCategory.DEFENSE -> 18000
-            ProteinCategory.REGULATORY -> 12000
+            ProteinCategory.TRANSPORT -> 25000
+            ProteinCategory.HORMONES -> 8000
+            ProteinCategory.STORAGE -> 5000
+            ProteinCategory.RECEPTORS -> 15000
+            ProteinCategory.MEMBRANE -> 12000
             ProteinCategory.MOTOR -> 6000
-            ProteinCategory.RECEPTOR -> 15000
             ProteinCategory.SIGNALING -> 12000
+            ProteinCategory.CHAPERONES -> 3000
             ProteinCategory.METABOLIC -> 38000
-            ProteinCategory.BINDING -> 22000
         }
         
         // 실제 개수는 baseCount이지만, 검색 결과는 limit만큼만 반환
@@ -500,14 +511,30 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                 ProteinInfo(
                     id = "${category.name.substring(0, 2).uppercase()}$i",
                     name = "${category.displayName} Protein $i",
+                    category = category,
                     description = "Sample ${category.displayName.lowercase()} protein",
                     organism = "Homo sapiens",
-                    resolution = 2.0 + (i % 3),
-                    experimentalMethod = "X-RAY DIFFRACTION"
+                    resolution = (2.0 + (i % 3)).toFloat(),
+                    experimentalMethod = "X-RAY DIFFRACTION",
+                    molecularWeight = (20.0 + i * 5).toFloat()
                 )
             )
         }
         
         return sampleProteins
+    }
+    
+    // 카테고리별 총 개수만 가져오는 함수 (UI 카운트 표시용)
+    override suspend fun getCategoryCount(category: ProteinCategory): Int {
+        return withContext(Dispatchers.IO) {
+            try {
+                // API 서비스를 직접 사용하여 총 개수만 가져오기
+                val (_, totalCount) = apiService.searchProteinsByCategory(category, limit = 100)
+                totalCount
+            } catch (e: Exception) {
+                // 실패 시 샘플 데이터 개수 반환
+                getSampleProteinsForCategory(category, 100).size
+            }
+        }
     }
 }

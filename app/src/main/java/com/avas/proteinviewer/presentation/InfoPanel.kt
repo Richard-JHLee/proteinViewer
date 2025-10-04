@@ -152,7 +152,7 @@ fun InfoPanel(
                     backgroundColor = Color(0xFFFF9500).copy(alpha = 0.1f),
                     borderColor = Color(0xFFFF9500).copy(alpha = 0.3f),
                     content = {
-                        InfoRow("Structure Type", proteinInfo?.classification ?: "Protein", "This is a protein structure determined by experimental methods")
+                        InfoRow("Structure Type", proteinInfo?.category?.displayName ?: "Protein", "This is a protein structure determined by experimental methods")
                         InfoRow("Data Source", "PDB", "Protein Data Bank - worldwide repository of 3D structure data")
                         InfoRow("Quality", proteinInfo?.experimentalMethod ?: "Experimental", "Structure determined through experimental techniques like X-ray crystallography")
                         proteinInfo?.resolution?.let { resolution ->
@@ -2247,7 +2247,7 @@ fun InfoPanel(
                             
                             InfoRow(
                                 label = "Structure Type",
-                                value = proteinInfo?.classification ?: "Protein",
+                                value = proteinInfo?.category?.displayName ?: "Protein",
                                 description = "This is a protein structure determined by experimental methods"
                             )
                             

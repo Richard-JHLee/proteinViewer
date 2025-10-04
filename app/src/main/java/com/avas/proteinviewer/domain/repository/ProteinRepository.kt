@@ -11,4 +11,5 @@ interface ProteinRepository {
     fun getProteinDetail(proteinId: String): Flow<ProteinDetail>
     suspend fun loadPDBStructure(proteinId: String, onProgress: (String) -> Unit): PDBStructure
     suspend fun searchProteinsByCategory(category: ProteinCategory, limit: Int = 100): List<ProteinInfo>
+    suspend fun getCategoryCount(category: ProteinCategory): Int
 }

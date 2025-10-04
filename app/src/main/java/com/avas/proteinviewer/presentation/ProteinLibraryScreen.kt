@@ -1,5 +1,6 @@
 package com.avas.proteinviewer.presentation
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,15 +44,29 @@ fun ProteinLibraryScreen(
     selectedCategory: ProteinCategory?,
     showCategoryGrid: Boolean,
     categoryCounts: Map<String, Int>,
+    favoriteIds: Set<String> = emptySet(),
+    hasMoreResults: Boolean = false,
+    isLoadingResults: Boolean = false,
+    isLoadingMore: Boolean = false,
+    loadingMessage: String? = null,
     onSearch: (String) -> Unit,
     onProteinClick: (String) -> Unit,
     onCategorySelect: (ProteinCategory?) -> Unit,
     onShowAllCategories: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onToggleFavorite: (String) -> Unit = {},
+    onLoadMore: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showFavoritesOnly by remember { mutableStateOf(false) }
     var showCustomSearchDialog by remember { mutableStateOf(false) }
+    val displayedProteins = remember(proteins, showFavoritesOnly, favoriteIds) {
+        if (showFavoritesOnly) {
+            proteins.filter { favoriteIds.contains(it.id) }
+        } else {
+            proteins
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -58,15 +75,24 @@ fun ProteinLibraryScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = {
                     searchQuery = it
+                    if (it.isNotEmpty()) {
+                        showFavoritesOnly = false
+                        onCategorySelect(null)
+                    } else {
+                        onShowAllCategories()
+                    }
                     if (it.length >= 3 || it.isEmpty()) {
                         onSearch(it)
                     }
                 },
                 onClearSearch = {
                     searchQuery = ""
+                    showFavoritesOnly = false
                     onSearch("")
+                    onShowAllCategories()
                 },
                 onActionClick = {
+                    showFavoritesOnly = false
                     onSearch(searchQuery)
                 }
             )
@@ -80,7 +106,7 @@ fun ProteinLibraryScreen(
             if (searchQuery.isNotEmpty()) {
                 SearchStatusBanner(
                     query = searchQuery,
-                    resultCount = proteins.size,
+                    resultCount = displayedProteins.size,
                     onReset = {
                         searchQuery = ""
                         onSearch("")
@@ -121,11 +147,15 @@ fun ProteinLibraryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (showFavoritesOnly) {
-                    FavoritesEmptyState(
-                        onBrowseCategories = {
-                            showFavoritesOnly = false
-                        }
-                    )
+                    if (displayedProteins.isEmpty()) {
+                        FavoritesEmptyState(
+                            onBrowseCategories = {
+                                showFavoritesOnly = false
+                            }
+                        )
+                    } else {
+                        FavoritesSelectedHeader(count = displayedProteins.size)
+                    }
                 } else {
                     CategorySelectionSection(
                         selectedCategory = selectedCategory,
@@ -137,18 +167,21 @@ fun ProteinLibraryScreen(
                 }
             }
             
-            // Protein List - 카테고리 선택 시 또는 검색 결과가 있을 때 표시
-            if (selectedCategory != null || searchQuery.isNotEmpty()) {
-                if (proteins.isEmpty()) {
+            // Protein List - 카테고리/검색/즐겨찾기 결과 표시
+            val shouldShowList = selectedCategory != null || searchQuery.isNotEmpty() || showFavoritesOnly
+            if (shouldShowList) {
+                if (displayedProteins.isEmpty()) {
+                    val emptyMessage = when {
+                        showFavoritesOnly -> "No saved proteins yet"
+                        selectedCategory != null -> "No proteins found in this category"
+                        else -> "No proteins found"
+                    }
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (searchQuery.isEmpty()) 
-                                "No proteins found in this category" 
-                            else 
-                                "No proteins found",
+                            text = emptyMessage,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -159,22 +192,58 @@ fun ProteinLibraryScreen(
                         if (selectedCategory != null) {
                             SelectedCategoryView(
                                 category = selectedCategory,
-                                proteinCount = proteins.size,
+                                proteinCount = displayedProteins.size,
                                 onBack = { onCategorySelect(null) }
                             )
                         }
                         
                         // 단백질 리스트
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(proteins) { protein ->
-                                ProteinCard(
-                                    protein = protein,
-                                    onClick = { onProteinClick(protein.id) }
-                                )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(displayedProteins) { protein ->
+                                    ProteinCard(
+                                        protein = protein,
+                                        isFavorite = favoriteIds.contains(protein.id),
+                                        onClick = { onProteinClick(protein.id) },
+                                        onToggleFavorite = { onToggleFavorite(protein.id) }
+                                    )
+                                }
+
+                                if (hasMoreResults) {
+                                    item {
+                                        LoadMoreSection(
+                                            isLoading = isLoadingMore,
+                                            onLoadMore = onLoadMore
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (isLoadingResults) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        CircularProgressIndicator()
+                                        loadingMessage?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -209,6 +278,7 @@ fun ProteinLibraryScreen(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun LibraryHeader(
     onDismiss: () -> Unit,
     searchQuery: String,
@@ -216,7 +286,7 @@ private fun LibraryHeader(
     onClearSearch: () -> Unit,
     onActionClick: () -> Unit
 ) {
-    val actionState = remember(searchQuery) { calculateSearchActionState(searchQuery) }
+    val actionState = calculateSearchActionState(searchQuery)
 
     Surface(
         tonalElevation = 2.dp,
@@ -228,7 +298,7 @@ private fun LibraryHeader(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -239,11 +309,6 @@ private fun LibraryHeader(
                         text = "Protein Library",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Browse curated protein categories",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 FilledTonalIconButton(onClick = onDismiss) {
@@ -260,6 +325,13 @@ private fun LibraryHeader(
                 onClear = onClearSearch,
                 actionState = actionState,
                 onActionClick = onActionClick
+            )
+            
+            Text(
+                text = "Browse curated protein categories",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
     }
@@ -278,53 +350,49 @@ private fun SearchBarSection(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        ) {
-            TextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.bodyMedium,
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = onClear) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear search",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                placeholder = {
-                    Text(
-                        text = "Search proteins (e.g. hemoglobin, 1HHO)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                },
-                colors = TextFieldDefaults.textFieldColors(
-                    containerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.primary
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+            textStyle = MaterialTheme.typography.bodyMedium,
+            singleLine = true,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = onClear) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            placeholder = {
+                Text(
+                    text = "Search proteins (e.g. hemoglobin, 1HHO)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
             )
-        }
+        )
 
         FilledTonalButton(
             onClick = onActionClick,
+            modifier = Modifier.height(48.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = actionState.containerColor,
                 contentColor = actionState.contentColor
@@ -451,7 +519,9 @@ private fun SearchStatusBanner(
 @Composable
 private fun ProteinCard(
     protein: ProteinInfo,
-    onClick: () -> Unit
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -466,72 +536,76 @@ private fun ProteinCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = protein.id,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                protein.resolution?.let {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${String.format("%.2f", it)} Å",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = protein.id,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = protein.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Toggle favorite",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = protein.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = protein.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
-            
-            protein.organism?.let { organism ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Organism: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                protein.resolution?.let {
+                    ProteinMetaChip(
+                        label = "${String.format("%.2f", it)} Å",
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     )
-                    Text(
-                        text = organism,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
+                protein.experimentalMethod?.let { method ->
+                    ProteinMetaChip(
+                        label = method,
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
                     )
                 }
             }
-            
-            protein.experimentalMethod?.let { method ->
-                Spacer(modifier = Modifier.height(4.dp))
+
+            protein.organism?.let { organism ->
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "Method: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
+                    Icon(
+                        imageVector = Icons.Default.Public,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = method,
+                        text = organism,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -784,6 +858,83 @@ private fun FavoritesEmptyState(
     }
 }
 
+@Composable
+private fun FavoritesSelectedHeader(count: Int) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Favorites",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "$count saved protein${if (count == 1) "" else "s"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadMoreSection(
+    isLoading: Boolean,
+    onLoadMore: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilledTonalButton(
+            onClick = onLoadMore,
+            enabled = !isLoading,
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(if (isLoading) "Loading…" else "Load more")
+        }
+        Text(
+            text = "Fetch additional proteins in this category",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 // 카테고리 그리드 뷰 (iOS와 동일)
 @Composable
 private fun CategoryGridView(
@@ -805,6 +956,26 @@ private fun CategoryGridView(
                 onSelect = { onCategorySelect(category) }
             )
         }
+    }
+}
+
+@Composable
+private fun ProteinMetaChip(
+    label: String,
+    color: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = color,
+        tonalElevation = 0.dp
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 

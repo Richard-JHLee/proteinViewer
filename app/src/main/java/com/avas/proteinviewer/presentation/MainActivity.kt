@@ -112,12 +112,19 @@ fun ProteinViewerApp() {
                     proteins = uiState.searchResults,
                     selectedCategory = uiState.selectedCategory,
                     showCategoryGrid = true,
-                    categoryCounts = uiState.categoryProteinCounts.mapKeys { it.key.name },
+                    categoryCounts = uiState.categoryProteinCounts.mapKeys { it.key.displayName },
+                    favoriteIds = uiState.favorites,
+                    hasMoreResults = uiState.hasMoreData,
+                    isLoadingResults = uiState.isLoading && uiState.showProteinLibrary,
+                    isLoadingMore = uiState.isLoadingMore,
+                    loadingMessage = uiState.loadingProgress.takeIf { it.isNotBlank() },
                     onSearch = viewModel::searchProteins,
                     onProteinClick = viewModel::selectProtein,
                     onCategorySelect = viewModel::selectCategory,
-                    onShowAllCategories = { /* TODO */ },
-                    onDismiss = { viewModel.toggleProteinLibrary() }
+                    onShowAllCategories = viewModel::showAllCategories,
+                    onDismiss = { viewModel.toggleProteinLibrary() },
+                    onToggleFavorite = { /* TODO: hook into favorites once implemented */ },
+                    onLoadMore = { /* TODO: hook into pagination once implemented */ }
                 )
             }
             uiState.isLoading -> {

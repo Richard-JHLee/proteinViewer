@@ -49,7 +49,8 @@ enum class InfoTab {
 
 @HiltViewModel
 class ProteinViewModel @Inject constructor(
-    private val repository: ProteinRepository
+    private val repository: ProteinRepository,
+    private val proteinDatabase: com.avas.proteinviewer.data.repository.ProteinDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProteinUiState())
@@ -59,6 +60,8 @@ class ProteinViewModel @Inject constructor(
         android.util.Log.d("ProteinViewModel", "ViewModel initialized")
         android.util.Log.d("ProteinViewModel", "Initial highlightedChains: ${_uiState.value.highlightedChains}")
         loadDefaultProtein()
+        loadCategoryCounts()
+        observeProteinDatabase()
     }
 
     fun loadDefaultProtein() {
@@ -77,12 +80,13 @@ class ProteinViewModel @Inject constructor(
                 val proteinInfo = ProteinInfo(
                     id = detail.id,
                     name = detail.name,
+                    category = ProteinCategory.ENZYMES, // 기본값
                     description = detail.description,
                     organism = detail.organism,
-                    resolution = detail.resolution,
+                    resolution = detail.resolution?.toFloat(),
                     experimentalMethod = detail.experimentalMethod,
                     depositionDate = detail.depositionDate,
-                    molecularWeight = detail.molecularWeight
+                    molecularWeight = detail.molecularWeight?.toFloat()
                 )
                 
                 _uiState.update {
@@ -399,9 +403,9 @@ class ProteinViewModel @Inject constructor(
                 // 각 카테고리별로 API 호출하여 실제 개수 가져오기
                 for (category in ProteinCategory.values()) {
                     try {
-                        // 아이폰과 동일: limit=100으로 빠른 검색
-                        val proteins = repository.searchProteinsByCategory(category, limit = 100)
-                        categoryCounts[category] = proteins.size
+                        // 새로운 함수를 사용하여 실제 총 개수 가져오기
+                        val totalCount = repository.getCategoryCount(category)
+                        categoryCounts[category] = totalCount
                         
                         // API 부하 방지를 위한 짧은 지연 (아이폰과 동일: 0.2초)
                         kotlinx.coroutines.delay(200)
@@ -435,16 +439,104 @@ class ProteinViewModel @Inject constructor(
         return when (category) {
             ProteinCategory.ENZYMES -> 45000
             ProteinCategory.STRUCTURAL -> 32000
-            ProteinCategory.TRANSPORT -> 25000
-            ProteinCategory.STORAGE -> 5000
-            ProteinCategory.HORMONAL -> 8000
             ProteinCategory.DEFENSE -> 18000
-            ProteinCategory.REGULATORY -> 12000
+            ProteinCategory.TRANSPORT -> 25000
+            ProteinCategory.HORMONES -> 8000
+            ProteinCategory.STORAGE -> 5000
+            ProteinCategory.RECEPTORS -> 15000
+            ProteinCategory.MEMBRANE -> 12000
             ProteinCategory.MOTOR -> 6000
-            ProteinCategory.RECEPTOR -> 15000
             ProteinCategory.SIGNALING -> 12000
+            ProteinCategory.CHAPERONES -> 3000
             ProteinCategory.METABOLIC -> 38000
-            ProteinCategory.BINDING -> 22000
+        }
+    }
+    
+    
+    /**
+     * ProteinDatabase 상태 관찰 (iPhone 앱과 동일한 방식)
+     */
+    private fun observeProteinDatabase() {
+        viewModelScope.launch {
+            // 카테고리별 개수 관찰
+            proteinDatabase.categoryTotalCounts.collect { categoryCounts ->
+                _uiState.update { 
+                    it.copy(categoryProteinCounts = categoryCounts)
+                }
+                android.util.Log.d("ProteinViewModel", "📊 카테고리 개수 업데이트: $categoryCounts")
+            }
+        }
+        
+        viewModelScope.launch {
+            // 단백질 목록 관찰
+            proteinDatabase.proteins.collect { proteins ->
+                val proteinsByCategory = proteins.groupBy { protein -> protein.category }
+                _uiState.update { 
+                    it.copy(
+                        allProteinsByCategory = proteinsByCategory,
+                        searchResults = proteins
+                    )
+                }
+                android.util.Log.d("ProteinViewModel", "📦 단백질 목록 업데이트: ${proteins.size}개")
+            }
+        }
+        
+        viewModelScope.launch {
+            // 로딩 상태 관찰
+            proteinDatabase.isLoading.collect { isLoading ->
+                _uiState.update { 
+                    it.copy(isLoadingCategoryCounts = isLoading)
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            // 에러 메시지 관찰
+            proteinDatabase.errorMessage.collect { errorMessage ->
+                _uiState.update { 
+                    it.copy(error = errorMessage)
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            // 즐겨찾기 관찰
+            proteinDatabase.favorites.collect { favorites ->
+                _uiState.update { 
+                    it.copy(favorites = favorites)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 특정 카테고리의 단백질 로드
+     */
+    fun loadCategoryProteins(category: ProteinCategory) {
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("ProteinViewModel", "🔄 ${category.displayName} 카테고리 단백질 로드...")
+                proteinDatabase.loadProteins(category, refresh = true)
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ ${category.displayName} 카테고리 로드 실패: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 카테고리 개수 새로고침
+     */
+    fun refreshCategoryCounts() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showingLoadingPopup = true) }
+            try {
+                android.util.Log.d("ProteinViewModel", "🔄 카테고리 개수 새로고침...")
+                proteinDatabase.loadAllCategoryCounts()
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ 카테고리 개수 새로고침 실패: ${e.message}")
+            } finally {
+                _uiState.update { it.copy(showingLoadingPopup = false) }
+            }
         }
     }
 }
