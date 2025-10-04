@@ -52,7 +52,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
     private var indexCount = 0
     private val ribbonRadius = 0.2f  // 얇은 리본을 위해 더 작게
-    private val tubeSegments = 8 // 원통의 분할 수
+    private var tubeSegments = 8 // 원통의 분할 수 (LOD에 따라 조정)
     
 
     private var buffersReady = false
@@ -76,6 +76,10 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var atomSize: Float = 1.0f
     private var ribbonWidth: Float = 1.2f
     private var ribbonFlatness: Float = 0.5f
+    
+    // 복잡한 단백질을 위한 LOD (Level of Detail) 최적화
+    private var lodLevel: Int = 1 // 1=고품질, 2=중품질, 3=저품질
+    private var isComplexProtein: Boolean = false
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated - Proper Ribbon Renderer")
@@ -306,9 +310,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         // 스케일 팩터 적용
         structureScale = scaleFactor
         
-        Log.d(TAG, "Structure bounds: min=($minX, $minY, $minZ), max=($maxX, $maxY, $maxZ)")
-        Log.d(TAG, "Structure center: ($centerX, $centerY, $centerZ), boundingRadius=$boundingRadius")
-        Log.d(TAG, "Camera distance: $finalDistance, scale: $scaleFactor")
+        // 성능 최적화: 구조 바운딩 박스 로그 제거
     }
     
     private var structureScale = 1f // 구조물 스케일 팩터
@@ -328,7 +330,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         if (currentStructure != null) {
             adjustCameraForStructure(currentStructure!!)
             // Info 모드와 Viewer 모드의 색상 차이를 반영하기 위해 새로 렌더링
-            Log.d(TAG, "Re-rendering for Info mode to reflect color differences")
+            // 성능 최적화: Info 모드 재렌더링 로그 제거
         }
     }
     
@@ -498,6 +500,25 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         Log.d(TAG, "uploadStructure: currentRenderStyle=$currentRenderStyle")
 
+        // 복잡한 단백질 감지 및 LOD 설정
+        val atomCount = structure.atoms.size
+        isComplexProtein = atomCount > 10000 // 1만개 이상 원자는 복잡한 단백질로 간주
+        lodLevel = when {
+            atomCount > 50000 -> 3 // 매우 복잡: 저품질
+            atomCount > 20000 -> 2 // 복잡: 중품질
+            else -> 1 // 일반: 고품질
+        }
+        
+        Log.d(TAG, "Protein complexity: $atomCount atoms, LOD level: $lodLevel, isComplex: $isComplexProtein")
+        
+        // LOD에 따른 튜브 세그먼트 수 조정 (성능 최적화)
+        tubeSegments = when (lodLevel) {
+            3 -> 4 // 매우 복잡: 4개 세그먼트 (저품질)
+            2 -> 6 // 복잡: 6개 세그먼트 (중품질)
+            else -> 8 // 일반: 8개 세그먼트 (고품질)
+        }
+        Log.d(TAG, "LOD optimization: tubeSegments set to $tubeSegments")
+
         // 초기 구조 로드 시에만 카메라 설정
         if (currentStructure == null) {
             setupCamera(structure.atoms)
@@ -525,11 +546,32 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         }
 
         Log.d(TAG, "Found ${atoms.size} atoms for spheres rendering")
+        
+        // 복잡한 단백질의 경우 원자 수 제한 (성능 최적화)
+        val maxAtoms = when (lodLevel) {
+            3 -> 5000  // 매우 복잡: 5000개로 제한
+            2 -> 10000 // 복잡: 10000개로 제한
+            else -> Int.MAX_VALUE // 일반: 제한 없음
+        }
+        
+        val limitedAtoms = if (atoms.size > maxAtoms) {
+            Log.w(TAG, "Too many atoms (${atoms.size}), limiting to $maxAtoms for performance")
+            atoms.take(maxAtoms)
+        } else {
+            atoms
+        }
 
         // Ligands와 Pockets를 작고 투명하게 렌더링하기 위해 분리
-        val proteinAtoms = atoms.filter { !it.isLigand && !it.isPocket }
-        val ligandAtoms = atoms.filter { it.isLigand }
-        val pocketAtoms = atoms.filter { it.isPocket }
+        val proteinAtoms = limitedAtoms.filter { !it.isLigand && !it.isPocket }
+        val ligandAtoms = limitedAtoms.filter { it.isLigand }
+        val pocketAtoms = limitedAtoms.filter { it.isPocket }
+        
+        // LOD에 따른 세그먼트 수 조정 (성능 최적화)
+        val sphereSegments = when (lodLevel) {
+            3 -> 8  // 매우 복잡: 8개 세그먼트
+            2 -> 12 // 복잡: 12개 세그먼트
+            else -> 16 // 일반: 16개 세그먼트
+        }
         
         // 메인 단백질 구조 렌더링
         val sphereData = if (proteinAtoms.isNotEmpty()) {
@@ -537,15 +579,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 atoms = proteinAtoms,
                 colorMode = currentColorMode,
                 radius = 0.8f * atomSize, // atomSize 적용
-                segments = 16  // 매끄러운 구체 (회전 시 각진 모서리 제거)
+                segments = sphereSegments  // LOD에 따른 세그먼트 수
             )
         } else {
             // 모든 원자가 Ligand/Pocket인 경우 기본 처리
             sphereRenderer.createSphereRenderData(
-                atoms = atoms,
+                atoms = limitedAtoms,
                 colorMode = currentColorMode,
                 radius = 0.8f * atomSize,
-                segments = 16
+                segments = sphereSegments
             )
         }
         
@@ -555,7 +597,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 atoms = ligandAtoms,
                 colorMode = ColorMode.UNIFORM, // 주황색으로 통일
                 radius = 0.8f, // 적절한 크기로 조정
-                segments = 8
+                segments = max(4, sphereSegments / 2) // LOD에 따른 세그먼트 수
             )
         } else null
         
@@ -565,7 +607,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 atoms = pocketAtoms,
                 colorMode = ColorMode.UNIFORM, // 보라색으로 통일
                 radius = 0.8f, // 적절한 크기로 조정
-                segments = 8
+                segments = max(4, sphereSegments / 2) // LOD에 따른 세그먼트 수
             )
         } else null
 
@@ -992,7 +1034,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun applyHighlightEffect(colors: List<Float>, atoms: List<Atom>): List<Float> {
         val highlightedColors = mutableListOf<Float>()
         var colorIndex = 0
-
+        
         atoms.forEach { atom ->
             val chainKey = "chain:${atom.chain}"
             val ligandKey = "ligand:${atom.residueName}"

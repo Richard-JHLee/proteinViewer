@@ -33,6 +33,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             queueEvent {
                 renderer.zoom(scaleFactor)
             }
+            // 줌할 때마다 부드럽게 움직이도록 렌더링 요청
             requestRender()
             return true
         }
@@ -41,6 +42,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     private var lastX = 0f
     private var lastY = 0f
     private var isMultiTouch = false
+    private var isGestureInProgress = false // 제스처 진행 상태 추적
     
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean = true
@@ -49,11 +51,12 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             // Single finger만 rotate (두 손가락은 onTouchEvent에서 처리)
             // Info 모드와 Viewer 모드 모두 항상 회전 허용
             if (e2.pointerCount == 1 && !isMultiTouch) {
+                isGestureInProgress = true
                 queueEvent {
                     renderer.rotate(distanceX, distanceY)
                 }
+                // 드래그할 때마다 부드럽게 움직이도록 렌더링 요청
                 requestRender()
-                android.util.Log.d("OpenGL30SurfaceView", "ROTATE: distanceX=$distanceX, distanceY=$distanceY, isInfoMode=$isInfoMode, rotationEnabled=$rotationEnabled")
             }
             return true
         }
@@ -63,8 +66,9 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         try {
             setEGLContextClientVersion(3)
             setRenderer(renderer)
+            // 부드러운 제스처를 위해 연속 렌더링 사용
             renderMode = RENDERMODE_CONTINUOUSLY
-            android.util.Log.d("OpenGL30SurfaceView", "OpenGL ES 3.0 surface created")
+            android.util.Log.d("OpenGL30SurfaceView", "OpenGL ES 3.0 surface created with RENDERMODE_WHEN_DIRTY")
         } catch (e: Exception) {
             android.util.Log.e("OpenGL30SurfaceView", "Error creating OpenGL surface", e)
         }
@@ -136,10 +140,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val pointerCount = event.pointerCount
         
-        // Info 모드에서 제스처 디버깅
-        if (isInfoMode && pointerCount == 2) {
-            android.util.Log.d("OpenGL30SurfaceView", "Info mode PAN: action=${event.actionMasked}, pointers=$pointerCount, isMultiTouch=$isMultiTouch")
-        }
+        // 성능 최적화: Info 모드 디버깅 로그 제거
         
         // Zoom 제스처 처리 (항상 먼저)
         val scaledHandled = scaleDetector.onTouchEvent(event)
@@ -149,6 +150,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                 lastX = event.x
                 lastY = event.y
                 isMultiTouch = false
+                isGestureInProgress = true // 제스처 시작
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 // 두 번째 손가락 감지
@@ -156,7 +158,7 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                     isMultiTouch = true
                     lastX = (event.getX(0) + event.getX(1)) / 2
                     lastY = (event.getY(0) + event.getY(1)) / 2
-                    android.util.Log.d("OpenGL30SurfaceView", "Multi-touch detected for PAN")
+                    // 성능 최적화: Multi-touch 로그 제거
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -173,11 +175,12 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                     queueEvent {
                         renderer.pan(dx, -dy) // X축은 그대로, Y축만 반대로 처리
                     }
+                    // 팬할 때마다 부드럽게 움직이도록 렌더링 요청
                     requestRender()
                     
                     lastX = currentX
                     lastY = currentY
-                    android.util.Log.d("OpenGL30SurfaceView", "PAN: dx=$dx, dy=$dy, isInfoMode=$isInfoMode")
+                    // 성능 최적화: PAN 로그 제거
                 }
             }
             MotionEvent.ACTION_POINTER_UP -> {
@@ -188,6 +191,8 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isMultiTouch = false
+                isGestureInProgress = false // 제스처 종료
+                requestRender() // 제스처 완료 후 최종 렌더링
             }
         }
         

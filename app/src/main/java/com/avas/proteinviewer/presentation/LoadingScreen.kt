@@ -25,7 +25,7 @@ fun LoadingScreen(progress: String) {
             Icon(
                 painter = painterResource(id = R.drawable.app_logo_safe),
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(100.dp), // 100px로 크기 증가
                 tint = Color.Unspecified
             )
             
@@ -37,6 +37,12 @@ fun LoadingScreen(progress: String) {
             Text(
                 text = "Loading Protein Structure...",
                 style = MaterialTheme.typography.titleMedium
+            )
+            
+            Text(
+                text = "First time loading may take a few seconds",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             if (progress.isNotEmpty()) {
