@@ -695,7 +695,8 @@ class PDBAPIService @Inject constructor() {
                     "parameters": {
                         "attribute": "struct.title",
                         "operator": "contains_words",
-                        "value": "collagen"
+                        "value": "collagen",
+                        "case_sensitive": false
                     }
                 },
                 {
@@ -704,7 +705,8 @@ class PDBAPIService @Inject constructor() {
                     "parameters": {
                         "attribute": "struct.title",
                         "operator": "contains_words",
-                        "value": "actin"
+                        "value": "keratin",
+                        "case_sensitive": false
                     }
                 },
                 {
@@ -713,7 +715,8 @@ class PDBAPIService @Inject constructor() {
                     "parameters": {
                         "attribute": "struct.title",
                         "operator": "contains_words",
-                        "value": "tubulin"
+                        "value": "elastin",
+                        "case_sensitive": false
                     }
                 },
                 {
@@ -722,7 +725,58 @@ class PDBAPIService @Inject constructor() {
                     "parameters": {
                         "attribute": "struct.title",
                         "operator": "contains_words",
-                        "value": "structural"
+                        "value": "fibroin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "laminin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "intermediate filament",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cytoskeleton",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "microtubule",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "structural protein",
+                        "case_sensitive": false
                     }
                 }
             ]
@@ -730,17 +784,1541 @@ class PDBAPIService @Inject constructor() {
         """.trimIndent()
     }
     
-    // 나머지 카테고리들은 간단한 검색어로 구현
-    private fun buildDefenseQuery(): String = buildSimpleCategoryQuery("defense")
-    private fun buildTransportQuery(): String = buildSimpleCategoryQuery("transport")
-    private fun buildHormoneQuery(): String = buildSimpleCategoryQuery("hormone")
-    private fun buildStorageQuery(): String = buildSimpleCategoryQuery("storage")
-    private fun buildReceptorQuery(): String = buildSimpleCategoryQuery("receptor")
-    private fun buildMembraneQuery(): String = buildSimpleCategoryQuery("membrane")
-    private fun buildMotorQuery(): String = buildSimpleCategoryQuery("motor")
-    private fun buildSignalingQuery(): String = buildSimpleCategoryQuery("signaling")
-    private fun buildChaperoneQuery(): String = buildSimpleCategoryQuery("chaperone")
-    private fun buildMetabolicQuery(): String = buildSimpleCategoryQuery("metabolic")
+    // 아이폰과 동일한 방어 단백질 검색 쿼리
+    private fun buildDefenseQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "IMMUNE SYSTEM",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "IMMUNOGLOBULIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "ANTIBODY",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "COMPLEMENT",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "antibody",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "immunoglobulin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "complement",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "interferon",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "interleukin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cytokine",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "defensin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "lysozyme",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    // 아이폰과 동일한 운반 단백질 검색 쿼리
+    private fun buildTransportQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "TRANSPORT PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "OXYGEN TRANSPORT",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "METAL TRANSPORT",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "ION TRANSPORT",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "hemoglobin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "myoglobin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transferrin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "albumin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transporter",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "channel",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "pump",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "carrier",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    // 아이폰과 동일한 호르몬 검색 쿼리
+    private fun buildHormoneQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "HORMONE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "GROWTH FACTOR",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "CYTOKINE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "SIGNALING PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "insulin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "growth hormone",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "thyroid",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "glucagon",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cortisol",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "estrogen",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "testosterone",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cytokine",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "signaling",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "receptor",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    // 아이폰과 동일한 저장 단백질 검색 쿼리
+    private fun buildStorageQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "ferritin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "albumin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "casein",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "ovalbumin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "lactoferrin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "vitellogenin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transferrin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "ceruloplasmin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "storage",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "binding",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "reserve",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "depot",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "accumulation",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "sequestration",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "retention",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "STORAGE PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "METAL BINDING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "LIGAND BINDING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "PLANT PROTEIN",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    // 아이폰과 동일한 수용체 검색 쿼리
+    private fun buildReceptorQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "RECEPTOR",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "GPCR",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "LIGAND BINDING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "SIGNALING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "receptor",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "gpcr",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "neurotransmitter",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "ligand",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "agonist",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "antagonist",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "adrenergic",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "dopamine",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "serotonin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "acetylcholine",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    
+    // 아이폰과 동일한 막 단백질 검색 쿼리
+    private fun buildMembraneQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "MEMBRANE PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "TRANSMEMBRANE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "INTEGRAL MEMBRANE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "PERIPHERAL MEMBRANE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "membrane",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transmembrane",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "integral",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "peripheral",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "channel",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "pore",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transporter",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "pump",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "barrier",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    
+    // 아이폰과 동일한 모터 단백질 검색 쿼리
+    private fun buildMotorQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "MOTOR PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "CONTRACTILE PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "MUSCLE PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "kinesin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "dynein",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "myosin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "tropomyosin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "troponin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "actin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "motor",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "movement",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transport",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cargo",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "microtubule",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "contraction",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "sliding",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    
+    // 아이폰과 동일한 신호전달 단백질 검색 쿼리
+    private fun buildSignalingQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "SIGNALING PROTEIN",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "SIGNAL TRANSDUCTION",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "CELL SIGNALING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "PATHWAY",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "signaling",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "pathway",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "cascade",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "transduction",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "messenger",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "factor",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "activation",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "regulation",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "response",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    
+    // 아이폰과 동일한 샤페론 검색 쿼리
+    private fun buildChaperoneQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "CHAPERONE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "HEAT SHOCK",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "PROTEIN FOLDING",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "MOLECULAR CHAPERONE",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "chaperone",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "chaperonin",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "heat shock",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "hsp",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "folding",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "assistance",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "quality",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "control",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "refolding",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
+    
+    // 아이폰과 동일한 대사 단백질 검색 쿼리
+    private fun buildMetabolicQuery(): String {
+        return """
+        {
+            "type": "group",
+            "logical_operator": "or",
+            "nodes": [
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "METABOLISM",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "METABOLIC PATHWAY",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "BIOSYNTHESIS",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "CATABOLISM",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_words",
+                        "value": "ANABOLISM",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "metabolic",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "metabolism",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "glycolysis",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "citric acid",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "biosynthesis",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "catabolism",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "anabolism",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "fatty acid",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "amino acid",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "nucleotide",
+                        "case_sensitive": false
+                    }
+                },
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct.title",
+                        "operator": "contains_words",
+                        "value": "carbohydrate",
+                        "case_sensitive": false
+                    }
+                }
+            ]
+        }
+        """.trimIndent()
+    }
     
     private fun buildSimpleCategoryQuery(searchTerm: String): String {
         return """
