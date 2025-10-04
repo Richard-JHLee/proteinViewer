@@ -119,6 +119,7 @@ fun ProteinViewerApp() {
                     isLoadingMore = uiState.isLoadingMore,
                     loadingMessage = uiState.loadingProgress.takeIf { it.isNotBlank() },
                     onSearch = viewModel::searchProteins,
+                    onSearchBasedDataLoad = viewModel::performSearchBasedDataLoad,
                     onProteinClick = viewModel::selectProtein,
                     onCategorySelect = viewModel::selectCategory,
                     onShowAllCategories = viewModel::showAllCategories,

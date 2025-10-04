@@ -11,6 +11,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -75,7 +77,8 @@ class PDBAPIService @Inject constructor() {
                 val responseBody = response.body?.string()
                 if (!responseBody.isNullOrEmpty()) {
                     // 실제 API 응답 파싱
-                    val pdbIds = parseSearchResponse(responseBody)
+                    val searchEntries = parseSearchResponse(responseBody)
+                    val pdbIds = searchEntries.map { it.identifier }
                     val totalCount = estimateTotalCount(responseBody, pdbIds.size, limit)
                     
                     android.util.Log.d("PDBAPIService", "✅ [${category.displayName}] 검색 성공: ${pdbIds.size}개, 전체: ${totalCount}개")
@@ -92,35 +95,6 @@ class PDBAPIService @Inject constructor() {
         }
     }
     
-    /**
-     * PDB ID로 단백질 상세 정보 검색
-     */
-    suspend fun searchProteinByID(pdbId: String): ProteinInfo? = withContext(Dispatchers.IO) {
-        try {
-            val url = "$dataBaseURL/entry/$pdbId"
-            val request = Request.Builder()
-                .url(url)
-                .build()
-            
-            val response = client.newCall(request).execute()
-            
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string()
-                if (!responseBody.isNullOrEmpty()) {
-                    val proteinInfo = parseProteinDetail(responseBody, pdbId)
-                    android.util.Log.d("PDBAPIService", "✅ PDB ID $pdbId 상세 정보 로드 성공")
-                    return@withContext proteinInfo
-                }
-            }
-            
-            android.util.Log.w("PDBAPIService", "⚠️ PDB ID $pdbId 상세 정보 로드 실패: ${response.code}")
-            return@withContext null
-            
-        } catch (e: Exception) {
-            android.util.Log.e("PDBAPIService", "❌ PDB ID $pdbId 검색 오류: ${e.message}")
-            return@withContext null
-        }
-    }
     
     /**
      * 카테고리별 샘플 데이터 제공 (iPhone 앱과 동일)
@@ -507,31 +481,6 @@ class PDBAPIService @Inject constructor() {
     /**
      * 검색 응답에서 PDB ID 목록 파싱 (실제 API 응답 파싱)
      */
-    private fun parseSearchResponse(responseBody: String): List<String> {
-        return try {
-            val json = Json { ignoreUnknownKeys = true }
-            val response = json.decodeFromString<PDBSearchResponse>(responseBody)
-            
-            // 아이폰과 동일한 파싱 로직
-            val identifiers = response.safeResultSet.mapNotNull { entry ->
-                val identifier = entry.safeIdentifier
-                if (identifier.isNotEmpty() && identifier != "UNKNOWN") {
-                    identifier
-                } else {
-                    null
-                }
-            }
-            
-            android.util.Log.d("PDBAPIService", "📋 파싱된 PDB ID 목록: $identifiers")
-            
-            identifiers
-        } catch (e: Exception) {
-            android.util.Log.e("PDBAPIService", "❌ JSON 파싱 실패: ${e.message}")
-            android.util.Log.d("PDBAPIService", "응답 내용 (처음 500자): ${responseBody.take(500)}")
-            // 파싱 실패 시 샘플 데이터 반환
-            listOf("1LYZ", "1CAT", "1ATP", "1CGD", "1ATN")
-        }
-    }
     
     /**
      * 총 개수 추정 (실제 API 응답에서 total_count 사용)
@@ -2332,5 +2281,188 @@ class PDBAPIService @Inject constructor() {
             }
         }
         """.trimIndent()
+    }
+    
+    /**
+     * 아이폰과 동일한 PDB ID 검색
+     */
+    suspend fun searchProteinByID(pdbId: String): ProteinInfo? {
+        android.util.Log.d("PDBAPIService", "🔍 PDB ID 검색: $pdbId")
+        
+        if (!isValidPDBID(pdbId)) {
+            android.util.Log.w("PDBAPIService", "❌ 유효하지 않은 PDB ID: $pdbId")
+            return null
+        }
+        
+        try {
+            val query = buildPDBIDSearchQuery(pdbId)
+            val response = executeSearchQuery(query)
+            
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                if (!responseBody.isNullOrEmpty()) {
+                    val proteinInfo = parseProteinDetail(responseBody, pdbId)
+                    android.util.Log.d("PDBAPIService", "✅ PDB ID $pdbId 검색 성공")
+                    return proteinInfo
+                }
+            }
+            
+            android.util.Log.w("PDBAPIService", "❌ PDB ID 검색 결과 없음: $pdbId")
+            return null
+            
+        } catch (e: Exception) {
+            android.util.Log.e("PDBAPIService", "❌ PDB ID 검색 실패: ${e.message}")
+            return null
+        }
+    }
+    
+    /**
+     * 아이폰과 동일한 텍스트 검색
+     */
+    suspend fun searchProteinsByText(searchText: String, limit: Int = 100): List<ProteinInfo> {
+        android.util.Log.d("PDBAPIService", "🔍 텍스트 검색: '$searchText'")
+        
+        try {
+            val query = buildTextSearchQuery(searchText, limit)
+            val response = executeSearchQuery(query)
+            
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                if (!responseBody.isNullOrEmpty()) {
+                    val searchResponse = parseSearchResponse(responseBody)
+                    val proteins = searchResponse.map { entry ->
+                        ProteinInfo(
+                            id = entry.identifier,
+                            name = entry.title ?: "Unknown Protein",
+                            category = inferCategoryFromTitle(entry.title ?: ""),
+                            description = entry.title ?: "No description available",
+                            keywords = listOf()
+                        )
+                    }
+                    android.util.Log.d("PDBAPIService", "✅ 텍스트 검색 성공: ${proteins.size}개")
+                    return proteins
+                }
+            }
+            
+            android.util.Log.w("PDBAPIService", "❌ 텍스트 검색 결과 없음: $searchText")
+            return emptyList()
+            
+        } catch (e: Exception) {
+            android.util.Log.e("PDBAPIService", "❌ 텍스트 검색 실패: ${e.message}")
+            return emptyList()
+        }
+    }
+    
+    /**
+     * PDB ID 유효성 검사 (아이폰과 동일)
+     */
+    private fun isValidPDBID(id: String): Boolean {
+        val trimmed = id.trim()
+        return trimmed.length == 4 && trimmed.all { it.isLetterOrDigit() }
+    }
+    
+    /**
+     * PDB ID 검색 쿼리 생성 (아이폰과 동일)
+     */
+    private fun buildPDBIDSearchQuery(pdbId: String): String {
+        return """
+        {
+            "query": {
+                "type": "terminal",
+                "service": "text",
+                "parameters": {
+                    "attribute": "rcsb_entry_container_identifiers.entry_id",
+                    "operator": "exact_match",
+                    "value": "$pdbId"
+                }
+            },
+            "return_type": "entry",
+            "request_options": {
+                "paginate": {
+                    "start": 0,
+                    "rows": 1
+                }
+            }
+        }
+        """.trimIndent()
+    }
+    
+    /**
+     * 텍스트 검색 쿼리 생성 (아이폰과 동일)
+     */
+    private fun buildTextSearchQuery(searchText: String, limit: Int): String {
+        return """
+        {
+            "query": {
+                "type": "terminal",
+                "service": "text",
+                "parameters": {
+                    "attribute": "struct.title",
+                    "operator": "contains_words",
+                    "value": "$searchText"
+                }
+            },
+            "return_type": "entry",
+            "request_options": {
+                "paginate": {
+                    "start": 0,
+                    "rows": $limit
+                }
+            }
+        }
+        """.trimIndent()
+    }
+    
+    /**
+     * 검색 응답 파싱
+     */
+    private fun parseSearchResponse(responseBody: String): List<SearchEntry> {
+        return try {
+            val jsonObject = JSONObject(responseBody)
+            val resultSet = jsonObject.getJSONObject("result_set")
+            val entries = resultSet.getJSONArray("entries")
+            
+            val searchEntries = mutableListOf<SearchEntry>()
+            for (i in 0 until entries.length()) {
+                val entry = entries.getJSONObject(i)
+                val identifier = entry.getString("identifier")
+                val title = entry.optString("title", null)
+                searchEntries.add(SearchEntry(identifier, title))
+            }
+            searchEntries
+        } catch (e: Exception) {
+            android.util.Log.e("PDBAPIService", "❌ 검색 응답 파싱 실패: ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * 검색 엔트리 데이터 클래스
+     */
+    private data class SearchEntry(
+        val identifier: String,
+        val title: String?
+    )
+    
+    /**
+     * 제목에서 카테고리 추론
+     */
+    private fun inferCategoryFromTitle(title: String): ProteinCategory {
+        val lowerTitle = title.lowercase()
+        return when {
+            lowerTitle.contains("enzyme") || lowerTitle.contains("kinase") -> ProteinCategory.ENZYMES
+            lowerTitle.contains("structural") || lowerTitle.contains("collagen") -> ProteinCategory.STRUCTURAL
+            lowerTitle.contains("antibody") || lowerTitle.contains("immune") -> ProteinCategory.DEFENSE
+            lowerTitle.contains("transport") || lowerTitle.contains("hemoglobin") -> ProteinCategory.TRANSPORT
+            lowerTitle.contains("hormone") || lowerTitle.contains("insulin") -> ProteinCategory.HORMONES
+            lowerTitle.contains("storage") || lowerTitle.contains("ferritin") -> ProteinCategory.STORAGE
+            lowerTitle.contains("receptor") || lowerTitle.contains("gpcr") -> ProteinCategory.RECEPTORS
+            lowerTitle.contains("membrane") || lowerTitle.contains("channel") -> ProteinCategory.MEMBRANE
+            lowerTitle.contains("motor") || lowerTitle.contains("myosin") -> ProteinCategory.MOTOR
+            lowerTitle.contains("signaling") || lowerTitle.contains("pathway") -> ProteinCategory.SIGNALING
+            lowerTitle.contains("chaperone") || lowerTitle.contains("hsp") -> ProteinCategory.CHAPERONES
+            lowerTitle.contains("metabolic") || lowerTitle.contains("metabolism") -> ProteinCategory.METABOLIC
+            else -> ProteinCategory.ENZYMES // 기본값
+        }
     }
 }

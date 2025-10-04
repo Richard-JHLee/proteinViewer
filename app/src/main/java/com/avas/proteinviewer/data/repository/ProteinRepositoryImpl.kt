@@ -537,4 +537,32 @@ class ProteinRepositoryImpl @Inject constructor(
             }
         }
     }
+    
+    /**
+     * 아이폰과 동일한 PDB ID 검색
+     */
+    override suspend fun searchProteinByID(pdbId: String): ProteinInfo? {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.searchProteinByID(pdbId)
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinRepositoryImpl", "❌ PDB ID 검색 실패: ${e.message}")
+                null
+            }
+        }
+    }
+    
+    /**
+     * 아이폰과 동일한 텍스트 검색
+     */
+    override suspend fun searchProteinsByText(searchText: String, limit: Int): List<ProteinInfo> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.searchProteinsByText(searchText, limit)
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinRepositoryImpl", "❌ 텍스트 검색 실패: ${e.message}")
+                emptyList()
+            }
+        }
+    }
 }

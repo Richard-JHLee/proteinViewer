@@ -539,4 +539,97 @@ class ProteinViewModel @Inject constructor(
             }
         }
     }
+    
+    /**
+     * 아이폰과 동일한 검색 타입 감지
+     */
+    private fun detectSearchType(searchText: String): SearchType {
+        val trimmed = searchText.trim()
+        
+        // PDB ID 검사 (4자리 영숫자)
+        if (trimmed.length == 4 && trimmed.all { it.isLetterOrDigit() }) {
+            return SearchType.PDB_ID(trimmed.uppercase())
+        }
+        
+        // 일반 텍스트 검색
+        return SearchType.TEXT_SEARCH(trimmed)
+    }
+    
+    /**
+     * 검색 타입 열거형 (아이폰과 동일)
+     */
+    private sealed class SearchType {
+        data class PDB_ID(val id: String) : SearchType()
+        data class TEXT_SEARCH(val text: String) : SearchType()
+    }
+    
+    /**
+     * 아이폰과 동일한 검색 기반 데이터 로드
+     */
+    fun performSearchBasedDataLoad(searchText: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showingLoadingPopup = true, currentPage = 1) }
+            
+            try {
+                val searchType = detectSearchType(searchText)
+                val searchResults = when (searchType) {
+                    is SearchType.PDB_ID -> {
+                        android.util.Log.d("ProteinViewModel", "🔍 PDB ID 검색: ${searchType.id}")
+                        repository.searchProteinByID(searchType.id)?.let { listOf(it) } ?: emptyList()
+                    }
+                    is SearchType.TEXT_SEARCH -> {
+                        android.util.Log.d("ProteinViewModel", "🔍 텍스트 검색: ${searchType.text}")
+                        repository.searchProteinsByText(searchType.text)
+                    }
+                }
+                
+                _uiState.update {
+                    it.copy(
+                        searchResults = searchResults,
+                        selectedCategory = null, // 카테고리 필터 해제
+                        showingLoadingPopup = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ 검색 완료: ${searchResults.size}개 단백질 로드")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ 검색 실패: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        error = "검색 실패: ${e.message}",
+                        showingLoadingPopup = false
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 아이폰과 동일한 검색 버튼 정보 계산
+     */
+    fun getSearchButtonInfo(searchText: String): SearchButtonInfo {
+        val trimmed = searchText.trim()
+        
+        return when {
+            trimmed.length == 4 && trimmed.all { it.isLetterOrDigit() } -> {
+                SearchButtonInfo("PDB ID Search", android.graphics.Color.parseColor("#9C27B0"), "magnifyingglass")
+            }
+            trimmed.length >= 2 -> {
+                SearchButtonInfo("Text Search", android.graphics.Color.parseColor("#4CAF50"), "magnifyingglass")
+            }
+            else -> {
+                SearchButtonInfo("Load Data", android.graphics.Color.parseColor("#2196F3"), "arrow.clockwise")
+            }
+        }
+    }
+    
+    /**
+     * 검색 버튼 정보 데이터 클래스
+     */
+    data class SearchButtonInfo(
+        val text: String,
+        val color: Int,
+        val icon: String
+    )
 }

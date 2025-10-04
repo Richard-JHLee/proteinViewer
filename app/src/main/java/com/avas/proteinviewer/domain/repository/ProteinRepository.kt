@@ -12,4 +12,8 @@ interface ProteinRepository {
     suspend fun loadPDBStructure(proteinId: String, onProgress: (String) -> Unit): PDBStructure
     suspend fun searchProteinsByCategory(category: ProteinCategory, limit: Int = 100): List<ProteinInfo>
     suspend fun getCategoryCount(category: ProteinCategory): Int
+    
+    // 아이폰과 동일한 검색 함수들
+    suspend fun searchProteinByID(pdbId: String): ProteinInfo?
+    suspend fun searchProteinsByText(searchText: String, limit: Int = 100): List<ProteinInfo>
 }

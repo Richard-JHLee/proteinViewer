@@ -50,6 +50,7 @@ fun ProteinLibraryScreen(
     isLoadingMore: Boolean = false,
     loadingMessage: String? = null,
     onSearch: (String) -> Unit,
+    onSearchBasedDataLoad: (String) -> Unit,
     onProteinClick: (String) -> Unit,
     onCategorySelect: (ProteinCategory?) -> Unit,
     onShowAllCategories: () -> Unit,
@@ -93,7 +94,14 @@ fun ProteinLibraryScreen(
                 },
                 onActionClick = {
                     showFavoritesOnly = false
-                    onSearch(searchQuery)
+                    val trimmed = searchQuery.trim()
+                    if (trimmed.length >= 2) {
+                        // 2자 이상: 검색어 기반 API 호출 (아이폰과 동일)
+                        onSearchBasedDataLoad(searchQuery)
+                    } else {
+                        // 2자 미만: 기존 카테고리 개수 업데이트 (아이폰과 동일)
+                        onSearch("")
+                    }
                 }
             )
         }
@@ -144,7 +152,7 @@ fun ProteinLibraryScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 if (showFavoritesOnly) {
                     if (displayedProteins.isEmpty()) {
@@ -429,20 +437,20 @@ private fun calculateSearchActionState(query: String): SearchActionState {
         isPdbId -> SearchActionState(
             label = "PDB ID Search",
             icon = Icons.Default.Search,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            containerColor = Color(0xFF9C27B0).copy(alpha = 0.2f), // 아이폰과 동일한 보라색
+            contentColor = Color(0xFF9C27B0)
         )
         trimmed.length >= 2 -> SearchActionState(
             label = "Text Search",
             icon = Icons.Default.Search,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f), // 아이폰과 동일한 초록색
+            contentColor = Color(0xFF4CAF50)
         )
         else -> SearchActionState(
             label = "Load Data",
             icon = Icons.Default.CloudDownload,
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+            containerColor = Color(0xFF2196F3).copy(alpha = 0.2f), // 아이폰과 동일한 파란색
+            contentColor = Color(0xFF2196F3)
         )
     }
 }
@@ -630,10 +638,19 @@ private fun CategorySelectionSection(
             .padding(horizontal = 16.dp)
     ) {
         if (selectedCategory == null) {
+            // Total count text (아이폰과 동일 - All 버튼과 Choose a Category 사이)
+            val totalCount = categoryCounts.values.sum()
+            Text(
+                text = "Total: $totalCount proteins across all categories",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            
             // All Categories - 카테고리 그리드 바로 표시 (iOS와 동일)
             Column(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 8.dp)
             ) {
                 // 헤더
                 Column(
