@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.avas.proteinviewer.domain.model.MenuItemType
 import com.avas.proteinviewer.presentation.theme.ProteinViewerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -42,6 +43,10 @@ fun ProteinViewerApp() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
+    // 메뉴 상세 화면 상태 관리
+    var selectedMenuItem by remember { mutableStateOf<MenuItemType?>(null) }
+    var selectedSideMenuItem by remember { mutableStateOf<MenuItem?>(null) }
+    
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = false, // 스와이프 제스처 비활성화 (햄버거 버튼으로만 열림)
@@ -54,9 +59,25 @@ fun ProteinViewerApp() {
                             viewModel.loadCategoryCounts()
                             // iOS와 동일: selectedCategory를 null로 설정하여 카테고리 그리드 바로 표시
                             viewModel.selectCategory(null)
+                            selectedSideMenuItem = null // Protein Library는 사이드바 메뉴에서 제외
                         }
                         else -> {
-                            // Handle other menu items
+                            // 선택된 메뉴 상태 업데이트
+                            selectedSideMenuItem = menuItem
+                            
+                            // 새로운 MenuItemType으로 변환하여 상세 화면 표시
+                            val menuItemType = when (menuItem) {
+                                MenuItem.ABOUT -> MenuItemType.ABOUT
+                                MenuItem.USER_GUIDE -> MenuItemType.USER_GUIDE
+                                MenuItem.FEATURES -> MenuItemType.FEATURES
+                                MenuItem.SETTINGS -> MenuItemType.SETTINGS
+                                MenuItem.HELP -> MenuItemType.HELP
+                                MenuItem.PRIVACY -> MenuItemType.PRIVACY
+                                MenuItem.TERMS -> MenuItemType.TERMS
+                                MenuItem.LICENSE -> MenuItemType.LICENSE
+                                else -> null
+                            }
+                            menuItemType?.let { selectedMenuItem = it }
                         }
                     }
                     scope.launch {
@@ -67,11 +88,25 @@ fun ProteinViewerApp() {
                     scope.launch {
                         drawerState.close()
                     }
-                }
+                },
+                selectedMenuItem = selectedSideMenuItem
             )
         }
     ) {
         when {
+            selectedMenuItem != null -> {
+                // 메뉴 상세 화면 표시
+                MenuDetailScreen(
+                    menuItem = selectedMenuItem!!,
+                    onNavigateBack = { 
+                        selectedMenuItem = null
+                        // 백 버튼 누르면 사이드바 메뉴 열기
+                        scope.launch {
+                            drawerState.open()
+                        }
+                    }
+                )
+            }
             uiState.showProteinLibrary -> {
                 ProteinLibraryScreen(
                     proteins = uiState.searchResults,
