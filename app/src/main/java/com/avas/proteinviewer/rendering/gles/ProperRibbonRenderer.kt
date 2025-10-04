@@ -324,11 +324,11 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun setInfoMode(isInfoMode: Boolean) {
         this.isInfoMode = isInfoMode
         Log.d(TAG, "Info mode set to: $isInfoMode")
-        // Info 모드가 변경되면 카메라 설정만 조정하고 이미 렌더링된 이미지 재사용
+        // Info 모드 변경 시 새로운 렌더링 수행 (색상 차이 반영을 위해)
         if (currentStructure != null) {
             adjustCameraForStructure(currentStructure!!)
-            // 구조물을 다시 업로드하지 않고 기존 렌더링 결과 재사용
-            Log.d(TAG, "Reusing existing rendered image for Info mode")
+            // Info 모드와 Viewer 모드의 색상 차이를 반영하기 위해 새로 렌더링
+            Log.d(TAG, "Re-rendering for Info mode to reflect color differences")
         }
     }
     
@@ -1009,21 +1009,17 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                 else -> false
             }
             
-            val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
+            val hasAnyHighlight = currentHighlightedChains.isNotEmpty() || currentFocusedElement != null
             
             // 각 원자의 모든 정점에 대해 색상 적용
             val verticesPerAtom = colors.size / atoms.size / 3 // 각 원자당 정점 수 (RGB)
             repeat(verticesPerAtom) {
                 if (colorIndex < colors.size) {
                     val originalColor = colors.subList(colorIndex, colorIndex + 3)
-                    val finalColor = when {
+                    val baseColor = when {
                         isFocused -> {
                             // Focused: 매우 밝고 선명하게 (카메라가 해당 요소로 이동)
                             originalColor.map { (it * 2.0f).coerceAtMost(1.0f) }
-                        }
-                        isInfoMode && !hasAnyHighlight -> {
-                            // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
-                            originalColor.map { it * 0.3f }
                         }
                         hasAnyHighlight -> {
                             if (isHighlighted) {
@@ -1036,7 +1032,12 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
                         }
                         else -> originalColor
                     }
-                    highlightedColors.addAll(finalColor)
+                    val adjustedColor = if (isInfoMode && !hasAnyHighlight && !isFocused) {
+                        adjustInfoModeBaseColor(baseColor)
+                    } else {
+                        baseColor
+                    }
+                    highlightedColors.addAll(adjustedColor)
                     colorIndex += 3
                 }
             }
@@ -1080,6 +1081,27 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun scaleColorList(colors: List<Float>, scale: Float): List<Float> {
         if (scale == 1.0f) return colors
         return colors.map { value -> (value * scale).coerceAtMost(1.0f) }
+    }
+
+    private fun adjustInfoModeBaseColor(color: List<Float>): List<Float> {
+        if (color.isEmpty()) return color
+        val r = color[0]
+        val g = color.getOrElse(1) { r }
+        val b = color.getOrElse(2) { r }
+        val maxChannel = maxOf(r, g, b)
+        val targetBrightness = 0.45f
+        val minLift = 0.2f
+        val factor = if (maxChannel < targetBrightness) {
+            targetBrightness / (maxChannel.coerceAtLeast(0.05f))
+        } else {
+            1.0f
+        }
+        val adjust = listOf(
+            (r * factor + minLift).coerceAtMost(1.0f),
+            (g * factor + minLift).coerceAtMost(1.0f),
+            (b * factor + minLift).coerceAtMost(1.0f)
+        )
+        return adjust
     }
 
     data class MeshData(
@@ -1886,42 +1908,32 @@ void main() {
                     Log.d(TAG, "Atom $index color: baseR=$baseR, baseG=$baseG, baseB=$baseB")
                 }
                 
-                val finalR: Float
-                val finalG: Float
-                val finalB: Float
-                val finalAlpha: Float
-                
-                when {
-                    isInfoMode && !hasAnyHighlight -> {
-                        // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게
-                        finalR = baseR * 0.3f
-                        finalG = baseG * 0.3f
-                        finalB = baseB * 0.3f
-                        finalAlpha = alpha * 0.3f
-                    }
-                    hasAnyHighlight -> {
-                        if (isHighlighted) {
-                            // Highlighted: 원자의 고유한 색상을 밝고 선명하게
-                            finalR = (baseR * 1.4f).coerceAtMost(1.0f)
-                            finalG = (baseG * 1.4f).coerceAtMost(1.0f)
-                            finalB = (baseB * 1.4f).coerceAtMost(1.0f)
-                            finalAlpha = alpha
-                        } else {
-                            // Not highlighted: 매우 희미하게
-                            finalR = baseR * 0.15f
-                            finalG = baseG * 0.15f
-                            finalB = baseB * 0.15f
-                            finalAlpha = alpha * 0.15f
-                        }
-                    }
-                    else -> {
-                        // 기본 상태: 원자의 고유한 색상
-                        finalR = baseR
-                        finalG = baseG
-                        finalB = baseB
-                        finalAlpha = alpha
+                var colorTriplet = Triple(baseR, baseG, baseB)
+                var finalAlpha = alpha
+
+                if (hasAnyHighlight) {
+                    if (isHighlighted) {
+                        colorTriplet = Triple(
+                            (baseR * 1.4f).coerceAtMost(1.0f),
+                            (baseG * 1.4f).coerceAtMost(1.0f),
+                            (baseB * 1.4f).coerceAtMost(1.0f)
+                        )
+                    } else {
+                        colorTriplet = Triple(baseR * 0.15f, baseG * 0.15f, baseB * 0.15f)
+                        finalAlpha = alpha * 0.15f
                     }
                 }
+
+                if (isInfoMode && !hasAnyHighlight && !isHighlighted) {
+                    val adjusted = adjustInfoModeBaseColor(listOf(colorTriplet.first, colorTriplet.second, colorTriplet.third))
+                    colorTriplet = Triple(adjusted[0], adjusted[1], adjusted[2])
+                }
+
+                val finalR = colorTriplet.first
+                val finalG = colorTriplet.second
+                val finalB = colorTriplet.third
+
+
                 
                 // 더 많은 점들로 구체 생성 (크기 적용)
                 val spherePoints = mutableListOf<FloatArray>()
