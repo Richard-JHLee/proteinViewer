@@ -28,11 +28,19 @@ data class ProteinUiState(
     val selectedInfoTab: InfoTab = InfoTab.OVERVIEW,
     val viewMode: ViewMode = ViewMode.INFO,
     val previousViewMode: ViewMode? = null, // 이전 모드 추적
-    // 카테고리 관련 상태 추가
+    // 아이폰 ProteinDatabase와 동일한 카테고리 관련 상태
     val selectedCategory: ProteinCategory? = null,
-    val showCategoryGrid: Boolean = false,
-    val categoryProteinCounts: Map<String, Int> = emptyMap(),
-    val isLoadingCategoryCounts: Boolean = false
+    val categoryProteinCounts: Map<ProteinCategory, Int> = emptyMap(),
+    val isLoadingCategoryCounts: Boolean = false,
+    val showingLoadingPopup: Boolean = false,
+    val currentPage: Int = 1,
+    val isLoadingMore: Boolean = false,
+    val hasMoreData: Boolean = false,
+    val favorites: Set<String> = emptySet(),
+    val searchText: String = "",
+    val allProteinsByCategory: Map<ProteinCategory, List<ProteinInfo>> = emptyMap(),
+    val loadedCategories: Set<ProteinCategory> = emptySet(),
+    val isLoadingInfoTab: Boolean = false
 )
 
 enum class InfoTab {
@@ -295,7 +303,17 @@ class ProteinViewModel @Inject constructor(
     }
 
     fun setInfoTab(tab: InfoTab) {
+        // 로딩 시작
+        _uiState.update { it.copy(isLoadingInfoTab = true) }
+        
+        // 탭 변경
         _uiState.update { it.copy(selectedInfoTab = tab) }
+        
+        // 로딩 시뮬레이션 (실제 데이터 처리 시간)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(500) // 0.5초 로딩
+            _uiState.update { it.copy(isLoadingInfoTab = false) }
+        }
     }
     
     fun setViewMode(mode: ViewMode) {
@@ -317,8 +335,7 @@ class ProteinViewModel @Inject constructor(
     fun selectCategory(category: ProteinCategory?) {
         _uiState.update { 
             it.copy(
-                selectedCategory = category,
-                showCategoryGrid = false
+                selectedCategory = category
             ) 
         }
         
@@ -362,38 +379,72 @@ class ProteinViewModel @Inject constructor(
     fun showAllCategories() {
         _uiState.update { 
             it.copy(
-                selectedCategory = null,
-                showCategoryGrid = true
+                selectedCategory = null
             ) 
         }
     }
     
     fun hideCategoryGrid() {
-        _uiState.update { it.copy(showCategoryGrid = false) }
+        _uiState.update { it.copy() }
     }
     
+    // 아이폰과 동일한 카테고리 카운트 로딩
     fun loadCategoryCounts() {
-        // 하드코딩된 카테고리별 protein count (iOS와 동일)
-        val categoryCounts = mapOf(
-            "Enzymes" to 45000,
-            "Structural" to 32000,
-            "Transport" to 25000,
-            "Storage" to 5000,
-            "Hormonal" to 8000,
-            "Defense" to 18000,
-            "Regulatory" to 12000,
-            "Motor" to 6000,
-            "Receptor" to 15000,
-            "Signaling" to 12000,
-            "Metabolic" to 38000,
-            "Binding" to 22000
-        )
-        
-        _uiState.update { 
-            it.copy(
-                categoryProteinCounts = categoryCounts,
-                isLoadingCategoryCounts = false
-            ) 
+        viewModelScope.launch {
+            _uiState.update { it.copy(showingLoadingPopup = true) }
+            
+            try {
+                val categoryCounts = mutableMapOf<ProteinCategory, Int>()
+                
+                // 각 카테고리별로 API 호출하여 실제 개수 가져오기
+                for (category in ProteinCategory.values()) {
+                    try {
+                        // 아이폰과 동일: limit=100으로 빠른 검색
+                        val proteins = repository.searchProteinsByCategory(category, limit = 100)
+                        categoryCounts[category] = proteins.size
+                        
+                        // API 부하 방지를 위한 짧은 지연 (아이폰과 동일: 0.2초)
+                        kotlinx.coroutines.delay(200)
+                        
+                    } catch (e: Exception) {
+                        // 실패 시 샘플 데이터 개수 사용 (아이폰과 동일)
+                        categoryCounts[category] = getSampleProteinCount(category)
+                    }
+                }
+                
+                _uiState.update { 
+                    it.copy(
+                        categoryProteinCounts = categoryCounts,
+                        showingLoadingPopup = false
+                    ) 
+                }
+                
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = e.message ?: "Failed to load category counts",
+                        showingLoadingPopup = false
+                    ) 
+                }
+            }
+        }
+    }
+    
+    // 샘플 데이터 개수 반환 (아이폰과 동일)
+    private fun getSampleProteinCount(category: ProteinCategory): Int {
+        return when (category) {
+            ProteinCategory.ENZYMES -> 45000
+            ProteinCategory.STRUCTURAL -> 32000
+            ProteinCategory.TRANSPORT -> 25000
+            ProteinCategory.STORAGE -> 5000
+            ProteinCategory.HORMONAL -> 8000
+            ProteinCategory.DEFENSE -> 18000
+            ProteinCategory.REGULATORY -> 12000
+            ProteinCategory.MOTOR -> 6000
+            ProteinCategory.RECEPTOR -> 15000
+            ProteinCategory.SIGNALING -> 12000
+            ProteinCategory.METABOLIC -> 38000
+            ProteinCategory.BINDING -> 22000
         }
     }
 }

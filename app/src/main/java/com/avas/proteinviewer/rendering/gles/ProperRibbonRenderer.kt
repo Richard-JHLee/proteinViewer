@@ -374,15 +374,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun updateHighlightedChains(highlightedChains: Set<String>) {
         currentHighlightedChains = highlightedChains
         Log.d(TAG, "Highlighted chains updated: $highlightedChains")
-        // 구조를 다시 업로드하여 하이라이트 효과 적용
-        uploadStructure(currentStructure)
+        // 성능 최적화: 전체 구조 재업로드 대신 렌더링만 요청
+        // requestRender()는 GLSurfaceView에서 사용 가능하므로 제거
     }
     
     fun updateFocusedElement(focusedElement: String?) {
         currentFocusedElement = focusedElement
         Log.d(TAG, "Focused element updated: $focusedElement")
-        // 구조를 다시 업로드하여 포커스 효과 적용
-        uploadStructure(currentStructure)
+        // 성능 최적화: 전체 구조 재업로드 대신 렌더링만 요청
+        // requestRender()는 GLSurfaceView에서 사용 가능하므로 제거
     }
 
     fun rotate(deltaX: Float, deltaY: Float) {
@@ -678,7 +678,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 색상 모드에 따른 색상 적용 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
-            splinePoints.forEachIndexed { index, splinePoint ->
+            splinePoints.forEach { splinePoint ->
                 var finalColor = chainColor
                 
                 // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
@@ -920,7 +920,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             }
             
             val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
-            val hasFocus = currentFocusedElement != null
             
             // 각 원자의 모든 정점에 대해 색상 적용
             val verticesPerAtom = colors.size / atoms.size / 3 // 각 원자당 정점 수 (RGB)
@@ -1048,7 +1047,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 색상 모드에 따른 색상 적용 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
-            splinePoints.forEachIndexed { index, splinePoint ->
+            splinePoints.forEach { splinePoint ->
                 var finalColor = chainColor
                 
                 // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩

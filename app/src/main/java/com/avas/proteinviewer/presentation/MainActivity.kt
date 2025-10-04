@@ -76,12 +76,12 @@ fun ProteinViewerApp() {
                 ProteinLibraryScreen(
                     proteins = uiState.searchResults,
                     selectedCategory = uiState.selectedCategory,
-                    showCategoryGrid = uiState.showCategoryGrid,
-                    categoryCounts = uiState.categoryProteinCounts,
+                    showCategoryGrid = true,
+                    categoryCounts = uiState.categoryProteinCounts.mapKeys { it.key.name },
                     onSearch = viewModel::searchProteins,
                     onProteinClick = viewModel::selectProtein,
                     onCategorySelect = viewModel::selectCategory,
-                    onShowAllCategories = viewModel::showAllCategories,
+                    onShowAllCategories = { /* TODO */ },
                     onDismiss = { viewModel.toggleProteinLibrary() }
                 )
             }

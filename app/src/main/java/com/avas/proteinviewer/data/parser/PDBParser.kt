@@ -40,6 +40,9 @@ object PDBParser {
         // Generate bonds
         val bonds = generateBonds(atoms)
         
+        // Analyze binding pockets
+        analyzeBindingPockets(atoms)
+        
         // Calculate properties
         val boundingBox = calculateBoundingBox(atoms)
         val centerOfMass = calculateCenterOfMass(atoms)
@@ -175,8 +178,8 @@ object PDBParser {
                 
                 val isBackbone = backboneAtoms.contains(name)
                 val isLigand = !standardResidues.contains(residueName) && line.startsWith("HETATM")
-                // iOS와 동일한 로직 (PDB.swift:320): 백본도 아니고 리간드도 아닌 원자
-                val isPocket = !isBackbone && !isLigand
+                // 향상된 포켓 분석: 실제 포켓 감지 알고리즘 사용
+                val isPocket = false // 초기값, 나중에 포켓 분석에서 설정
                 
                 atoms.add(Atom(
                     id = atomId++,
@@ -287,12 +290,102 @@ object PDBParser {
         return Vector3(sumX / count, sumY / count, sumZ / count)
     }
     
+    private fun analyzeBindingPockets(atoms: MutableList<Atom>) {
+        // 실제 포켓 분석 알고리즘 구현
+        val proteinAtoms = atoms.filter { 
+            standardResidues.contains(it.residueName) && !it.isBackbone 
+        }
+        
+        if (proteinAtoms.isEmpty()) return
+        
+        // 1. 표면 원자 식별 (다른 원자와의 거리 기반)
+        val surfaceAtoms = mutableListOf<Atom>()
+        val pocketCandidates = mutableListOf<Atom>()
+        
+        proteinAtoms.forEach { atom ->
+            val nearbyAtoms = proteinAtoms.filter { other ->
+                other != atom && (atom.position - other.position).length() < 4.0f
+            }
+            
+            // 주변 원자가 적으면 표면 원자로 간주
+            if (nearbyAtoms.size < 8) {
+                surfaceAtoms.add(atom)
+            }
+        }
+        
+        // 2. 포켓 후보 식별 (표면 원자 중에서 오목한 부분)
+        surfaceAtoms.forEach { atom ->
+            val neighbors = surfaceAtoms.filter { other ->
+                other != atom && (atom.position - other.position).length() < 6.0f
+            }
+            
+            if (neighbors.size >= 3) {
+                // 오목한 구조인지 확인 (간단한 휴리스틱)
+                val centerOfNeighbors = neighbors.map { it.position }.reduce { acc, pos -> acc + pos } / neighbors.size.toFloat()
+                val distanceToCenter = (atom.position - centerOfNeighbors).length()
+                
+                // 원자가 이웃들의 중심보다 안쪽에 있으면 포켓 후보
+                if (distanceToCenter < 2.0f) {
+                    pocketCandidates.add(atom)
+                }
+            }
+        }
+        
+        // 3. 포켓 클러스터링 (가까운 원자들을 그룹화)
+        val pocketClusters = mutableListOf<MutableList<Atom>>()
+        val processed = mutableSetOf<Int>()
+        
+        pocketCandidates.forEach { atom ->
+            if (atom.id in processed) return@forEach
+            
+            val cluster = mutableListOf(atom)
+            processed.add(atom.id)
+            
+            // 가까운 포켓 후보들을 같은 클러스터로 그룹화
+            var foundNew = true
+            while (foundNew) {
+                foundNew = false
+                pocketCandidates.forEach { candidate ->
+                    if (candidate.id in processed) return@forEach
+                    
+                    val isNearCluster = cluster.any { clusterAtom ->
+                        (candidate.position - clusterAtom.position).length() < 5.0f
+                    }
+                    
+                    if (isNearCluster) {
+                        cluster.add(candidate)
+                        processed.add(candidate.id)
+                        foundNew = true
+                    }
+                }
+            }
+            
+            // 최소 3개 이상의 원자가 있는 클러스터만 포켓으로 인정
+            if (cluster.size >= 3) {
+                pocketClusters.add(cluster)
+            }
+        }
+        
+        // 4. 포켓으로 식별된 원자들에 isPocket 플래그 설정
+        pocketClusters.forEach { cluster ->
+            cluster.forEach { atom ->
+                val index = atoms.indexOfFirst { it.id == atom.id }
+                if (index >= 0) {
+                    atoms[index] = atoms[index].copy(isPocket = true)
+                }
+            }
+        }
+        
+        android.util.Log.d("PDBParser", "Found ${pocketClusters.size} binding pockets with ${pocketCandidates.size} candidate atoms")
+    }
+    
     private fun addCalculatedAnnotations(atoms: List<Atom>, annotations: MutableList<com.avas.proteinviewer.domain.model.Annotation>) {
         // Add atom count
+        val pocketCount = atoms.count { it.isPocket }
         annotations.add(Annotation(
             AnnotationType.MOLECULAR_WEIGHT,
-            "${atoms.size} atoms",
-            "Total number of atoms in structure"
+            "${atoms.size} atoms, ${pocketCount} pocket atoms",
+            "Total number of atoms and binding pocket atoms in structure"
         ))
     }
 }

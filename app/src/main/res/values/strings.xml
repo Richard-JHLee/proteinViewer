@@ -52,4 +52,5 @@
     <string name="network_error">Network error. Please check your connection.</string>
     <string name="parsing_error">Error parsing protein data</string>
     <string name="unknown_error">An unknown error occurred</string>
+    <string name="no_data">No Data</string>
 </resources>

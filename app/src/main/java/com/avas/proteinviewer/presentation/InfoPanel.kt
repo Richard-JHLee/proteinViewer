@@ -55,7 +55,32 @@ fun InfoPanel(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        when (selectedTab) {
+        // Info 탭 로딩 상태 표시
+        if (uiState.isLoadingInfoTab) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp
+                    )
+                    Text(
+                        text = "Loading ${selectedTab.name.lowercase().replaceFirstChar { it.uppercase() }} information...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            when (selectedTab) {
             InfoTab.OVERVIEW -> {
                 // Basic Statistics Cards
                 Row(
@@ -131,7 +156,9 @@ fun InfoPanel(
                         InfoRow("Data Source", "PDB", "Protein Data Bank - worldwide repository of 3D structure data")
                         InfoRow("Quality", proteinInfo?.experimentalMethod ?: "Experimental", "Structure determined through experimental techniques like X-ray crystallography")
                         proteinInfo?.resolution?.let { resolution ->
-                            InfoRow("Resolution", "${String.format("%.2f", resolution)} Å", "Crystallographic resolution of the structure")
+                            if (!resolution.isNaN()) {
+                                InfoRow("Resolution", "${String.format("%.2f", resolution)} Å", "Crystallographic resolution of the structure")
+                            }
                         }
                         proteinInfo?.organism?.let { organism ->
                             InfoRow("Organism", organism, "Source organism of the protein")
@@ -140,7 +167,9 @@ fun InfoPanel(
                             InfoRow("Deposition Date", date, "Date when structure was deposited in PDB")
                         }
                         proteinInfo?.molecularWeight?.let { weight ->
-                            InfoRow("Molecular Weight", "${String.format("%.1f", weight)} kDa", "Calculated molecular weight of the protein")
+                            if (!weight.isNaN()) {
+                                InfoRow("Molecular Weight", "${String.format("%.1f", weight)} kDa", "Calculated molecular weight of the protein")
+                            }
                         }
                     }
                 )
@@ -2368,6 +2397,7 @@ fun InfoPanel(
                     }
                 )
             }
+        }
         }
     }
 }

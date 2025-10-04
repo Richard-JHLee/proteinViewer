@@ -280,6 +280,8 @@ private fun CategorySelectionSection(
             }
         }
     }
+    
+    // 로딩 팝업은 나중에 추가 (핵심 기능 우선)
 }
 
 // 카테고리 그리드 뷰 (iOS와 동일)

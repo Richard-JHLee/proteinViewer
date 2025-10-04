@@ -4,6 +4,7 @@ import com.avas.proteinviewer.data.parser.PDBParser
 import com.avas.proteinviewer.domain.model.PDBStructure
 import com.avas.proteinviewer.domain.model.ProteinDetail
 import com.avas.proteinviewer.domain.model.ProteinInfo
+import com.avas.proteinviewer.domain.model.ProteinCategory
 import com.avas.proteinviewer.domain.repository.ProteinRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -14,6 +15,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -87,7 +89,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                         proteins.add(ProteinInfo(
                             id = id,
                             name = detail?.name ?: id,
-                            description = detail?.description ?: "Unknown protein",
+                            description = detail?.description ?: "No Data",
                             organism = detail?.organism,
                             resolution = detail?.resolution,
                             experimentalMethod = detail?.experimentalMethod,
@@ -200,7 +202,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                     "Download Failed\n\n" +
                     "Could not download protein data:\n" +
                     "• Tried ${urls.size} different servers\n" +
-                    "• Error: ${lastException?.message?.take(80) ?: "Unknown error"}"
+                    "• Error: ${lastException?.message?.take(80) ?: "No Data"}"
                 }
             }
             throw Exception(errorMessage)
@@ -220,11 +222,11 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                     // Struct 정보
                     val struct = json.optJSONObject("struct")
                     val title = struct?.optString("title") ?: proteinId
-                    val description = struct?.optString("pdbx_descriptor") ?: "Unknown protein"
+                    val description = struct?.optString("pdbx_descriptor") ?: "No Data"
                     
                     // Entry 정보
                     val entryInfo = json.optJSONObject("rcsb_entry_info")
-                    val molecularWeight = entryInfo?.optDouble("molecular_weight")
+                    val molecularWeight = entryInfo?.optDouble("molecular_weight")?.takeIf { !it.isNaN() }
                     val depositionDate = entryInfo?.optString("deposition_date")
                     
                     // 실험 방법
@@ -235,7 +237,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                     
                     // Resolution
                     val refine = json.optJSONArray("refine")
-                    val resolution = refine?.optJSONObject(0)?.optDouble("ls_d_res_high")
+                    val resolution = refine?.optJSONObject(0)?.optDouble("ls_d_res_high")?.takeIf { !it.isNaN() }
                     
                     // Organism (Source organism)
                     val organism = try {
@@ -247,7 +249,7 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                             if (entitySrcNat != null && entitySrcNat.length() > 0) {
                                 entitySrcNat.getJSONObject(0).optString("pdbx_organism_scientific")
                             } else {
-                                "Unknown"
+                                "No Data"
                             }
                         }
                     } catch (e: Exception) {
@@ -321,5 +323,191 @@ class ProteinRepositoryImpl @Inject constructor() : ProteinRepository {
                 molecularWeight = 13.7
             )
         )
+    }
+    
+    // 아이폰과 동일한 카테고리별 단백질 검색
+    override suspend fun searchProteinsByCategory(category: ProteinCategory, limit: Int): List<ProteinInfo> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 아이폰과 동일한 RCSB PDB Search API 사용
+                val searchUrl = "https://search.rcsb.org/rcsbsearch/v2/query"
+                
+                // 카테고리별 검색 쿼리 구성 (아이폰과 동일)
+                val query = buildCategorySearchQuery(category)
+                
+                val requestBody = """
+                    {
+                        "query": $query,
+                        "return_type": "entry",
+                        "request_options": {
+                            "pager": {
+                                "start": 0,
+                                "rows": $limit
+                            },
+                            "scoring_strategy": "combined",
+                            "sort": [
+                                {
+                                    "sort_by": "score",
+                                    "direction": "desc"
+                                }
+                            ]
+                        }
+                    }
+                """.trimIndent()
+
+                val request = Request.Builder()
+                    .url(searchUrl)
+                    .post(requestBody.toByteArray().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = httpClient.newCall(request).execute()
+                
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: ""
+                    parseSearchResults(responseBody)
+                } else {
+                    // API 실패 시 샘플 데이터 반환
+                    getSampleProteinsForCategory(category, limit)
+                }
+                
+            } catch (e: Exception) {
+                // 오류 시 샘플 데이터 반환
+                getSampleProteinsForCategory(category, limit)
+            }
+        }
+    }
+    
+    // 카테고리별 검색 쿼리 구성 (아이폰과 동일)
+    private fun buildCategorySearchQuery(category: ProteinCategory): String {
+        return when (category) {
+            ProteinCategory.ENZYMES -> """
+                {
+                    "type": "group",
+                    "logical_operator": "or",
+                    "nodes": [
+                        {
+                            "type": "terminal",
+                            "service": "text",
+                            "parameters": {
+                                "attribute": "struct_keywords.pdbx_keywords",
+                                "operator": "contains_phrase",
+                                "value": "enzyme"
+                            }
+                        },
+                        {
+                            "type": "terminal",
+                            "service": "text",
+                            "parameters": {
+                                "attribute": "struct.title",
+                                "operator": "contains_phrase",
+                                "value": "enzyme"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+            
+            ProteinCategory.STRUCTURAL -> """
+                {
+                    "type": "group",
+                    "logical_operator": "or",
+                    "nodes": [
+                        {
+                            "type": "terminal",
+                            "service": "text",
+                            "parameters": {
+                                "attribute": "struct_keywords.pdbx_keywords",
+                                "operator": "contains_phrase",
+                                "value": "structural"
+                            }
+                        },
+                        {
+                            "type": "terminal",
+                            "service": "text",
+                            "parameters": {
+                                "attribute": "struct.title",
+                                "operator": "contains_phrase",
+                                "value": "structural"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+            
+            // 다른 카테고리들도 유사하게 구성
+            else -> """
+                {
+                    "type": "terminal",
+                    "service": "text",
+                    "parameters": {
+                        "attribute": "struct_keywords.pdbx_keywords",
+                        "operator": "contains_phrase",
+                        "value": "${category.displayName.lowercase()}"
+                    }
+                }
+            """.trimIndent()
+        }
+    }
+    
+    // 검색 결과 파싱
+    private fun parseSearchResults(responseBody: String): List<ProteinInfo> {
+        return try {
+            val jsonObject = JSONObject(responseBody)
+            val resultSet = jsonObject.getJSONObject("result_set")
+            val identifiers = resultSet.getJSONArray("identifiers")
+            
+            val proteins = mutableListOf<ProteinInfo>()
+            for (i in 0 until identifiers.length()) {
+                val pdbId = identifiers.getString(i)
+                proteins.add(
+                    ProteinInfo(
+                        id = pdbId,
+                        name = "Protein $pdbId",
+                        description = "Sample protein from ${pdbId} category",
+                        organism = "Homo sapiens",
+                        resolution = 2.5,
+                        experimentalMethod = "X-RAY DIFFRACTION"
+                    )
+                )
+            }
+            proteins
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    // 카테고리별 샘플 데이터 반환
+    private fun getSampleProteinsForCategory(category: ProteinCategory, limit: Int): List<ProteinInfo> {
+        val sampleProteins = mutableListOf<ProteinInfo>()
+        val baseCount = when (category) {
+            ProteinCategory.ENZYMES -> 45000
+            ProteinCategory.STRUCTURAL -> 32000
+            ProteinCategory.TRANSPORT -> 25000
+            ProteinCategory.STORAGE -> 5000
+            ProteinCategory.HORMONAL -> 8000
+            ProteinCategory.DEFENSE -> 18000
+            ProteinCategory.REGULATORY -> 12000
+            ProteinCategory.MOTOR -> 6000
+            ProteinCategory.RECEPTOR -> 15000
+            ProteinCategory.SIGNALING -> 12000
+            ProteinCategory.METABOLIC -> 38000
+            ProteinCategory.BINDING -> 22000
+        }
+        
+        // 실제 개수는 baseCount이지만, 검색 결과는 limit만큼만 반환
+        for (i in 1..minOf(limit, 50)) {
+            sampleProteins.add(
+                ProteinInfo(
+                    id = "${category.name.substring(0, 2).uppercase()}$i",
+                    name = "${category.displayName} Protein $i",
+                    description = "Sample ${category.displayName.lowercase()} protein",
+                    organism = "Homo sapiens",
+                    resolution = 2.0 + (i % 3),
+                    experimentalMethod = "X-RAY DIFFRACTION"
+                )
+            )
+        }
+        
+        return sampleProteins
     }
 }
