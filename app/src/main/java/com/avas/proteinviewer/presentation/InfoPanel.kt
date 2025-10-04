@@ -866,13 +866,13 @@ fun InfoPanel(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                            "No Binding Pockets Detected",
+                            "No Pockets Detected",
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "This structure does not contain any identified binding pockets or active sites.",
+                            "This structure does not contain any identified pockets or active sites.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -898,7 +898,7 @@ fun InfoPanel(
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Text(
-                                    "Binding Pocket Overview",
+                                    "Pocket Overview",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )

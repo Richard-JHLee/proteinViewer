@@ -26,10 +26,13 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private val camera = ArcballCamera()
 
     private val projectionMatrix = FloatArray(16)
+    private val modelMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
     
     private var onRenderingCompleteCallback: (() -> Unit)? = null
     private var pendingRenderingComplete = false // 렌더링 완료 콜백 대기 상태
+    private var hasLoggedFirstFrame = false // 첫 번째 프레임 로그 출력 여부
+    private var hasLoggedLigandsPockets = false // Ligands/Pockets 로그 출력 여부
 
     private var program = 0
     private var aPositionHandle = 0
@@ -68,8 +71,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private var rotationEnabled: Boolean = false
     private var zoomLevel: Float = 1.0f
     private var transparency: Float = 1.0f
-    private var ligandTransparency: Float = 0.7f // Ligands 투명도 (70% 불투명)
-    private var pocketTransparency: Float = 0.7f // Pockets 투명도 (70% 불투명)
+    private var ligandTransparency: Float = 0.3f // Ligands 색상 강도 (30% 강도로 진하게)
+    private var pocketTransparency: Float = 0.3f // Pockets 색상 강도 (30% 강도로 진하게)
     private var atomSize: Float = 1.0f
     private var ribbonWidth: Float = 1.2f
     private var ribbonFlatness: Float = 0.5f
@@ -92,8 +95,12 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         aPositionHandle = GLES30.glGetAttribLocation(program, "aPosition")
         aColorHandle = GLES30.glGetAttribLocation(program, "aColor")
+        aNormalHandle = GLES30.glGetAttribLocation(program, "aNormal")
         uMvpHandle = GLES30.glGetUniformLocation(program, "uMvp")
+        uModelHandle = GLES30.glGetUniformLocation(program, "uModel")
         uTransparencyHandle = GLES30.glGetUniformLocation(program, "uTransparency")
+        uLightPosHandle = GLES30.glGetUniformLocation(program, "uLightPos")
+        uViewPosHandle = GLES30.glGetUniformLocation(program, "uViewPos")
 
         val buffers = IntArray(4)
         GLES30.glGenBuffers(4, buffers, 0)
@@ -141,7 +148,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val viewMatrix = camera.viewMatrix()
         
         // 모델 매트릭스 (구조물을 원점으로 이동 후 스케일 적용)
-        val modelMatrix = FloatArray(16)
         android.opengl.Matrix.setIdentityM(modelMatrix, 0)
         
         // Info 모드에서만 구조물을 원점으로 이동 (카메라가 원점을 바라보므로)
@@ -151,11 +157,16 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         
         // 스케일 적용
         android.opengl.Matrix.scaleM(modelMatrix, 0, structureScale, structureScale, structureScale)
+
+        if (uModelHandle >= 0) {
+            GLES30.glUniformMatrix4fv(uModelHandle, 1, false, modelMatrix, 0)
+        }
         
         // 디버그 로그 (첫 번째 프레임에서만)
-        if (indexCount > 0) {
+        if (indexCount > 0 && !hasLoggedFirstFrame) {
             Log.d(TAG, "Model matrix translation: (-$structureCenterX, -$structureCenterY, -$structureCenterZ)")
             Log.d(TAG, "Model matrix scale: $structureScale")
+            hasLoggedFirstFrame = true
         }
         
         // MVP 매트릭스 계산 (Model * View * Projection)
@@ -173,6 +184,12 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         GLES30.glEnableVertexAttribArray(aColorHandle)
         GLES30.glVertexAttribPointer(aColorHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
 
+        if (aNormalHandle >= 0 && normalVbo != 0) {
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, normalVbo)
+            GLES30.glEnableVertexAttribArray(aNormalHandle)
+            GLES30.glVertexAttribPointer(aNormalHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+        }
+
         GLES30.glUniformMatrix4fv(uMvpHandle, 1, false, mvpMatrix, 0)
         GLES30.glUniform1f(uTransparencyHandle, transparency)
 
@@ -182,10 +199,13 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         GLES30.glDisableVertexAttribArray(aPositionHandle)
         GLES30.glDisableVertexAttribArray(aColorHandle)
+        if (aNormalHandle >= 0) {
+            GLES30.glDisableVertexAttribArray(aNormalHandle)
+        }
         GLES30.glBindVertexArray(0)
         
-        // Ligands와 Pockets는 별도 렌더링 대신 메인 구조에 포함시켜 렌더링
-        // (현재는 구현하지 않음 - 향후 개선 예정)
+        // Ribbon 렌더링 후 Ligands와 Pockets를 작게 추가 렌더링
+        renderLigandsAndPocketsForRibbon()
         
         // 렌더링 완료 콜백 호출 (구조 업데이트가 완료된 경우에만)
         if (pendingRenderingComplete) {
@@ -381,6 +401,12 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun updateFocusedElement(focusedElement: String?) {
         currentFocusedElement = focusedElement
         Log.d(TAG, "Focused element updated: $focusedElement")
+        
+        // Focus된 요소에 카메라 이동
+        if (focusedElement != null) {
+            moveCameraToFocusedElement(focusedElement)
+        }
+        
         // 성능 최적화: 전체 구조 재업로드 대신 렌더링만 요청
         // requestRender()는 GLSurfaceView에서 사용 가능하므로 제거
     }
@@ -398,6 +424,70 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     fun zoom(scaleFactor: Float) {
         camera.zoom(scaleFactor)
         Log.d(TAG, "Camera zoomed: scaleFactor=$scaleFactor")
+    }
+    
+    /**
+     * Focus된 요소에 카메라를 이동시키는 함수
+     */
+    private fun moveCameraToFocusedElement(focusedElement: String) {
+        currentStructure?.let { structure ->
+            val targetPosition = when {
+                // Chain focus
+                focusedElement.startsWith("chain:") -> {
+                    val chainId = focusedElement.removePrefix("chain:")
+                    val chainAtoms = structure.atoms.filter { it.chain == chainId }
+                    if (chainAtoms.isNotEmpty()) {
+                        val center = chainAtoms.map { it.position }.reduce { acc, pos -> acc + pos } / chainAtoms.size.toFloat()
+                        center
+                    } else null
+                }
+                // Ligand focus
+                focusedElement.startsWith("ligand:") -> {
+                    val ligandName = focusedElement.removePrefix("ligand:")
+                    val ligandAtoms = structure.atoms.filter { it.isLigand && it.residueName == ligandName }
+                    if (ligandAtoms.isNotEmpty()) {
+                        val center = ligandAtoms.map { it.position }.reduce { acc, pos -> acc + pos } / ligandAtoms.size.toFloat()
+                        center
+                    } else null
+                }
+                // Pocket focus
+                focusedElement.startsWith("pocket:") -> {
+                    val pocketName = focusedElement.removePrefix("pocket:")
+                    val pocketAtoms = structure.atoms.filter { it.isPocket && it.residueName == pocketName }
+                    if (pocketAtoms.isNotEmpty()) {
+                        val center = pocketAtoms.map { it.position }.reduce { acc, pos -> acc + pos } / pocketAtoms.size.toFloat()
+                        center
+                    } else null
+                }
+                // Residue focus
+                focusedElement.matches(Regex("\\d+")) -> {
+                    val residueNumber = focusedElement.toIntOrNull()
+                    if (residueNumber != null) {
+                        val residueAtoms = structure.atoms.filter { it.residueNumber == residueNumber }
+                        if (residueAtoms.isNotEmpty()) {
+                            val center = residueAtoms.map { it.position }.reduce { acc, pos -> acc + pos } / residueAtoms.size.toFloat()
+                            center
+                        } else null
+                    } else null
+                }
+                else -> null
+            }
+            
+            if (targetPosition != null) {
+                // 카메라를 해당 위치로 이동
+                camera.setTarget(targetPosition.x, targetPosition.y, targetPosition.z)
+                
+                // 적절한 거리로 조정 (더 가까이) - 고정된 거리 사용
+                val newDistance = 15f // 고정된 가까운 거리
+                camera.configure(
+                    distance = newDistance,
+                    minDistance = 5f,
+                    maxDistance = 100f
+                )
+                
+                Log.d(TAG, "Camera moved to focused element: $focusedElement at position: (${targetPosition.x}, ${targetPosition.y}, ${targetPosition.z})")
+            }
+        }
     }
 
     private fun uploadStructure(structure: PDBStructure?) {
@@ -464,7 +554,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             sphereRenderer.createSphereRenderData(
                 atoms = ligandAtoms,
                 colorMode = ColorMode.UNIFORM, // 주황색으로 통일
-                radius = 0.3f, // 매우 작은 크기
+                radius = 0.8f, // 적절한 크기로 조정
                 segments = 8
             )
         } else null
@@ -474,7 +564,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             sphereRenderer.createSphereRenderData(
                 atoms = pocketAtoms,
                 colorMode = ColorMode.UNIFORM, // 보라색으로 통일
-                radius = 0.3f, // 매우 작은 크기
+                radius = 0.8f, // 적절한 크기로 조정
                 segments = 8
             )
         } else null
@@ -902,7 +992,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     private fun applyHighlightEffect(colors: List<Float>, atoms: List<Atom>): List<Float> {
         val highlightedColors = mutableListOf<Float>()
         var colorIndex = 0
-        
+
         atoms.forEach { atom ->
             val chainKey = "chain:${atom.chain}"
             val ligandKey = "ligand:${atom.residueName}"
@@ -955,6 +1045,43 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         return highlightedColors
     }
 
+    private fun isAtomHighlighted(atom: Atom): Boolean {
+        val chainKey = "chain:${atom.chain}"
+        val ligandKey = "ligand:${atom.residueName}"
+        val pocketKey = "pocket:${atom.residueName}"
+        return currentHighlightedChains.contains(chainKey) ||
+            currentHighlightedChains.contains(ligandKey) ||
+            currentHighlightedChains.contains(pocketKey)
+    }
+
+    private fun isAtomFocused(atom: Atom): Boolean {
+        val chainKey = "chain:${atom.chain}"
+        val ligandKey = "ligand:${atom.residueName}"
+        val pocketKey = "pocket:${atom.residueName}"
+        return when {
+            atom.isLigand && currentFocusedElement == ligandKey -> true
+            atom.isPocket && currentFocusedElement == pocketKey -> true
+            currentFocusedElement == chainKey -> true
+            else -> false
+        }
+    }
+
+    private fun createUniformColorList(size: Int, color: Triple<Float, Float, Float>): List<Float> {
+        val (r, g, b) = color
+        val list = FloatArray(size)
+        for (i in list.indices step 3) {
+            list[i] = r
+            if (i + 1 < list.size) list[i + 1] = g
+            if (i + 2 < list.size) list[i + 2] = b
+        }
+        return list.toList()
+    }
+
+    private fun scaleColorList(colors: List<Float>, scale: Float): List<Float> {
+        if (scale == 1.0f) return colors
+        return colors.map { value -> (value * scale).coerceAtMost(1.0f) }
+    }
+
     data class MeshData(
         val vertices: List<Float>,
         val normals: List<Float>,
@@ -1005,8 +1132,8 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         Log.d(TAG, "Found ${caAtoms.size} CA atoms for ribbon rendering")
 
-        // 바운딩 박스 계산 및 카메라 설정
-        setupCamera(caAtoms)
+        // 바운딩 박스 계산 및 카메라 설정 (모든 원자 기준으로 설정)
+        setupCamera(structure.atoms)
 
         // 체인별로 그룹화
         val chainGroups = caAtoms.groupBy { it.chain }
@@ -1452,6 +1579,544 @@ void main() {
         }
     }
     
+    /**
+     * Ribbon 렌더링에서 Ligands와 Pockets를 작게 추가 렌더링
+     */
+    private fun renderLigandsAndPocketsForRibbon() {
+        currentStructure?.let { structure ->
+            val ligandAtoms = structure.atoms.filter { it.isLigand }
+            val pocketAtoms = structure.atoms.filter { it.isPocket }
+            
+            // 디버그: 매번 로그 출력 (임시)
+            Log.d(TAG, "renderLigandsAndPocketsForRibbon: Ligands: ${ligandAtoms.size}, Pockets: ${pocketAtoms.size}")
+            Log.d(TAG, "Total atoms: ${structure.atoms.size}")
+            
+            // 로그 최적화: 첫 번째 렌더링에서만 출력
+            if (!hasLoggedLigandsPockets) {
+                Log.d(TAG, "Rendering Ligands: ${ligandAtoms.size}, Pockets: ${pocketAtoms.size}")
+                Log.d(TAG, "Structure center: ($structureCenterX, $structureCenterY, $structureCenterZ)")
+                
+                if (ligandAtoms.isNotEmpty()) {
+                    val firstLigand = ligandAtoms.first()
+                    Log.d(TAG, "First ligand position: (${firstLigand.position.x}, ${firstLigand.position.y}, ${firstLigand.position.z})")
+                }
+                
+                if (pocketAtoms.isNotEmpty()) {
+                    val firstPocket = pocketAtoms.first()
+                    Log.d(TAG, "First pocket position: (${firstPocket.position.x}, ${firstPocket.position.y}, ${firstPocket.position.z})")
+                }
+                hasLoggedLigandsPockets = true
+            }
+            
+            if (ligandAtoms.isNotEmpty() || pocketAtoms.isNotEmpty()) {
+                Log.d(TAG, "Using sphereRenderer for Ribbon Ligands/Pockets")
+                
+                // OpenGL 상태 명시적으로 설정
+                GLES30.glUseProgram(program)
+                GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+                GLES30.glEnable(GLES30.GL_CULL_FACE)
+                GLES30.glCullFace(GLES30.GL_BACK)
+                
+                // Spheres와 같은 방식으로 렌더링
+                renderLigandsAndPocketsWithSphereRenderer(ligandAtoms, pocketAtoms)
+            } else {
+                Log.d(TAG, "No ligands or pockets to render")
+            }
+        }
+    }
+    
+    /**
+     * Ribbon에서 sphereRenderer를 사용하여 Ligands와 Pockets 렌더링
+     */
+    private fun renderLigandsAndPocketsWithSphereRenderer(ligandAtoms: List<Atom>, pocketAtoms: List<Atom>) {
+        fun renderAtomBatch(
+            atoms: List<Atom>,
+            colorMode: ColorMode,
+            radius: Float,
+            segments: Int,
+            alpha: Float,
+            colorOverride: Triple<Float, Float, Float>? = null,
+            colorScale: Float = 1.0f
+        ) {
+            if (atoms.isEmpty()) return
+            val data = sphereRenderer.createSphereRenderData(
+                atoms = atoms,
+                colorMode = colorMode,
+                radius = radius,
+                segments = segments
+            )
+            val recolored = when {
+                colorOverride != null -> data.copy(colors = createUniformColorList(data.colors.size, colorOverride))
+                colorScale != 1.0f -> data.copy(colors = scaleColorList(data.colors, colorScale))
+                else -> data
+            }
+            renderSphereData(recolored, alpha)
+        }
+
+        if (ligandAtoms.isNotEmpty()) {
+            val ligandColorMode = if (currentColorMode == ColorMode.UNIFORM) ColorMode.UNIFORM else ColorMode.ELEMENT
+            val focusedLigands = mutableListOf<Atom>()
+            val highlightedLigands = mutableListOf<Atom>()
+            val baseLigands = mutableListOf<Atom>()
+            ligandAtoms.forEach { atom ->
+                when {
+                    isAtomFocused(atom) -> focusedLigands.add(atom)
+                    isAtomHighlighted(atom) -> highlightedLigands.add(atom)
+                    else -> baseLigands.add(atom)
+                }
+            }
+
+            val hasFocus = currentFocusedElement != null
+            val baseAlpha = if (hasFocus) 0.3f else 0.7f
+            val ligandBaseRadius = 0.045f * atomSize
+
+            renderAtomBatch(
+                atoms = baseLigands,
+                colorMode = ligandColorMode,
+                radius = ligandBaseRadius,
+                segments = 8,
+                alpha = baseAlpha * transparency
+            )
+
+            renderAtomBatch(
+                atoms = highlightedLigands,
+                colorMode = ligandColorMode,
+                radius = ligandBaseRadius * 1.3f,
+                segments = 8,
+                alpha = 0.9f * transparency,
+                colorScale = 1.15f
+            )
+
+            renderAtomBatch(
+                atoms = focusedLigands,
+                colorMode = ligandColorMode,
+                radius = ligandBaseRadius * 1.6f,
+                segments = 8,
+                alpha = 1.0f * transparency,
+                colorScale = 1.2f
+            )
+        }
+
+        if (pocketAtoms.isNotEmpty()) {
+            val pocketColorMode = if (currentColorMode == ColorMode.UNIFORM) {
+                ColorMode.UNIFORM
+            } else {
+                currentColorMode
+            }
+            val focusedPockets = mutableListOf<Atom>()
+            val highlightedPockets = mutableListOf<Atom>()
+            val basePockets = mutableListOf<Atom>()
+            pocketAtoms.forEach { atom ->
+                when {
+                    isAtomFocused(atom) -> focusedPockets.add(atom)
+                    isAtomHighlighted(atom) -> highlightedPockets.add(atom)
+                    else -> basePockets.add(atom)
+                }
+            }
+
+            val pocketBaseRadius = 0.3f * atomSize
+
+            renderAtomBatch(
+                atoms = basePockets,
+                colorMode = pocketColorMode,
+                radius = pocketBaseRadius,
+                segments = 8,
+                alpha = 0.4f * transparency
+            )
+
+            renderAtomBatch(
+                atoms = highlightedPockets,
+                colorMode = pocketColorMode,
+                radius = pocketBaseRadius * 1.5f,
+                segments = 8,
+                alpha = 0.8f * transparency,
+                colorScale = 1.15f
+            )
+
+            renderAtomBatch(
+                atoms = focusedPockets,
+                colorMode = pocketColorMode,
+                radius = pocketBaseRadius * 2.0f,
+                segments = 8,
+                alpha = 1.0f * transparency,
+                colorScale = 1.3f
+            )
+        }
+
+        if (uTransparencyHandle >= 0) {
+            GLES30.glUniform1f(uTransparencyHandle, transparency)
+        }
+    }
+    
+    /**
+     * Sphere 데이터를 렌더링하는 함수
+     */
+    private fun renderSphereData(sphereData: SphereRenderData, alpha: Float = transparency) {
+        if (uModelHandle >= 0) {
+            GLES30.glUniformMatrix4fv(uModelHandle, 1, false, modelMatrix, 0)
+        }
+
+        if (uTransparencyHandle >= 0) {
+            GLES30.glUniform1f(uTransparencyHandle, alpha)
+        }
+
+        // 임시 VBO 생성
+        val tempVertexVbo = IntArray(1)
+        val tempColorVbo = IntArray(1)
+        val tempNormalVbo = IntArray(1)
+        val tempIndexVbo = IntArray(1)
+        
+        GLES30.glGenBuffers(1, tempVertexVbo, 0)
+        GLES30.glGenBuffers(1, tempColorVbo, 0)
+        GLES30.glGenBuffers(1, tempNormalVbo, 0)
+        GLES30.glGenBuffers(1, tempIndexVbo, 0)
+        
+        // 버텍스 데이터 업로드
+        val vertexBuffer = ByteBuffer.allocateDirect(sphereData.vertices.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+        vertexBuffer.put(sphereData.vertices.toFloatArray())
+        vertexBuffer.position(0)
+        
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempVertexVbo[0])
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, vertexBuffer.capacity() * 4, vertexBuffer, GLES30.GL_STATIC_DRAW)
+        GLES30.glEnableVertexAttribArray(aPositionHandle)
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+        
+        // 컬러 데이터 업로드
+        val colorBuffer = ByteBuffer.allocateDirect(sphereData.colors.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+        colorBuffer.put(sphereData.colors.toFloatArray())
+        colorBuffer.position(0)
+        
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempColorVbo[0])
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, colorBuffer.capacity() * 4, colorBuffer, GLES30.GL_STATIC_DRAW)
+        GLES30.glEnableVertexAttribArray(aColorHandle)
+        GLES30.glVertexAttribPointer(aColorHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+        
+        // 노멀 데이터 업로드
+        if (aNormalHandle >= 0) {
+            val normalBuffer = ByteBuffer.allocateDirect(sphereData.normals.size * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer()
+            normalBuffer.put(sphereData.normals.toFloatArray())
+            normalBuffer.position(0)
+
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempNormalVbo[0])
+            GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, normalBuffer.capacity() * 4, normalBuffer, GLES30.GL_STATIC_DRAW)
+            GLES30.glEnableVertexAttribArray(aNormalHandle)
+            GLES30.glVertexAttribPointer(aNormalHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+        }
+        
+        // 인덱스 데이터 업로드
+        val indexBuffer = ByteBuffer.allocateDirect(sphereData.indices.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asIntBuffer()
+        indexBuffer.put(sphereData.indices.toIntArray())
+        indexBuffer.position(0)
+        
+        GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, tempIndexVbo[0])
+        GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexBuffer.capacity() * 4, indexBuffer, GLES30.GL_STATIC_DRAW)
+        
+        // 렌더링
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, sphereData.indices.size, GLES30.GL_UNSIGNED_INT, 0)
+        
+        // 정리
+        GLES30.glDisableVertexAttribArray(aPositionHandle)
+        GLES30.glDisableVertexAttribArray(aColorHandle)
+        if (aNormalHandle >= 0) {
+            GLES30.glDisableVertexAttribArray(aNormalHandle)
+        }
+        GLES30.glDeleteBuffers(1, tempVertexVbo, 0)
+        GLES30.glDeleteBuffers(1, tempColorVbo, 0)
+        GLES30.glDeleteBuffers(1, tempNormalVbo, 0)
+        GLES30.glDeleteBuffers(1, tempIndexVbo, 0)
+    }
+    
+    /**
+     * 작은 구체들을 렌더링 (Ligands와 Pockets용)
+     */
+    private fun renderSmallSpheres(ligandAtoms: List<Atom>, pocketAtoms: List<Atom>) {
+        // Ligands 렌더링 (각 원자의 고유한 색상 사용)
+        if (ligandAtoms.isNotEmpty()) {
+            renderSmallSpheresForAtomsWithHighlight(ligandAtoms, 1.0f, 10.0f) // 1.0 alpha, 10.0 크기
+        }
+        
+        // Pockets 렌더링 (각 원자의 고유한 색상 사용)
+        if (pocketAtoms.isNotEmpty()) {
+            renderSmallSpheresForAtomsWithHighlight(pocketAtoms, 1.0f, 10.0f) // 1.0 alpha, 10.0 크기
+        }
+    }
+    
+    /**
+     * 특정 원자들에 대해 작은 구체들을 렌더링 (highlight/focus 효과 적용)
+     */
+    private fun renderSmallSpheresForAtomsWithHighlight(atoms: List<Atom>, alpha: Float, radius: Float) {
+        Log.d(TAG, "renderSmallSpheresForAtomsWithHighlight: ${atoms.size} atoms, alpha=$alpha, radius=$radius")
+        if (atoms.isNotEmpty()) {
+            atoms.forEachIndexed { index, atom ->
+                if (index < 3) { // 처음 3개만 로그 출력
+                    Log.d(TAG, "Rendering atom $index: element=${atom.element}, position=(${atom.position.x}, ${atom.position.y}, ${atom.position.z})")
+                }
+                val x = atom.position.x - structureCenterX
+                val y = atom.position.y - structureCenterY
+                val z = atom.position.z - structureCenterZ
+                
+                // Highlight/Focus 효과 적용
+                val hasAnyHighlight = currentHighlightedChains.isNotEmpty() || currentFocusedElement != null
+                val isHighlighted = when {
+                    // Chain 기반 highlight
+                    currentHighlightedChains.contains(atom.chain) -> true
+                    currentFocusedElement == atom.chain -> true
+                    // Residue 기반 focus
+                    currentFocusedElement == atom.residueNumber.toString() -> true
+                    // Ligand 특별 처리
+                    atom.isLigand && currentFocusedElement?.startsWith("ligand:") == true -> true
+                    atom.isLigand && currentHighlightedChains.any { it.startsWith("ligand:") } -> true
+                    // Pocket 특별 처리
+                    atom.isPocket && currentFocusedElement?.startsWith("pocket:") == true -> true
+                    atom.isPocket && currentHighlightedChains.any { it.startsWith("pocket:") } -> true
+                    else -> false
+                }
+                
+                // 원자의 고유한 색상 가져오기
+                val (baseR, baseG, baseB) = atom.atomicColor
+                if (index < 3) { // 처음 3개만 로그 출력
+                    Log.d(TAG, "Atom $index color: baseR=$baseR, baseG=$baseG, baseB=$baseB")
+                }
+                
+                val finalR: Float
+                val finalG: Float
+                val finalB: Float
+                val finalAlpha: Float
+                
+                when {
+                    isInfoMode && !hasAnyHighlight -> {
+                        // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게
+                        finalR = baseR * 0.3f
+                        finalG = baseG * 0.3f
+                        finalB = baseB * 0.3f
+                        finalAlpha = alpha * 0.3f
+                    }
+                    hasAnyHighlight -> {
+                        if (isHighlighted) {
+                            // Highlighted: 원자의 고유한 색상을 밝고 선명하게
+                            finalR = (baseR * 1.4f).coerceAtMost(1.0f)
+                            finalG = (baseG * 1.4f).coerceAtMost(1.0f)
+                            finalB = (baseB * 1.4f).coerceAtMost(1.0f)
+                            finalAlpha = alpha
+                        } else {
+                            // Not highlighted: 매우 희미하게
+                            finalR = baseR * 0.15f
+                            finalG = baseG * 0.15f
+                            finalB = baseB * 0.15f
+                            finalAlpha = alpha * 0.15f
+                        }
+                    }
+                    else -> {
+                        // 기본 상태: 원자의 고유한 색상
+                        finalR = baseR
+                        finalG = baseG
+                        finalB = baseB
+                        finalAlpha = alpha
+                    }
+                }
+                
+                // 더 많은 점들로 구체 생성 (크기 적용)
+                val spherePoints = mutableListOf<FloatArray>()
+                
+                // 중심점
+                spherePoints.add(floatArrayOf(x, y, z))
+                
+                // X축 방향
+                spherePoints.add(floatArrayOf(x + radius, y, z))
+                spherePoints.add(floatArrayOf(x - radius, y, z))
+                
+                // Y축 방향
+                spherePoints.add(floatArrayOf(x, y + radius, z))
+                spherePoints.add(floatArrayOf(x, y - radius, z))
+                
+                // Z축 방향
+                spherePoints.add(floatArrayOf(x, y, z + radius))
+                spherePoints.add(floatArrayOf(x, y, z - radius))
+                
+                // 대각선 방향들 (더 많은 점들)
+                val diagonal = radius * 0.7f
+                spherePoints.add(floatArrayOf(x + diagonal, y + diagonal, z))
+                spherePoints.add(floatArrayOf(x - diagonal, y - diagonal, z))
+                spherePoints.add(floatArrayOf(x + diagonal, y - diagonal, z))
+                spherePoints.add(floatArrayOf(x - diagonal, y + diagonal, z))
+                spherePoints.add(floatArrayOf(x + diagonal, y, z + diagonal))
+                spherePoints.add(floatArrayOf(x - diagonal, y, z - diagonal))
+                spherePoints.add(floatArrayOf(x, y + diagonal, z + diagonal))
+                spherePoints.add(floatArrayOf(x, y - diagonal, z - diagonal))
+                
+                // 추가 점들로 더 조밀하게
+                val small = radius * 0.5f
+                spherePoints.add(floatArrayOf(x + small, y + small, z + small))
+                spherePoints.add(floatArrayOf(x - small, y - small, z - small))
+                spherePoints.add(floatArrayOf(x + small, y - small, z + small))
+                spherePoints.add(floatArrayOf(x - small, y + small, z - small))
+                
+                val tempVbo = IntArray(1)
+                GLES30.glGenBuffers(1, tempVbo, 0)
+                
+                val vertexBuffer = ByteBuffer.allocateDirect(spherePoints.size * 3 * 4)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer()
+                
+                val colorBuffer = ByteBuffer.allocateDirect(spherePoints.size * 3 * 4)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer()
+                
+                spherePoints.forEach { point ->
+                    vertexBuffer.put(point)
+                    colorBuffer.put(finalR * finalAlpha)
+                    colorBuffer.put(finalG * finalAlpha)
+                    colorBuffer.put(finalB * finalAlpha)
+                }
+                
+                vertexBuffer.position(0)
+                colorBuffer.position(0)
+                
+                GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempVbo[0])
+                GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, vertexBuffer.capacity() * 4, vertexBuffer, GLES30.GL_STATIC_DRAW)
+                GLES30.glEnableVertexAttribArray(aPositionHandle)
+                GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+                
+                val tempColorVbo = IntArray(1)
+                GLES30.glGenBuffers(1, tempColorVbo, 0)
+                GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempColorVbo[0])
+                GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, colorBuffer.capacity() * 4, colorBuffer, GLES30.GL_STATIC_DRAW)
+                GLES30.glEnableVertexAttribArray(aColorHandle)
+                GLES30.glVertexAttribPointer(aColorHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+                
+                GLES30.glDrawArrays(GLES30.GL_POINTS, 0, spherePoints.size)
+                
+                GLES30.glDisableVertexAttribArray(aPositionHandle)
+                GLES30.glDisableVertexAttribArray(aColorHandle)
+                GLES30.glDeleteBuffers(1, tempVbo, 0)
+                GLES30.glDeleteBuffers(1, tempColorVbo, 0)
+            }
+        }
+    }
+    
+    /**
+     * 특정 원자들에 대해 작은 구체들을 렌더링 (기존 함수 - 호환성 유지)
+     */
+    private fun renderSmallSpheresForAtoms(atoms: List<Atom>, r: Float, g: Float, b: Float, alpha: Float, radius: Float) {
+        // 간단한 구체 메쉬 생성 (8면체)
+        val sphereVertices = mutableListOf<Float>()
+        val sphereColors = mutableListOf<Float>()
+        val sphereIndices = mutableListOf<Int>()
+        
+        atoms.forEach { atom ->
+            val x = atom.position.x - structureCenterX
+            val y = atom.position.y - structureCenterY
+            val z = atom.position.z - structureCenterZ
+            
+            // 8면체 구체 생성 (간단한 형태)
+            val spherePoints = listOf(
+                floatArrayOf(x + radius, y, z), floatArrayOf(x - radius, y, z),
+                floatArrayOf(x, y + radius, z), floatArrayOf(x, y - radius, z),
+                floatArrayOf(x, y, z + radius), floatArrayOf(x, y, z - radius)
+            )
+            
+            spherePoints.forEach { point ->
+                sphereVertices.addAll(point.toList())
+                sphereColors.addAll(listOf(r * alpha, g * alpha, b * alpha))
+            }
+        }
+        
+        // 작은 구체로 렌더링 (더 확실한 표시)
+        if (sphereVertices.isNotEmpty()) {
+            // 각 원자마다 작은 구체 렌더링
+            atoms.forEach { atom ->
+                val x = atom.position.x - structureCenterX
+                val y = atom.position.y - structureCenterY
+                val z = atom.position.z - structureCenterZ
+                
+                // 더 많은 점들로 구체 생성 (크기 적용)
+                val spherePoints = mutableListOf<FloatArray>()
+                
+                // 중심점
+                spherePoints.add(floatArrayOf(x, y, z))
+                
+                // X축 방향
+                spherePoints.add(floatArrayOf(x + radius, y, z))
+                spherePoints.add(floatArrayOf(x - radius, y, z))
+                
+                // Y축 방향
+                spherePoints.add(floatArrayOf(x, y + radius, z))
+                spherePoints.add(floatArrayOf(x, y - radius, z))
+                
+                // Z축 방향
+                spherePoints.add(floatArrayOf(x, y, z + radius))
+                spherePoints.add(floatArrayOf(x, y, z - radius))
+                
+                // 대각선 방향들 (더 많은 점들)
+                val diagonal = radius * 0.7f
+                spherePoints.add(floatArrayOf(x + diagonal, y + diagonal, z))
+                spherePoints.add(floatArrayOf(x - diagonal, y - diagonal, z))
+                spherePoints.add(floatArrayOf(x + diagonal, y - diagonal, z))
+                spherePoints.add(floatArrayOf(x - diagonal, y + diagonal, z))
+                spherePoints.add(floatArrayOf(x + diagonal, y, z + diagonal))
+                spherePoints.add(floatArrayOf(x - diagonal, y, z - diagonal))
+                spherePoints.add(floatArrayOf(x, y + diagonal, z + diagonal))
+                spherePoints.add(floatArrayOf(x, y - diagonal, z - diagonal))
+                
+                // 추가 점들로 더 조밀하게
+                val small = radius * 0.5f
+                spherePoints.add(floatArrayOf(x + small, y + small, z + small))
+                spherePoints.add(floatArrayOf(x - small, y - small, z - small))
+                spherePoints.add(floatArrayOf(x + small, y - small, z + small))
+                spherePoints.add(floatArrayOf(x - small, y + small, z - small))
+                
+                val tempVbo = IntArray(1)
+                GLES30.glGenBuffers(1, tempVbo, 0)
+                
+                val vertexBuffer = ByteBuffer.allocateDirect(spherePoints.size * 3 * 4)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer()
+                
+                val colorBuffer = ByteBuffer.allocateDirect(spherePoints.size * 3 * 4)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer()
+                
+                spherePoints.forEach { point ->
+                    vertexBuffer.put(point)
+                    colorBuffer.put(r * alpha)
+                    colorBuffer.put(g * alpha)
+                    colorBuffer.put(b * alpha)
+                }
+                
+                vertexBuffer.position(0)
+                colorBuffer.position(0)
+                
+                GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempVbo[0])
+                GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, vertexBuffer.capacity() * 4, vertexBuffer, GLES30.GL_STATIC_DRAW)
+                GLES30.glEnableVertexAttribArray(aPositionHandle)
+                GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+                
+                val tempColorVbo = IntArray(1)
+                GLES30.glGenBuffers(1, tempColorVbo, 0)
+                GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, tempColorVbo[0])
+                GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, colorBuffer.capacity() * 4, colorBuffer, GLES30.GL_STATIC_DRAW)
+                GLES30.glEnableVertexAttribArray(aColorHandle)
+                GLES30.glVertexAttribPointer(aColorHandle, 3, GLES30.GL_FLOAT, false, 0, 0)
+                
+                // 점 렌더링
+                GLES30.glDrawArrays(GLES30.GL_POINTS, 0, spherePoints.size)
+                
+                // 정리
+                GLES30.glDisableVertexAttribArray(aPositionHandle)
+                GLES30.glDisableVertexAttribArray(aColorHandle)
+                GLES30.glDeleteBuffers(1, tempVbo, 0)
+                GLES30.glDeleteBuffers(1, tempColorVbo, 0)
+            }
+        }
+    }
+    
     
 }
-

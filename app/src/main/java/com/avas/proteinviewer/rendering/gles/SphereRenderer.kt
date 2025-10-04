@@ -142,7 +142,7 @@ class SphereRenderer {
                 )
             }
             ColorMode.UNIFORM -> {
-                listOf(0.5f, 0.5f, 0.5f) // 회색 (RGB만)
+                listOf(1.0f, 0.5f, 0.0f) // 주황색 (iOS와 동일)
             }
             ColorMode.SECONDARY_STRUCTURE -> {
                 val structureColor = ColorMaps.secondaryStructureColor(atom.secondaryStructure.name)
