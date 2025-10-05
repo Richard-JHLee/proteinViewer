@@ -1,6 +1,7 @@
 package com.avas.proteinviewer.rendering
 
 import android.graphics.Color
+import com.avas.proteinviewer.domain.model.SecondaryStructure
 
 object ColorMaps {
     // CPK 색상 체계 (아이폰과 동일한 구현)
@@ -46,6 +47,14 @@ object ColorMaps {
         "XE" -> Color.rgb(255, 200, 50)  // 노랑
         "RN" -> Color.rgb(255, 200, 50) // 노랑
         else -> Color.rgb(200, 200, 200) // 기본 회색
+    }
+    
+    // Secondary 구조 기반 색상 (제안된 구조에 맞춤)
+    fun secondaryStructure(secondaryStructure: SecondaryStructure): Int = when (secondaryStructure) {
+        SecondaryStructure.HELIX -> Color.rgb(255, 128, 0)   // α-helix = 주황색
+        SecondaryStructure.SHEET -> Color.rgb(255, 200, 50)  // β-sheet = 노랑색
+        SecondaryStructure.COIL -> Color.rgb(48, 80, 248)    // coil/loop = 파랑색
+        SecondaryStructure.UNKNOWN -> Color.rgb(200, 200, 200) // 알 수 없음 = 회색
     }
     
     // 체인별 색상 (아이폰과 동일한 구현)

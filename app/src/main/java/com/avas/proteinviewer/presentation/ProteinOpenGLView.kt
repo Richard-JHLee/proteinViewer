@@ -16,7 +16,7 @@ import com.avas.proteinviewer.presentation.components.OpenGL30SurfaceView
 fun ProteinOpenGLView(
     structure: PDBStructure,
     renderStyle: RenderStyle = RenderStyle.RIBBON,
-    colorMode: ColorMode = ColorMode.CHAIN,
+    colorMode: ColorMode = ColorMode.ELEMENT,
     highlightedChains: Set<String> = emptySet(),
     focusedElement: String? = null,
     rotationEnabled: Boolean = false,

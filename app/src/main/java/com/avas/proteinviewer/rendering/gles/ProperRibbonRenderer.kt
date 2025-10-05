@@ -61,8 +61,14 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
     
     // 구체 렌더러 인스턴스
     private val sphereRenderer = SphereRenderer()
+    
+    // 성능 최적화 컴포넌트 (선택적 사용)
+    private val instancedRenderer = InstancedRenderer()
+    private val vboCache = VBOCache()
+    private val lodManager = LODManager()
+    
     private var currentRenderStyle: RenderStyle = RenderStyle.RIBBON
-    private var currentColorMode: ColorMode = ColorMode.CHAIN
+    private var currentColorMode: ColorMode = ColorMode.ELEMENT
     private var currentHighlightedChains: Set<String> = emptySet()
     private var currentFocusedElement: String? = null
     private var isInfoMode: Boolean = false
@@ -90,6 +96,15 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         try {
             program = createProgram(VERT_SHADER, FRAG_SHADER_FLAT)
+            
+            // 성능 최적화 컴포넌트 초기화 (선택적)
+            try {
+                instancedRenderer.initialize()
+                Log.d(TAG, "Performance optimization components initialized")
+            } catch (e: Exception) {
+                Log.w(TAG, "Performance optimization components failed to initialize: ${e.message}")
+            }
+            
         } catch (ex: RuntimeException) {
             Log.e(TAG, "Failed to create shader program", ex)
             program = 0
@@ -384,6 +399,7 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         val oldMode = currentColorMode
         currentColorMode = mode
         Log.d(TAG, "Color mode changed from $oldMode to: $mode")
+        Log.d(TAG, "Current render style: $currentRenderStyle, isInfoMode: $isInfoMode")
         // 구조를 다시 업로드하여 색상 변경 적용
         if (currentStructure != null) {
             uploadStructure(currentStructure)
@@ -547,31 +563,20 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
 
         Log.d(TAG, "Found ${atoms.size} atoms for spheres rendering")
         
-        // 복잡한 단백질의 경우 원자 수 제한 (성능 최적화)
-        val maxAtoms = when (lodLevel) {
-            3 -> 5000  // 매우 복잡: 5000개로 제한
-            2 -> 10000 // 복잡: 10000개로 제한
-            else -> Int.MAX_VALUE // 일반: 제한 없음
-        }
+        // LOD 매니저를 사용한 동적 최적화
+        val currentLOD = lodManager.determineLODLevel(atoms, RenderStyle.SPHERES)
+        val limitedAtoms = lodManager.filterAtomsForLOD(atoms, RenderStyle.SPHERES)
+        val optimalSegments = lodManager.getOptimalSegments(RenderStyle.SPHERES)
         
-        val limitedAtoms = if (atoms.size > maxAtoms) {
-            Log.w(TAG, "Too many atoms (${atoms.size}), limiting to $maxAtoms for performance")
-            atoms.take(maxAtoms)
-        } else {
-            atoms
-        }
+        Log.d(TAG, "LOD optimization: ${atoms.size} -> ${limitedAtoms.size} atoms, segments: $optimalSegments")
 
         // Ligands와 Pockets를 작고 투명하게 렌더링하기 위해 분리
         val proteinAtoms = limitedAtoms.filter { !it.isLigand && !it.isPocket }
         val ligandAtoms = limitedAtoms.filter { it.isLigand }
         val pocketAtoms = limitedAtoms.filter { it.isPocket }
         
-        // LOD에 따른 세그먼트 수 조정 (성능 최적화)
-        val sphereSegments = when (lodLevel) {
-            3 -> 8  // 매우 복잡: 8개 세그먼트
-            2 -> 12 // 복잡: 12개 세그먼트
-            else -> 16 // 일반: 16개 세그먼트
-        }
+        // LOD 매니저에서 최적화된 세그먼트 수 사용
+        val sphereSegments = optimalSegments
         
         // 메인 단백질 구조 렌더링
         val sphereData = if (proteinAtoms.isNotEmpty()) {
@@ -793,11 +798,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             val isHighlighted = currentHighlightedChains.contains(chainKey)
             val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
             
-            // 색상 모드에 따른 색상 결정 (첫 번째 원자 기준)
-            val firstAtom = sortedAtoms.first()
-            val atomColor = getAtomColor(firstAtom)
-            val chainColor = listOf(atomColor[0], atomColor[1], atomColor[2])
-            
             // Cartoon: 2차 구조에 따라 다른 굵기와 모양
             val splinePoints = generateCatmullRomSpline(sortedAtoms, numSegments = 8)
             
@@ -810,19 +810,33 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             
             // 색상 모드에 따른 색상 적용 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
-            splinePoints.forEach { splinePoint ->
-                var finalColor = chainColor
+            splinePoints.forEachIndexed { index, splinePoint ->
+                var finalColor: List<Float>
                 
-                // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
-                if (currentColorMode != ColorMode.UNIFORM) {
-                    val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
-                    finalColor = blendColors(chainColor, structureColor, alpha = 0.8f)
+                // Element 색상 모드일 때는 구조별 색상 사용 (리본의 시각적 특징)
+                if (currentColorMode == ColorMode.ELEMENT) {
+                    // Cartoon도 구조별 색상이 더 적절: α-helix(빨강), β-sheet(노랑), loop(파랑)
+                    finalColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                    Log.d(TAG, "Cartoon Element: Chain $chain, spline point $index, structure ${splinePoint.secondaryStructure}, color: $finalColor")
+                } else {
+                    // 다른 색상 모드들은 첫 번째 원자 기준으로 색상 결정
+                    val firstAtom = sortedAtoms.first()
+                    val atomColor = getAtomColor(firstAtom)
+                    finalColor = listOf(atomColor[0], atomColor[1], atomColor[2])
+                    
+                    // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
+                    if (currentColorMode != ColorMode.UNIFORM) {
+                        val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                        finalColor = blendColors(finalColor, structureColor, alpha = 0.8f)
+                    }
                 }
                 
                 // Highlight 효과
                 if (isInfoMode && !hasAnyHighlight) {
-                    // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
-                    finalColor = finalColor.map { it * 0.3f }
+                    // Info 모드에서도 Element 색상 모드는 원래 색상 유지 (구조별 색상이 중요)
+                    if (currentColorMode != ColorMode.ELEMENT) {
+                        finalColor = finalColor.map { it * 0.3f }
+                    }
                 } else if (hasAnyHighlight) {
                     if (isHighlighted) {
                         finalColor = finalColor.map { (it * 1.4f).coerceAtMost(1.0f) }
@@ -853,55 +867,6 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "Uploaded ${allVertices.size / 3} vertices, $indexCount indices for cartoon")
     }
 
-    // 헬퍼 함수들
-    private fun getAtomColor(atom: Atom): List<Float> {
-        return when (currentColorMode) {
-            ColorMode.ELEMENT -> {
-                // Element 컬러링: CPK 색상 체계 적용 (아이폰과 동일)
-                val elementColor = ColorMaps.cpk(atom.element)
-                listOf(
-                    Color.red(elementColor) / 255f,
-                    Color.green(elementColor) / 255f,
-                    Color.blue(elementColor) / 255f,
-                    1.0f
-                )
-            }
-            ColorMode.CHAIN -> {
-                // Chain 컬러링: 체인별 고유 색상 적용 (아이폰과 동일)
-                val chainColor = ColorMaps.chainColor(atom.chain)
-                listOf(
-                    Color.red(chainColor) / 255f,
-                    Color.green(chainColor) / 255f,
-                    Color.blue(chainColor) / 255f,
-                    1.0f
-                )
-            }
-            ColorMode.UNIFORM -> {
-                // Uniform 컬러링: 단일 색상 (회색) - 프레젠테이션용
-                val uniformColor = listOf(0.5f, 0.5f, 0.5f, 1.0f)
-                // 디버깅용 로그 (처음 5개 원자만)
-                if (atom.residueNumber <= 5) {
-                    Log.d(TAG, "Uniform color applied: $uniformColor")
-                }
-                uniformColor
-            }
-            ColorMode.SECONDARY_STRUCTURE -> {
-                // Secondary Structure 컬러링: 2차 구조별 색상 적용 (아이폰과 동일)
-                val structureColor = ColorMaps.secondaryStructureColor(atom.secondaryStructure.name)
-                val color = listOf(
-                    Color.red(structureColor) / 255f,
-                    Color.green(structureColor) / 255f,
-                    Color.blue(structureColor) / 255f,
-                    1.0f
-                )
-                // 디버깅용 로그 (처음 5개 원자만)
-                if (atom.residueNumber <= 5) {
-                    Log.d(TAG, "Secondary Structure: ${atom.secondaryStructure.name} -> Color: $color")
-                }
-                color
-            }
-        }
-    }
 
 
 
@@ -1225,32 +1190,39 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
             val isHighlighted = currentHighlightedChains.contains(chainKey)
             val hasAnyHighlight = currentHighlightedChains.isNotEmpty()
             
-            // 색상 모드에 따른 색상 결정 (첫 번째 원자 기준)
-            val firstAtom = sortedAtoms.first()
-            Log.d(TAG, "Ribbon: Getting color for chain $chain, atom ${firstAtom.residueNumber}, colorMode: $currentColorMode")
-            val atomColor = getAtomColor(firstAtom)
-            val chainColor = listOf(atomColor[0], atomColor[1], atomColor[2])
-            Log.d(TAG, "Ribbon: Chain $chain color: $chainColor")
-            
             // 메쉬 데이터 추가
             allVertices.addAll(mesh.vertices)
             allNormals.addAll(mesh.normals)
             
             // 색상 모드에 따른 색상 적용 + Highlight 효과
             val verticesPerSplinePoint = (tubeSegments + 1)
-            splinePoints.forEach { splinePoint ->
-                var finalColor = chainColor
+            splinePoints.forEachIndexed { index, splinePoint ->
+                var finalColor: List<Float>
                 
-                // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
-                if (currentColorMode != ColorMode.UNIFORM) {
-                    val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
-                    finalColor = blendColors(chainColor, structureColor, alpha = 0.6f)
+                // Element 색상 모드일 때는 구조별 색상 사용 (리본의 시각적 특징)
+                if (currentColorMode == ColorMode.ELEMENT) {
+                    // 리본은 구조별 색상이 더 적절: α-helix(빨강), β-sheet(노랑), loop(파랑)
+                    finalColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                    Log.d(TAG, "Ribbon Element: Chain $chain, spline point $index, structure ${splinePoint.secondaryStructure}, color: $finalColor")
+                } else {
+                    // 다른 색상 모드들은 첫 번째 원자 기준으로 색상 결정
+                    val firstAtom = sortedAtoms.first()
+                    val atomColor = getAtomColor(firstAtom)
+                    finalColor = listOf(atomColor[0], atomColor[1], atomColor[2])
+                    
+                    // Uniform 모드가 아닐 때만 2차 구조 색상 블렌딩
+                    if (currentColorMode != ColorMode.UNIFORM) {
+                        val structureColor = getSecondaryStructureColor(splinePoint.secondaryStructure)
+                        finalColor = blendColors(finalColor, structureColor, alpha = 0.6f)
+                    }
                 }
                 
                 // Highlight 효과 (iPhone과 동일)
                 if (isInfoMode && !hasAnyHighlight) {
-                    // Info 모드에서 highlight가 없을 때: 모든 요소를 희미하게 (unhighlight 상태)
-                    finalColor = finalColor.map { it * 0.3f }
+                    // Info 모드에서도 Element 색상 모드는 원래 색상 유지 (구조별 색상이 중요)
+                    if (currentColorMode != ColorMode.ELEMENT) {
+                        finalColor = finalColor.map { it * 0.3f }
+                    }
                 } else if (hasAnyHighlight) {
                     if (isHighlighted) {
                         // Highlighted: 밝고 선명하게 (saturation x1.4, brightness x1.3)
@@ -1315,24 +1287,31 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         camera.configure(distance = distance * 2.5f, minDistance = boundingRadius * 0.5f + 1f, maxDistance = boundingRadius * 20f)
     }
 
-    // Catmull-Rom 스플라인 곡선 생성
+    // Catmull-Rom 스플라인 곡선 생성 (Cα 원자만 사용)
     private fun generateCatmullRomSpline(
         atoms: List<Atom>,
         tension: Float = 0.5f,
         numSegments: Int = 10
     ): List<SplinePoint> {
+        // Cα 원자만 필터링 (제안된 구조에 맞춤)
+        val caAtoms = atoms.filter { it.name == "CA" }
+        if (caAtoms.isEmpty()) {
+            Log.w(TAG, "No Cα atoms found for spline generation")
+            return emptyList()
+        }
+        
         val result = mutableListOf<SplinePoint>()
 
-        for (i in 0 until atoms.size - 1) {
-            val p0 = if (i > 0) atoms[i - 1].position else atoms[i].position
-            val p1 = atoms[i].position
-            val p2 = atoms[i + 1].position
-            val p3 = if (i < atoms.size - 2) atoms[i + 2].position else atoms[i + 1].position
+        for (i in 0 until caAtoms.size - 1) {
+            val p0 = if (i > 0) caAtoms[i - 1].position else caAtoms[i].position
+            val p1 = caAtoms[i].position
+            val p2 = caAtoms[i + 1].position
+            val p3 = if (i < caAtoms.size - 2) caAtoms[i + 2].position else caAtoms[i + 1].position
 
             for (j in 0..numSegments) {
                 val t = j.toFloat() / numSegments
                 val point = catmullRom(p0, p1, p2, p3, t, tension)
-                result.add(SplinePoint(Vector3(point.x, point.y, point.z), atoms[i].secondaryStructure))
+                result.add(SplinePoint(Vector3(point.x, point.y, point.z), caAtoms[i].secondaryStructure))
             }
         }
 
@@ -1498,13 +1477,57 @@ class ProperRibbonRenderer : GLSurfaceView.Renderer {
         }
     }
 
-    private fun getSecondaryStructureColor(structure: SecondaryStructure): List<Float> {
-        return when (structure) {
-            SecondaryStructure.HELIX -> listOf(1.0f, 0.2f, 0.2f) // Red
-            SecondaryStructure.SHEET -> listOf(1.0f, 1.0f, 0.2f) // Yellow
-            SecondaryStructure.COIL -> listOf(0.6f, 0.6f, 0.6f) // Gray
-            SecondaryStructure.UNKNOWN -> listOf(0.7f, 0.7f, 0.7f) // Light Gray
+    // 헬퍼 함수들
+    private fun getAtomColor(atom: Atom): List<Float> {
+        return when (currentColorMode) {
+            ColorMode.ELEMENT -> {
+                // Element 컬러링: CPK 색상 체계 적용 (아이폰과 동일)
+                val elementColor = ColorMaps.cpk(atom.element)
+                val color = listOf(
+                    Color.red(elementColor) / 255f,
+                    Color.green(elementColor) / 255f,
+                    Color.blue(elementColor) / 255f,
+                    1.0f
+                )
+                Log.d(TAG, "Element color for ${atom.element}: $color (RGB: ${Color.red(elementColor)}, ${Color.green(elementColor)}, ${Color.blue(elementColor)})")
+                color
+            }
+            ColorMode.CHAIN -> {
+                // Chain 컬러링: 체인별 고유 색상 적용 (아이폰과 동일)
+                val chainColor = ColorMaps.chainColor(atom.chain)
+                listOf(
+                    Color.red(chainColor) / 255f,
+                    Color.green(chainColor) / 255f,
+                    Color.blue(chainColor) / 255f,
+                    1.0f
+                )
+            }
+            ColorMode.UNIFORM -> {
+                // Uniform 컬러링: 단일 색상 (회색) - 프레젠테이션용
+                listOf(0.5f, 0.5f, 0.5f, 1.0f)
+            }
+            ColorMode.SECONDARY_STRUCTURE -> {
+                // Secondary Structure 컬러링: 2차 구조별 색상 적용 (제안된 구조에 맞춤)
+                val structureColor = ColorMaps.secondaryStructure(atom.secondaryStructure)
+                val color = listOf(
+                    Color.red(structureColor) / 255f,
+                    Color.green(structureColor) / 255f,
+                    Color.blue(structureColor) / 255f,
+                    1.0f
+                )
+                color
+            }
         }
+    }
+
+    private fun getSecondaryStructureColor(structure: SecondaryStructure): List<Float> {
+        // 제안된 구조에 맞춘 색상 매핑 사용
+        val structureColor = ColorMaps.secondaryStructure(structure)
+        return listOf(
+            Color.red(structureColor) / 255f,
+            Color.green(structureColor) / 255f,
+            Color.blue(structureColor) / 255f
+        )
     }
 
     private fun blendColors(chainColor: List<Float>, structureColor: List<Float>, alpha: Float = 0.7f): List<Float> {
