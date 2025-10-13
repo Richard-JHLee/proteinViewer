@@ -117,6 +117,9 @@ object PDBParser {
     }
     
     private fun parseSecondaryStructure(lines: List<String>, map: MutableMap<String, SecondaryStructure>) {
+        var helixCount = 0
+        var sheetCount = 0
+        
         for (line in lines) {
             try {
                 when {
@@ -124,6 +127,9 @@ object PDBParser {
                         val chain = line.substring(19, 20).trim()
                         val start = line.substring(21, 25).trim().toIntOrNull() ?: continue
                         val end = line.substring(33, 37).trim().toIntOrNull() ?: continue
+                        val residueCount = end - start + 1
+                        helixCount += residueCount
+                        android.util.Log.d("PDBParser", "🌀 HELIX found: Chain $chain, residues $start-$end ($residueCount residues)")
                         for (i in start..end) {
                             map["${chain}_$i"] = SecondaryStructure.HELIX
                         }
@@ -132,6 +138,9 @@ object PDBParser {
                         val chain = line.substring(21, 22).trim()
                         val start = line.substring(22, 26).trim().toIntOrNull() ?: continue
                         val end = line.substring(33, 37).trim().toIntOrNull() ?: continue
+                        val residueCount = end - start + 1
+                        sheetCount += residueCount
+                        android.util.Log.d("PDBParser", "📄 SHEET found: Chain $chain, residues $start-$end ($residueCount residues)")
                         for (i in start..end) {
                             map["${chain}_$i"] = SecondaryStructure.SHEET
                         }
@@ -141,6 +150,8 @@ object PDBParser {
                 // Skip malformed lines
             }
         }
+        
+        android.util.Log.d("PDBParser", "📊 Secondary structure summary: $helixCount HELIX residues, $sheetCount SHEET residues")
     }
     
     private fun parseAtoms(

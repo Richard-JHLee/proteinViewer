@@ -2,6 +2,10 @@
 <resources>
     <string name="app_name">Protein Viewer</string>
     
+    <!-- Main Screen -->
+    <string name="main_title">Protein Viewer</string>
+    <string name="main_subtitle">Explore 3D Protein Structures</string>
+    
     <!-- Main UI -->
     <string name="protein_viewer">Protein Viewer</string>
     <string name="protein_library">Protein Library</string>
@@ -48,9 +52,285 @@
     <string name="select_protein">Select a protein from the library to view its 3D structure</string>
     <string name="no_protein_selected">No protein selected</string>
     
+    <!-- Navigation -->
+    <string name="nav_menu">Menu</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_info">Info</string>
+    <string name="nav_about">About</string>
+    <string name="nav_user_guide">User Guide</string>
+    <string name="nav_features">Features</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_help">Help</string>
+    <string name="nav_privacy">Privacy Policy</string>
+    <string name="nav_terms">Terms of Service</string>
+    <string name="nav_license">License</string>
+    
+    <!-- Search -->
+    <string name="search_hint">Search PDB ID or protein name</string>
+    <string name="search_button">Search</string>
+    <string name="search_results">Search Results</string>
+    <string name="search_no_results">No results found</string>
+    <string name="search_error">An error occurred during search</string>
+    
+    <!-- Protein Information -->
+    <string name="protein_id">Protein ID</string>
+    <string name="protein_name">Protein Name</string>
+    <string name="protein_description">Description</string>
+    <string name="protein_organism">Organism</string>
+    <string name="protein_method">Method</string>
+    <string name="protein_resolution">Resolution</string>
+    <string name="protein_atoms">Atoms</string>
+    <string name="protein_residues">Residues</string>
+    <string name="protein_chains">Chains</string>
+    <string name="protein_ligands">Ligands</string>
+    <string name="protein_pockets">Pockets</string>
+    
+    <!-- 3D Viewer -->
+    <string name="viewer_3d">3D Viewer</string>
+    <string name="viewer_controls">Controls</string>
+    <string name="viewer_rotate">Rotate</string>
+    <string name="viewer_zoom">Zoom</string>
+    <string name="viewer_pan">Pan</string>
+    <string name="viewer_reset">Reset</string>
+    <string name="viewer_fullscreen">Fullscreen</string>
+    
+    <!-- AR Mode -->
+    <string name="ar_mode">AR Mode</string>
+    <string name="ar_place_protein">Place Protein</string>
+    <string name="ar_remove_protein">Remove Protein</string>
+    <string name="ar_scale_protein">Scale Protein</string>
+    <string name="ar_rotate_protein">Rotate Protein</string>
+    
+    <!-- Education -->
+    <string name="education_quiz">Quiz</string>
+    <string name="education_explanation">Explanation</string>
+    <string name="education_beginner">Beginner</string>
+    <string name="education_intermediate">Intermediate</string>
+    <string name="education_advanced">Advanced</string>
+    
+    <!-- Library -->
+    <string name="library_title">Protein Library</string>
+    <string name="library_categories">Categories</string>
+    <string name="library_favorites">Favorites</string>
+    <string name="library_recent">Recent</string>
+    <string name="library_all">All</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_quality">Quality</string>
+    <string name="settings_performance">Performance</string>
+    
+    <!-- Permissions -->
+    <string name="permission_camera_title">Camera Permission</string>
+    <string name="permission_camera_message">Camera access is required for AR mode</string>
+    <string name="permission_camera_denied">Camera permission is required for AR mode</string>
+    
     <!-- Error Messages -->
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_parsing">Error parsing protein data</string>
+    <string name="error_generic">An error occurred</string>
+    <string name="error_network_unavailable">Network unavailable</string>
+    <string name="error_file_not_found">File not found</string>
+    <string name="error_invalid_data">Invalid data format</string>
+    <string name="error_insufficient_memory">Insufficient memory</string>
+    <string name="error_unknown">Unknown error</string>
     <string name="network_error">Network error. Please check your connection.</string>
     <string name="parsing_error">Error parsing protein data</string>
     <string name="unknown_error">An unknown error occurred</string>
     <string name="no_data">No Data</string>
+    
+    <!-- About Screen -->
+    <string name="about_app_name">ProteinApp</string>
+    <string name="about_version">Version 1.0.0</string>
+    <string name="about_title">About ProteinApp</string>
+    <string name="about_description">ProteinApp is a 3D protein structure visualization app for biology education. It integrates with the RCSB PDB database to download real protein structures and explore them in an interactive 3D environment.</string>
+    <string name="about_features_title">Key Features</string>
+    <string name="about_feature_1_title">3D Protein Visualization</string>
+    <string name="about_feature_1_desc">High-quality 3D rendering based on OpenGL ES 3.0 for accurate display of real protein structures</string>
+    <string name="about_feature_2_title">Various Rendering Styles</string>
+    <string name="about_feature_2_desc">4 visualization modes: Spheres, Sticks, Cartoon, Surface</string>
+    <string name="about_feature_3_title">Color Modes</string>
+    <string name="about_feature_3_desc">Element, chain, and secondary structure color modes for better understanding</string>
+    <string name="about_feature_4_title">Interactive Controls</string>
+    <string name="about_feature_4_desc">Rotate, zoom, and adjust transparency to observe from various angles</string>
+    <string name="about_feature_5_title">Protein Information</string>
+    <string name="about_feature_5_desc">Detailed information through RCSB PDB and UniProt database integration</string>
+    <string name="about_feature_6_title">Search Function</string>
+    <string name="about_feature_6_desc">Direct search by PDB ID or browse proteins by category</string>
+    <string name="about_feature_7_title">Performance Optimization</string>
+    <string name="about_feature_7_desc">Optimized engine for smooth rendering of large protein structures</string>
+    <string name="about_developer_title">Developer</string>
+    <string name="about_developer_name">AVAS</string>
+    <string name="about_copyright">© 2025 AVAS. All rights reserved.</string>
+    
+    <!-- User Guide Screen -->
+    <string name="guide_basic_usage_title">Basic Usage</string>
+    <string name="guide_step_1_title">Select Protein</string>
+    <string name="guide_step_1_desc">Select a protein from the library on the home screen or enter a PDB ID to load a protein.</string>
+    <string name="guide_step_2_title">3D Viewer Navigation</string>
+    <string name="guide_step_2_desc">Once the protein is loaded, you can explore the structure in the 3D viewer.</string>
+    <string name="guide_step_3_title">Change Rendering Style</string>
+    <string name="guide_step_3_desc">You can select Spheres, Sticks, Cartoon, or Surface styles from the bottom control bar.</string>
+    
+    <string name="guide_viewer_mode_title">Viewer Mode Usage</string>
+    <string name="guide_viewer_step_1_title">Switch to Viewer Mode</string>
+    <string name="guide_viewer_step_1_desc">Tap the \'Viewer\' button at the top to switch to viewer mode.</string>
+    <string name="guide_viewer_step_2_title">Select Rendering Style</string>
+    <string name="guide_viewer_step_2_desc">Select your desired rendering style from the bottom Primary Bar.</string>
+    <string name="guide_viewer_step_3_title">Select Color Mode</string>
+    <string name="guide_viewer_step_3_desc">Choose Element, Chain, or Secondary Structure color modes from Color Schemes.</string>
+    <string name="guide_viewer_step_4_title">Adjust Options</string>
+    <string name="guide_viewer_step_4_desc">You can adjust rotation, zoom, transparency, and atom size in Options.</string>
+    
+    <string name="guide_interaction_title">Interaction Guide</string>
+    <string name="guide_gesture_drag">Drag</string>
+    <string name="guide_gesture_drag_desc">Rotate 3D model</string>
+    <string name="guide_gesture_pinch">Pinch</string>
+    <string name="guide_gesture_pinch_desc">Zoom in/out</string>
+    <string name="guide_gesture_double_tap">Double Tap</string>
+    <string name="guide_gesture_double_tap_desc">Toggle auto rotation</string>
+    <string name="guide_gesture_long_press">Long Press</string>
+    <string name="guide_gesture_long_press_desc">Show atom information</string>
+    
+    <string name="guide_tips_title">Tips &amp; Tricks</string>
+    <string name="guide_tip_1_title">Highlight Feature</string>
+    <string name="guide_tip_1_desc">Select Chain, Ligand, or Pocket to highlight specific parts of the structure.</string>
+    <string name="guide_tip_2_title">Slice Feature</string>
+    <string name="guide_tip_2_desc">Use the slice feature to view only specific parts of complex structures.</string>
+    <string name="guide_tip_3_title">Color Mode Usage</string>
+    <string name="guide_tip_3_desc">In Secondary Structure mode, you can easily distinguish between α-helix and β-sheet.</string>
+    
+    <!-- Features Screen -->
+    <string name="features_3d_viz_title">3D Protein Visualization</string>
+    <string name="features_3d_viz_1">High-quality 3D rendering based on OpenGL ES 3.0</string>
+    <string name="features_3d_viz_2">Real-time interactive manipulation</string>
+    <string name="features_3d_viz_3">Support for various rendering styles</string>
+    <string name="features_3d_viz_4">LOD (Level of Detail) optimization</string>
+    
+    <string name="features_rendering_title">Rendering Styles</string>
+    <string name="features_rendering_1">Spheres: Atomic sphere representation</string>
+    <string name="features_rendering_2">Sticks: Bond line representation</string>
+    <string name="features_rendering_3">Cartoon: Cartoon style representation</string>
+    <string name="features_rendering_4">Surface: Surface representation</string>
+    
+    <string name="features_color_title">Color Modes</string>
+    <string name="features_color_1">Element: Element-based coloring</string>
+    <string name="features_color_2">Chain: Chain-based coloring</string>
+    <string name="features_color_3">Secondary Structure: Secondary structure-based coloring</string>
+    <string name="features_color_4">Uniform: Single color</string>
+    
+    <string name="features_interaction_title">Interaction Features</string>
+    <string name="features_interaction_1">Rotation: Drag to rotate 3D model</string>
+    <string name="features_interaction_2">Zoom: Pinch gesture</string>
+    <string name="features_interaction_3">Slice: Display specific parts only</string>
+    <string name="features_interaction_4">Auto rotation: Toggle with double tap</string>
+    
+    <string name="features_highlight_title">Highlight Features</string>
+    <string name="features_highlight_1">Chain Highlight: Emphasize specific chains</string>
+    <string name="features_highlight_2">Ligand Highlight: Emphasize ligands</string>
+    <string name="features_highlight_3">Pocket Highlight: Emphasize pockets</string>
+    <string name="features_highlight_4">All Chain Highlight: Emphasize all chains</string>
+    
+    <string name="features_info_title">Information Display</string>
+    <string name="features_info_1">PDB database integration</string>
+    <string name="features_info_2">Protein structure information</string>
+    <string name="features_info_3">Atomic information display</string>
+    <string name="features_info_4">Structure level information</string>
+    
+    <string name="features_performance_title">Performance Optimization</string>
+    <string name="features_performance_1">Geometry caching</string>
+    <string name="features_performance_2">LOD system</string>
+    <string name="features_performance_3">Memory optimization</string>
+    <string name="features_performance_4">Battery efficiency</string>
+    
+    <!-- Help Screen -->
+    <string name="help_title">Help &amp; FAQ</string>
+    <string name="help_faq_1_q">The app runs slowly</string>
+    <string name="help_faq_1_a">Large protein structures may take longer to load. Try starting with smaller proteins.</string>
+    <string name="help_faq_2_q">3D model doesn\'t rotate</string>
+    <string name="help_faq_2_a">Use drag gestures in viewer mode to rotate the model.</string>
+    <string name="help_faq_3_q">Colors don\'t change</string>
+    <string name="help_faq_3_a">Select your desired color mode from Color Schemes and wait a moment.</string>
+    <string name="help_faq_4_q">Cannot load protein</string>
+    <string name="help_faq_4_a">Check your internet connection and ensure you\'ve entered a valid PDB ID.</string>
+    <string name="help_faq_5_q">Need additional help</string>
+    <string name="help_faq_5_a">If problems persist or you have other questions, please contact us through the app info page.</string>
+    
+    <!-- Privacy Policy Screen -->
+    <string name="privacy_title">Privacy Policy</string>
+    <string name="privacy_section_1_title">1. Information We Collect</string>
+    <string name="privacy_section_1_content">ProteinApp does not collect any personal information.\n\n• PDB ID: A public identifier for downloading protein structure data, not personal information.\n• App usage data: All data generated within the app is stored only on your device.\n• Network requests: Only API calls for downloading protein structure data are made.</string>
+    <string name="privacy_section_2_title">2. Purpose of Information Use</string>
+    <string name="privacy_section_2_content">• Protein structure visualization and 3D rendering\n• Providing data for educational and research purposes\n• Local data processing for app functionality improvement\n• Providing in-app features to improve user experience</string>
+    <string name="privacy_section_3_title">3. Information Protection and Security</string>
+    <string name="privacy_section_3_content">• All data is stored only on your device.\n• No personal information is transmitted to external servers.\n• Only public data is requested when calling PDB APIs.\n• All local data is deleted when the app is uninstalled.</string>
+    <string name="privacy_section_4_title">4. Third-Party Services</string>
+    <string name="privacy_section_4_content">• RCSB PDB (data.rcsb.org): Provides protein structure data\n• PDBe (www.ebi.ac.uk): Provides additional protein information\n• UniProt (rest.uniprot.org): Provides protein function information\n\nAll these services use public APIs and do not require personal information.</string>
+    <string name="privacy_section_5_title">5. User Rights</string>
+    <string name="privacy_section_5_content">• Data deletion: You can delete all data by uninstalling the app.\n• Data modification: Information entered in the app can be modified at any time.\n• Inquiries: Please use the app info page for privacy-related inquiries.</string>
+    <string name="privacy_section_6_title">6. Policy Changes</string>
+    <string name="privacy_section_6_content">The privacy policy may be changed as needed, and changes will be announced within the app. Last updated: January 9, 2025</string>
+    
+    <!-- Terms of Service Screen -->
+    <string name="terms_title">Terms of Service</string>
+    <string name="terms_section_1_title">Service Usage</string>
+    <string name="terms_section_1_content">ProteinApp is a paid app. Payment through the App Store is required to download and use the app.</string>
+    <string name="terms_section_2_title">Payment &amp; Subscription</string>
+    <string name="terms_section_2_content">• App purchases are processed through the App Store.\n• One-time payment provides access to all app features.\n• No additional payments after app purchase.\n• Refunds are limited according to App Store policy.</string>
+    <string name="terms_section_3_title">Service Scope</string>
+    <string name="terms_section_3_content">• 3D protein structure visualization\n• Advanced rendering options\n• Protein analysis tools\n• Offline data storage\n• Customer support service\n• All features are included with app purchase.</string>
+    <string name="terms_section_4_title">Refund Policy</string>
+    <string name="terms_section_4_content">• App purchase refunds are processed according to Apple App Store policy.\n• Please request refunds directly through the App Store.\n• Apple\'s refund policy: https://support.apple.com/HT204084\n• Developers have no refund processing authority; Apple manages all refunds.</string>
+    <string name="terms_section_5_title">App Updates &amp; Support</string>
+    <string name="terms_section_5_content">• App updates are provided free of charge.\n• New features can be used without additional payment.\n• 30-day advance notice will be given before app support discontinuation.\n• We are not responsible for data loss due to support discontinuation.</string>
+    <string name="terms_section_6_title">Liability Limitation</string>
+    <string name="terms_section_6_content">Developers are not responsible for damages caused by app usage. This applies equally to paid app usage.</string>
+    <string name="terms_section_7_title">App Changes</string>
+    <string name="terms_section_7_content">App features may be changed without prior notice. Major feature changes will be announced through app updates.</string>
+    <string name="terms_section_8_title">Contact &amp; Support</string>
+    <string name="terms_section_8_content">For service-related inquiries, please contact us through the app info page. Last updated: January 9, 2025</string>
+    
+    <!-- License Screen -->
+    <string name="license_title">MIT License</string>
+    <string name="license_copyright">Copyright (c) 2025 AVAS</string>
+    <string name="license_permission">Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</string>
+    <string name="license_notice">The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</string>
+    <string name="license_warranty">THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</string>
+    
+    <string name="license_libraries_title">Open Source Libraries</string>
+    <string name="license_lib_1_name">OpenGL ES 3.0</string>
+    <string name="license_lib_1_desc">Android\'s 3D graphics framework</string>
+    <string name="license_lib_1_license">Android License</string>
+    <string name="license_lib_2_name">Jetpack Compose</string>
+    <string name="license_lib_2_desc">Android\'s declarative UI framework</string>
+    <string name="license_lib_2_license">Apache License 2.0</string>
+    <string name="license_lib_3_name">PDB Database</string>
+    <string name="license_lib_3_desc">Protein Data Bank public data</string>
+    <string name="license_lib_3_license">Public Domain</string>
+    
+    <string name="license_app_info_title">App Information</string>
+    <string name="license_info_app_name">App Name</string>
+    <string name="license_info_version">Version</string>
+    <string name="license_info_build">Build</string>
+    <string name="license_info_platform">Platform</string>
+    <string name="license_info_last_updated">Last Updated</string>
+    <string name="license_info_last_updated_value">January 2025</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_performance_title">Performance Optimization</string>
+    <string name="settings_performance_desc">You can adjust the rendering performance of large protein structures.</string>
+    <string name="settings_enable_optimization">Enable Performance Optimization</string>
+    <string name="settings_enable_optimization_desc">When enabled, limits the number of atoms in large proteins to improve performance.</string>
+    <string name="settings_max_atoms_title">Max Atoms Limit</string>
+    <string name="settings_max_atoms_desc">Up to 5000 atoms are rendered at highest quality. Performance optimization is applied for over 5000 atoms.</string>
+    <string name="settings_fast_rendering">Fast Rendering</string>
+    <string name="settings_high_quality">High Quality</string>
+    <string name="settings_sampling_title">Sampling Ratio</string>
+    <string name="settings_sampling_desc">Sets the ratio of atoms to sample from each chain.</string>
+    <string name="settings_fast_processing">Fast Processing</string>
+    <string name="settings_reset_title">Reset Settings</string>
+    <string name="settings_reset_button">Reset to Defaults</string>
 </resources>

@@ -6,10 +6,17 @@ import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
+import com.avas.proteinviewer.data.preferences.PerformanceSettings
 import com.avas.proteinviewer.domain.model.PDBStructure
 import com.avas.proteinviewer.domain.model.RenderStyle
 import com.avas.proteinviewer.domain.model.ColorMode
 import com.avas.proteinviewer.rendering.gles.ProperRibbonRenderer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 
 /**
  * OpenGL ES 3.0 전용 3D 단백질 뷰어 (Ribbon 스타일)
@@ -20,7 +27,8 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs) {
 
-    private val renderer = ProperRibbonRenderer()
+    private val performanceSettings = PerformanceSettings(context)
+    private val renderer = ProperRibbonRenderer(performanceSettings)
     private var rotationEnabled = false
     private var isInfoMode = false
     private var onRenderingCompleteCallback: (() -> Unit)? = null
@@ -30,11 +38,11 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             val scaleFactor = detector.scaleFactor
             if (scaleFactor == 0f || scaleFactor.isNaN()) return false
+            
+            // 즉시 적용 (CONTINUOUSLY 모드에서 자동으로 렌더링됨)
             queueEvent {
                 renderer.zoom(scaleFactor)
             }
-            // 줌할 때마다 부드럽게 움직이도록 렌더링 요청
-            requestRender()
             return true
         }
     })
@@ -52,11 +60,11 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             // Info 모드와 Viewer 모드 모두 항상 회전 허용
             if (e2.pointerCount == 1 && !isMultiTouch) {
                 isGestureInProgress = true
+                
+                // 즉시 적용 (CONTINUOUSLY 모드에서 자동으로 렌더링됨)
                 queueEvent {
                     renderer.rotate(distanceX, distanceY)
                 }
-                // 드래그할 때마다 부드럽게 움직이도록 렌더링 요청
-                requestRender()
             }
             return true
         }
@@ -68,7 +76,26 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             setRenderer(renderer)
             // 부드러운 제스처를 위해 연속 렌더링 사용
             renderMode = RENDERMODE_CONTINUOUSLY
-            android.util.Log.d("OpenGL30SurfaceView", "OpenGL ES 3.0 surface created with RENDERMODE_WHEN_DIRTY")
+            android.util.Log.d("OpenGL30SurfaceView", "OpenGL ES 3.0 surface created with RENDERMODE_CONTINUOUSLY")
+            
+            // Settings 변경 관찰 (코루틴 사용)
+            // 모든 설정을 하나의 Flow로 합쳐서 중복 재렌더링 방지
+            @OptIn(FlowPreview::class)
+            CoroutineScope(Dispatchers.Main).launch {
+                kotlinx.coroutines.flow.combine(
+                    performanceSettings.enableOptimization,
+                    performanceSettings.maxAtomsLimit,
+                    performanceSettings.samplingRatio
+                ) { enable, limit, ratio ->
+                    Triple(enable, limit, ratio)
+                }
+                .drop(1) // 초기값 스킵 (앱 시작 시 불필요한 재렌더링 방지)
+                .debounce(300) // 300ms 디바운스 (빠른 슬라이더 이동 시 중복 방지)
+                .collect {
+                    android.util.Log.d("OpenGL30SurfaceView", "⚙️ Settings changed, updating renderer...")
+                    queueEvent { renderer.updatePerformanceSettings(performanceSettings) }
+                }
+            }
         } catch (e: Exception) {
             android.util.Log.e("OpenGL30SurfaceView", "Error creating OpenGL surface", e)
         }
@@ -151,6 +178,9 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                 lastY = event.y
                 isMultiTouch = false
                 isGestureInProgress = true // 제스처 시작
+                
+                // 제스처 시작 시 연속 렌더링 모드로 전환 (부드러운 움직임)
+                renderMode = RENDERMODE_CONTINUOUSLY
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 // 두 번째 손가락 감지
@@ -172,15 +202,13 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
                     val dx = currentX - lastX
                     val dy = currentY - lastY
                     
+                    // 즉시 적용 (CONTINUOUSLY 모드에서 자동으로 렌더링됨)
                     queueEvent {
                         renderer.pan(dx, -dy) // X축은 그대로, Y축만 반대로 처리
                     }
-                    // 팬할 때마다 부드럽게 움직이도록 렌더링 요청
-                    requestRender()
                     
                     lastX = currentX
                     lastY = currentY
-                    // 성능 최적화: PAN 로그 제거
                 }
             }
             MotionEvent.ACTION_POINTER_UP -> {
@@ -192,6 +220,9 @@ class OpenGL30SurfaceView @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isMultiTouch = false
                 isGestureInProgress = false // 제스처 종료
+                
+                // 제스처 종료 시 WHEN_DIRTY 모드로 복귀 (배터리 절약)
+                renderMode = RENDERMODE_WHEN_DIRTY
                 requestRender() // 제스처 완료 후 최종 렌더링
             }
         }

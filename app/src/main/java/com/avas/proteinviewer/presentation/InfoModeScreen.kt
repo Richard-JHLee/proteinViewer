@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,6 +76,15 @@ fun InfoModeScreen(
         android.util.Log.d("InfoModeScreen", "Starting 3D rendering - new protein loaded")
         start3DRendering()
     }
+    
+    // 구조가 로드되었지만 3D 렌더링이 시작되지 않은 경우 강제 시작
+    if (uiState.currentProteinId.isNotEmpty() && 
+        uiState.structure != null && 
+        !is3DRendering && 
+        !is3DRenderingCompleted) {
+        android.util.Log.d("InfoModeScreen", "Force starting 3D rendering - structure loaded but not rendering")
+        start3DRendering()
+    }
     Scaffold(
         bottomBar = {
             // 아이폰과 동일: 하단 고정 탭바 (7개 탭)
@@ -99,8 +109,8 @@ fun InfoModeScreen(
                                     InfoTab.RESIDUES -> Icons.Default.Circle
                                     InfoTab.LIGANDS -> Icons.Default.Science
                                     InfoTab.POCKETS -> Icons.Default.Place
-                                    InfoTab.SEQUENCE -> Icons.Default.List
-                                    InfoTab.ANNOTATIONS -> Icons.Default.Note
+                                    InfoTab.SEQUENCE -> Icons.AutoMirrored.Filled.List
+                                    InfoTab.ANNOTATIONS -> Icons.AutoMirrored.Filled.Note
                                 }
                                 
                                 // 아이폰 스타일: 아이콘 위, 텍스트 아래
@@ -174,7 +184,7 @@ fun InfoModeScreen(
                     },
                     actions = {
                         IconButton(onClick = { viewModel.toggleProteinLibrary() }) {
-                            Icon(Icons.Default.LibraryBooks, contentDescription = "Library")
+                            Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = "Library")
                         }
                         IconButton(onClick = { viewModel.setViewMode(ViewMode.VIEWER) }) {
                             Icon(Icons.Default.Visibility, contentDescription = "3D Viewer")
@@ -253,7 +263,7 @@ fun InfoModeScreen(
                             }
                         }
                     }
-                    Divider()
+                    HorizontalDivider()
                 }
             }
         }
@@ -404,7 +414,7 @@ fun InfoModeScreen(
                 }
             }
             
-            Divider()
+            HorizontalDivider()
             
             // Scrollable Tab Content - 아이폰과 동일: 남은 공간 모두 사용
             Column(
@@ -423,6 +433,10 @@ fun InfoModeScreen(
                                 uiState = uiState,
                                 onStartUpdating = { startInfoUpdating() }
                             )
+                    
+                    // 메인화면에서는 View 3D Structure 버튼 제거 (이미 3D 구조를 보고 있음)
+                    
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         }

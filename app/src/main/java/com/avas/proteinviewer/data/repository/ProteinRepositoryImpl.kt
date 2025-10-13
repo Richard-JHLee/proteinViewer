@@ -25,7 +25,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ProteinRepositoryImpl @Inject constructor(
-    private val apiService: PDBAPIService
+    val apiService: PDBAPIService // private -> val (public access)
 ) : ProteinRepository {
 
     private val httpClient = OkHttpClient.Builder()
@@ -34,16 +34,18 @@ class ProteinRepositoryImpl @Inject constructor(
         .writeTimeout(30, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)        // 연결 실패 시 자동 재시도
         .build()
+    
+    // PDB 파일 메모리 캐시
+    private val pdbCache = mutableMapOf<String, String>()
 
     override fun searchProteins(query: String): Flow<List<ProteinInfo>> = flow {
         if (query.isEmpty()) {
-            // Return default proteins
             emit(getDefaultProteins())
             return@flow
         }
 
         try {
-            // Search using RCSB PDB Search API
+            // 1단계: Search API로 PDB IDs 가져오기 (카테고리와 동일한 방식)
             val searchUrl = "https://search.rcsb.org/rcsbsearch/v2/query"
             val requestBody = """
                 {
@@ -60,7 +62,7 @@ class ProteinRepositoryImpl @Inject constructor(
                     "return_all_hits": false,
                     "pager": {
                       "start": 0,
-                      "rows": 20
+                      "rows": 30
                     }
                   }
                 }
@@ -68,9 +70,8 @@ class ProteinRepositoryImpl @Inject constructor(
 
             val request = Request.Builder()
                 .url(searchUrl)
-                .post(okhttp3.RequestBody.create(
-                    "application/json".toMediaType(),
-                    requestBody
+                .post(requestBody.toRequestBody(
+                    "application/json".toMediaType()
                 ))
                 .build()
 
@@ -82,32 +83,29 @@ class ProteinRepositoryImpl @Inject constructor(
                 val jsonResponse = JSONObject(response.body?.string() ?: "{}")
                 val results = jsonResponse.optJSONArray("result_set") ?: JSONArray()
                 
-                val proteins = mutableListOf<ProteinInfo>()
+                // PDB IDs 수집
+                val pdbIds = mutableListOf<String>()
                 for (i in 0 until results.length()) {
                     val result = results.getJSONObject(i)
                     val id = result.optString("identifier", "")
                     if (id.isNotEmpty()) {
-                        // Fetch details for each protein
-                        val detail = fetchProteinDetail(id)
-                        proteins.add(                        ProteinInfo(
-                            id = id,
-                            name = detail?.name ?: id,
-                            category = ProteinCategory.ENZYMES, // 기본값
-                            description = detail?.description ?: "No Data",
-                            organism = detail?.organism,
-                            resolution = detail?.resolution?.toFloat(),
-                            experimentalMethod = detail?.experimentalMethod,
-                            depositionDate = detail?.depositionDate,
-                            molecularWeight = detail?.molecularWeight?.toFloat()
-                        ))
+                        pdbIds.add(id)
                     }
                 }
                 
-                emit(proteins)
+                // 2단계: GraphQL로 상세 정보 가져오기 (카테고리와 동일한 방식)
+                if (pdbIds.isNotEmpty()) {
+                    android.util.Log.d("ProteinRepositoryImpl", "🔍 검색 결과 ${pdbIds.size}개 PDB ID 발견, GraphQL로 상세 정보 조회")
+                    val proteins = fetchProteinDetailsViaGraphQL(pdbIds)
+                    emit(proteins)
+                } else {
+                    emit(emptyList())
+                }
             } else {
                 emit(getDefaultProteins())
             }
         } catch (e: Exception) {
+            android.util.Log.e("ProteinRepositoryImpl", "❌ 검색 실패: ${e.message}")
             emit(getDefaultProteins())
         }
     }.flowOn(Dispatchers.IO)
@@ -121,16 +119,102 @@ class ProteinRepositoryImpl @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
+    override suspend fun getPDBContent(proteinId: String): String {
+        return withContext(Dispatchers.IO) {
+            val upperProteinId = proteinId.uppercase()
+            val lowerProteinId = proteinId.lowercase()
+            
+            // 캐시에서 먼저 확인
+            pdbCache[upperProteinId]?.let { cachedPdbText ->
+                android.util.Log.d("ProteinRepository", "Using cached PDB content for $upperProteinId")
+                return@withContext cachedPdbText
+            }
+            
+            // 여러 URL 시도 (fallback 메커니즘)
+            val middle2 = if (lowerProteinId.length >= 3) lowerProteinId.substring(1, 3) else "xx"
+            val urls = listOf(
+                "https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/${middle2}/pdb${lowerProteinId}.ent.gz",
+                "https://files.wwpdb.org/pub/pdb/data/structures/divided/pdb/${middle2}/pdb${lowerProteinId}.ent.gz",
+                "https://files.rcsb.org/download/${upperProteinId}.pdb"
+            )
+            
+            for ((index, pdbUrl) in urls.withIndex()) {
+                try {
+                    android.util.Log.d("ProteinRepository", "Trying URL ${index + 1}/${urls.size}: $pdbUrl")
+                    
+                    val request = Request.Builder()
+                        .url(pdbUrl)
+                        .header("User-Agent", "ProteinViewer/1.0")
+                        .build()
+
+                    val response = httpClient.newCall(request).execute()
+                    
+                    if (response.isSuccessful) {
+                        val bodyBytes = response.body?.bytes()
+                        if (bodyBytes != null && bodyBytes.isNotEmpty()) {
+                            // gzip 압축 여부 확인
+                            val pdbText = if (pdbUrl.endsWith(".gz")) {
+                                // gzip 압축 해제
+                                try {
+                                    java.util.zip.GZIPInputStream(bodyBytes.inputStream()).bufferedReader().use { it.readText() }
+                                } catch (e: Exception) {
+                                    android.util.Log.w("ProteinRepository", "Failed to decompress gzip from $pdbUrl: ${e.message}")
+                                    throw Exception("Gzip decompression failed: ${e.message}")
+                                }
+                            } else {
+                                String(bodyBytes)
+                            }
+                            
+                            if (pdbText.isNotEmpty()) {
+                                // 캐시에 저장
+                                pdbCache[upperProteinId] = pdbText
+                                android.util.Log.d("ProteinRepository", "✅ Downloaded and cached PDB from URL ${index + 1}")
+                                return@withContext pdbText
+                            }
+                        }
+                    } else {
+                        android.util.Log.w("ProteinRepository", "❌ HTTP ${response.code} from URL ${index + 1}")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ProteinRepository", "❌ Error from URL ${index + 1}: ${e.message}")
+                    if (index == urls.size - 1) {
+                        // 마지막 URL도 실패하면 예외 던지기
+                        throw Exception("Failed to download PDB content for $proteinId from all URLs")
+                    }
+                }
+            }
+            
+            throw Exception("Failed to download PDB content for $proteinId")
+        }
+    }
+
     override suspend fun loadPDBStructure(proteinId: String, onProgress: (String) -> Unit): PDBStructure {
         return withContext(Dispatchers.IO) {
+            val upperProteinId = proteinId.uppercase()
+            
+            // 캐시에서 먼저 확인
+            pdbCache[upperProteinId]?.let { cachedPdbText ->
+                android.util.Log.d("ProteinRepository", "Using cached PDB for $upperProteinId")
+                onProgress("Parsing cached protein structure...")
+                return@withContext PDBParser.parse(cachedPdbText)
+            }
+            
             onProgress("Downloading protein data...")
             
             // Multiple URL attempts (fallback mechanism)
+            val lowerProteinId = proteinId.lowercase()
+            val middle2 = if (lowerProteinId.length >= 3) lowerProteinId.substring(1, 3) else "xx"
             val urls = listOf(
-                "https://files.rcsb.org/download/${proteinId.uppercase()}.pdb",
-                "https://files.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb${proteinId.lowercase()}.ent.gz",
-                "http://files.rcsb.org/download/${proteinId.uppercase()}.pdb" // HTTP fallback
+                "https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/${middle2}/pdb${lowerProteinId}.ent.gz",
+                "https://files.wwpdb.org/pub/pdb/data/structures/divided/pdb/${middle2}/pdb${lowerProteinId}.ent.gz",
+                "https://files.rcsb.org/download/${upperProteinId}.pdb",
+                "http://files.rcsb.org/download/${upperProteinId}.pdb" // HTTP fallback
             )
+            
+            android.util.Log.d("ProteinRepository", "📋 PDB Download URLs for $upperProteinId:")
+            urls.forEachIndexed { index, url ->
+                android.util.Log.d("ProteinRepository", "  ${index + 1}. $url")
+            }
             
             var lastException: Exception? = null
             
@@ -156,8 +240,13 @@ class ProteinRepositoryImpl @Inject constructor(
                         val pdbText = if (pdbUrl.endsWith(".gz")) {
                             // Decompress gzip if needed
                             onProgress("Decompressing data...")
-                            val gzipInputStream = java.util.zip.GZIPInputStream(response.body?.byteStream())
-                            gzipInputStream.bufferedReader().use { it.readText() }
+                            try {
+                                val gzipInputStream = java.util.zip.GZIPInputStream(response.body?.byteStream())
+                                gzipInputStream.bufferedReader().use { it.readText() }
+                            } catch (e: Exception) {
+                                android.util.Log.w("ProteinRepository", "Failed to decompress gzip from $pdbUrl: ${e.message}")
+                                throw Exception("Gzip decompression failed: ${e.message}")
+                            }
                         } else {
                             response.body?.string() ?: throw Exception("Empty file")
                         }
@@ -165,6 +254,11 @@ class ProteinRepositoryImpl @Inject constructor(
                         if (pdbText.isNotEmpty()) {
                             onProgress("Parsing protein structure...")
                             android.util.Log.d("ProteinRepository", "Successfully downloaded from: $pdbUrl")
+                            
+                            // 캐시에 저장
+                            pdbCache[upperProteinId] = pdbText
+                            android.util.Log.d("ProteinRepository", "Cached PDB for $upperProteinId")
+                            
                             return@withContext PDBParser.parse(pdbText)
                         }
                     } else {
@@ -544,7 +638,16 @@ class ProteinRepositoryImpl @Inject constructor(
     override suspend fun searchProteinByID(pdbId: String): ProteinInfo? {
         return withContext(Dispatchers.IO) {
             try {
-                apiService.searchProteinByID(pdbId)
+                // GraphQL로 상세 정보 가져오기 (카테고리와 동일한 방식)
+                android.util.Log.d("ProteinRepositoryImpl", "🔍 PDB ID로 GraphQL 조회: $pdbId")
+                val proteins = fetchProteinDetailsViaGraphQL(listOf(pdbId))
+                if (proteins.isNotEmpty()) {
+                    android.util.Log.d("ProteinRepositoryImpl", "✅ GraphQL 성공: ${proteins[0].name}")
+                    proteins[0]
+                } else {
+                    android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL 결과 없음")
+                    null
+                }
             } catch (e: Exception) {
                 android.util.Log.e("ProteinRepositoryImpl", "❌ PDB ID 검색 실패: ${e.message}")
                 null
@@ -558,11 +661,367 @@ class ProteinRepositoryImpl @Inject constructor(
     override suspend fun searchProteinsByText(searchText: String, limit: Int): List<ProteinInfo> {
         return withContext(Dispatchers.IO) {
             try {
-                apiService.searchProteinsByText(searchText, limit)
+                // 1단계: Search API로 PDB IDs 가져오기
+                android.util.Log.d("ProteinRepositoryImpl", "🔍 텍스트 검색: $searchText")
+                val pdbIds = apiService.searchProteinIdsByText(searchText, limit)
+                
+                // 2단계: GraphQL로 상세 정보 가져오기
+                if (pdbIds.isNotEmpty()) {
+                    android.util.Log.d("ProteinRepositoryImpl", "🔍 ${pdbIds.size}개 PDB ID 발견, GraphQL로 상세 정보 조회")
+                    fetchProteinDetailsViaGraphQL(pdbIds)
+                } else {
+                    emptyList()
+                }
             } catch (e: Exception) {
                 android.util.Log.e("ProteinRepositoryImpl", "❌ 텍스트 검색 실패: ${e.message}")
                 emptyList()
             }
         }
+    }
+    
+    /**
+     * 아이폰과 동일한 2단계 검색: PDB ID 목록 가져오기
+     */
+    override suspend fun searchProteinIdsByCategory(category: ProteinCategory, limit: Int, skip: Int): Pair<List<String>, Int> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.searchProteinsByCategory(category, limit, skip)
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinRepositoryImpl", "❌ 카테고리별 ID 검색 실패: ${e.message}")
+                Pair(emptyList(), 0)
+            }
+        }
+    }
+    
+    /**
+     * PDB ID 목록으로 단백질 상세 정보 가져오기 (아이폰과 동일: GraphQL)
+     */
+    override suspend fun getProteinsByIds(pdbIds: List<String>): List<ProteinInfo> {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d("ProteinRepositoryImpl", "🔍 PDB IDs로 GraphQL 상세 정보 가져오기: ${pdbIds.size}개")
+                
+                // 아이폰과 동일: GraphQL API로 batch fetch
+                fetchProteinDetailsViaGraphQL(pdbIds)
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL 실패, fallback 데이터 생성: ${e.message}")
+                // GraphQL 실패 시 기본 정보 생성
+                pdbIds.map { pdbId ->
+                    ProteinInfo(
+                        id = pdbId,
+                        name = pdbId,
+                        category = ProteinCategory.ENZYMES,
+                        description = "PDB ID: $pdbId",
+                        keywords = emptyList()
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * GraphQL API로 단백질 상세 정보 가져오기 (아이폰과 동일)
+     */
+    private suspend fun fetchProteinDetailsViaGraphQL(pdbIds: List<String>): List<ProteinInfo> {
+        if (pdbIds.isEmpty()) return emptyList()
+        
+        val graphQLURL = "https://data.rcsb.org/graphql"
+        
+        // 아이폰과 동일한 GraphQL 쿼리
+        val query = """
+        query (${"$"}ids: [String!]!) {
+          entries(entry_ids: ${"$"}ids) {
+            rcsb_id
+            struct { 
+              title 
+              pdbx_descriptor 
+            }
+            exptl { 
+              method 
+            }
+            rcsb_entry_info { 
+              resolution_combined 
+              experimental_method
+            }
+            struct_keywords {
+              pdbx_keywords
+            }
+          }
+        }
+        """.trimIndent()
+        
+        val requestBody = JSONObject().apply {
+            put("query", query)
+            put("variables", JSONObject().apply {
+                put("ids", JSONArray(pdbIds))
+            })
+        }
+        
+        val request = Request.Builder()
+            .url(graphQLURL)
+            .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+            .addHeader("Content-Type", "application/json")
+            .build()
+        
+        return try {
+            val response = httpClient.newCall(request).execute()
+            
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                if (responseBody != null) {
+                    parseGraphQLResponse(responseBody)
+                } else {
+                    emptyList()
+                }
+            } else {
+                android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL HTTP error: ${response.code}")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL 요청 실패: ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * GraphQL 응답 파싱 (아이폰과 동일)
+     */
+    private fun parseGraphQLResponse(responseBody: String): List<ProteinInfo> {
+        return try {
+            val json = JSONObject(responseBody)
+            val data = json.getJSONObject("data")
+            val entries = data.getJSONArray("entries")
+            
+            val proteins = mutableListOf<ProteinInfo>()
+            
+            for (i in 0 until entries.length()) {
+                val entry = entries.getJSONObject(i)
+                val proteinInfo = convertGraphQLToProteinInfo(entry)
+                if (proteinInfo != null) {
+                    proteins.add(proteinInfo)
+                }
+            }
+            
+            android.util.Log.d("ProteinRepositoryImpl", "🧬 GraphQL 성공: ${proteins.size}개 단백질 정보 변환")
+            proteins
+        } catch (e: Exception) {
+            android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL 응답 파싱 실패: ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * GraphQL 엔트리를 ProteinInfo로 변환 (아이폰과 동일)
+     */
+    private fun convertGraphQLToProteinInfo(entry: JSONObject): ProteinInfo? {
+        return try {
+            val rcsbId = entry.optString("rcsb_id", "")
+            if (rcsbId.isEmpty()) return null
+            
+            // Name 생성 (아이폰과 동일)
+            val structObj = entry.optJSONObject("struct")
+            val title = structObj?.optString("title", "") ?: ""
+            val name = generateNameFromTitle(title, rcsbId)
+            
+            // Description 생성 (아이폰과 동일)
+            val description = buildDescriptionFromEntry(entry)
+            
+            // Category 추론 (아이폰과 동일)
+            val category = inferCategoryFromEntry(entry)
+            
+            // Keywords 추출
+            val keywords = extractKeywordsFromEntry(entry)
+            
+            ProteinInfo(
+                id = rcsbId,
+                name = name,
+                category = category,
+                description = description,
+                keywords = keywords
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("ProteinRepositoryImpl", "❌ GraphQL 엔트리 변환 실패: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Title로부터 Name 생성 (아이폰과 동일)
+     */
+    private fun generateNameFromTitle(title: String, rcsbId: String): String {
+        if (title.isNotEmpty()) {
+            val cleanTitle = title
+                .replace("CRYSTAL STRUCTURE OF", "", ignoreCase = true)
+                .replace("X-RAY STRUCTURE OF", "", ignoreCase = true)
+                .trim()
+            
+            if (cleanTitle.isNotEmpty()) {
+                return cleanTitle.split(" ").joinToString(" ") { word ->
+                    word.lowercase().replaceFirstChar { it.uppercase() }
+                }
+            }
+        }
+        return "Protein $rcsbId"
+    }
+    
+    /**
+     * GraphQL 엔트리로부터 Description 생성 (아이폰과 동일)
+     */
+    private fun buildDescriptionFromEntry(entry: JSONObject): String {
+        val parts = mutableListOf<String>()
+        
+        val structObj = entry.optJSONObject("struct")
+        val title = structObj?.optString("title", "") ?: ""
+        if (title.isNotEmpty()) {
+            parts.add(title)
+        }
+        
+        val classification = structObj?.optString("pdbx_descriptor", "") ?: ""
+        if (classification.isNotEmpty()) {
+            parts.add("Classification: $classification")
+        }
+        
+        val exptlArray = entry.optJSONArray("exptl")
+        if (exptlArray != null && exptlArray.length() > 0) {
+            val methods = mutableListOf<String>()
+            for (i in 0 until exptlArray.length()) {
+                val method = exptlArray.getJSONObject(i).optString("method", "")
+                if (method.isNotEmpty()) methods.add(method)
+            }
+            if (methods.isNotEmpty()) {
+                parts.add("Method: ${methods.joinToString(", ")}")
+            }
+        }
+        
+        // Resolution 추가 (아이폰과 동일)
+        val entryInfo = entry.optJSONObject("rcsb_entry_info")
+        val resolutionArray = entryInfo?.optJSONArray("resolution_combined")
+        if (resolutionArray != null && resolutionArray.length() > 0) {
+            val resolution = resolutionArray.optDouble(0, -1.0)
+            if (resolution > 0) {
+                parts.add("Resolution: ${String.format("%.2f", resolution)}Å")
+            }
+        }
+        
+        return if (parts.isNotEmpty()) {
+            parts.joinToString(" | ")
+        } else {
+            "No description available"
+        }
+    }
+    
+    /**
+     * GraphQL 엔트리로부터 Category 추론 (아이폰과 동일)
+     */
+    private fun inferCategoryFromEntry(entry: JSONObject): ProteinCategory {
+        val structObj = entry.optJSONObject("struct")
+        val title = (structObj?.optString("title", "") ?: "").lowercase()
+        val classification = (structObj?.optString("pdbx_descriptor", "") ?: "").lowercase()
+        val keywordsObj = entry.optJSONObject("struct_keywords")
+        val keywords = (keywordsObj?.optString("pdbx_keywords", "") ?: "").lowercase()
+        
+        val allText = "$title $classification $keywords"
+        
+        return inferCategoryFromText(allText)
+    }
+    
+    /**
+     * 텍스트로부터 카테고리 추론 (아이폰과 동일)
+     */
+    private fun inferCategoryFromText(text: String): ProteinCategory {
+        val lowercaseText = text.lowercase()
+        
+        // 효소
+        if (lowercaseText.contains("enzyme") || lowercaseText.contains("kinase") || 
+            lowercaseText.contains("transferase") || lowercaseText.contains("hydrolase") ||
+            lowercaseText.contains("oxidoreductase")) {
+            return ProteinCategory.ENZYMES
+        }
+        
+        // 구조 단백질
+        if (lowercaseText.contains("collagen") || lowercaseText.contains("actin") || 
+            lowercaseText.contains("tubulin") || lowercaseText.contains("keratin") ||
+            lowercaseText.contains("structural") || lowercaseText.contains("cytoskeleton")) {
+            return ProteinCategory.STRUCTURAL
+        }
+        
+        // 방어 단백질
+        if (lowercaseText.contains("antibody") || lowercaseText.contains("immunoglobulin") || 
+            lowercaseText.contains("complement") || lowercaseText.contains("immune")) {
+            return ProteinCategory.DEFENSE
+        }
+        
+        // 운반 단백질
+        if (lowercaseText.contains("hemoglobin") || lowercaseText.contains("myoglobin") || 
+            lowercaseText.contains("transport") || lowercaseText.contains("carrier")) {
+            return ProteinCategory.TRANSPORT
+        }
+        
+        // 호르몬
+        if (lowercaseText.contains("hormone") || lowercaseText.contains("insulin") || 
+            lowercaseText.contains("growth factor")) {
+            return ProteinCategory.HORMONES
+        }
+        
+        // 저장 단백질
+        if (lowercaseText.contains("ferritin") || lowercaseText.contains("storage")) {
+            return ProteinCategory.STORAGE
+        }
+        
+        // 수용체
+        if (lowercaseText.contains("receptor") || lowercaseText.contains("gpcr")) {
+            return ProteinCategory.RECEPTORS
+        }
+        
+        // 막 단백질
+        if (lowercaseText.contains("membrane") || lowercaseText.contains("channel") || 
+            lowercaseText.contains("pump")) {
+            return ProteinCategory.MEMBRANE
+        }
+        
+        // 모터 단백질
+        if (lowercaseText.contains("motor") || lowercaseText.contains("myosin") || 
+            lowercaseText.contains("kinesin") || lowercaseText.contains("dynein")) {
+            return ProteinCategory.MOTOR
+        }
+        
+        // 신호전달
+        if (lowercaseText.contains("signaling") || lowercaseText.contains("signal transduction")) {
+            return ProteinCategory.SIGNALING
+        }
+        
+        // 샤페론
+        if (lowercaseText.contains("chaperone") || lowercaseText.contains("hsp")) {
+            return ProteinCategory.CHAPERONES
+        }
+        
+        // 대사
+        if (lowercaseText.contains("metabolic") || lowercaseText.contains("metabolism")) {
+            return ProteinCategory.METABOLIC
+        }
+        
+        return ProteinCategory.ENZYMES // 기본값
+    }
+    
+    /**
+     * GraphQL 엔트리로부터 키워드 추출
+     */
+    private fun extractKeywordsFromEntry(entry: JSONObject): List<String> {
+        val keywords = mutableListOf<String>()
+        
+        val rcsbId = entry.optString("rcsb_id", "")
+        if (rcsbId.isNotEmpty()) {
+            keywords.add(rcsbId.lowercase())
+        }
+        
+        val structObj = entry.optJSONObject("struct")
+        val title = structObj?.optString("title", "") ?: ""
+        if (title.isNotEmpty()) {
+            title.split(" ").filter { it.length > 3 }.take(5).forEach {
+                keywords.add(it.lowercase())
+            }
+        }
+        
+        return keywords.take(5)
     }
 }

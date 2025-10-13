@@ -44,6 +44,7 @@ fun ProteinLibraryScreen(
     selectedCategory: ProteinCategory?,
     showCategoryGrid: Boolean,
     categoryCounts: Map<String, Int>,
+    categoryDataSource: Map<ProteinCategory, com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource> = emptyMap(),
     favoriteIds: Set<String> = emptySet(),
     hasMoreResults: Boolean = false,
     isLoadingResults: Boolean = false,
@@ -198,9 +199,13 @@ fun ProteinLibraryScreen(
                     Column(modifier = Modifier.fillMaxSize()) {
                         // 선택된 카테고리 헤더 (카테고리가 선택된 경우)
                         if (selectedCategory != null) {
+                            val isSampleData = categoryDataSource[selectedCategory] == com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource.SAMPLE
+                            val totalCount = categoryCounts[selectedCategory.displayName] ?: 0
                             SelectedCategoryView(
                                 category = selectedCategory,
                                 proteinCount = displayedProteins.size,
+                                totalCount = totalCount,
+                                isSampleData = isSampleData,
                                 onBack = { onCategorySelect(null) }
                             )
                         }
@@ -265,7 +270,7 @@ fun ProteinLibraryScreen(
             onDismissRequest = { showCustomSearchDialog = false },
             icon = {
                 Icon(
-                    imageVector = Icons.Default.ManageSearch,
+                    imageVector = Icons.Filled.ManageSearch,
                     contentDescription = null
                 )
             },
@@ -531,91 +536,90 @@ private fun ProteinCard(
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
+    // 아이폰과 동일한 카드 스타일
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // Protein Info (아이폰과 동일)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = protein.id,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = protein.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                IconButton(onClick = onToggleFavorite) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Toggle favorite",
-                        tint = if (isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = protein.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                protein.resolution?.let {
-                    ProteinMetaChip(
-                        label = "${String.format("%.2f", it)} Å",
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                    )
-                }
-
-                protein.experimentalMethod?.let { method ->
-                    ProteinMetaChip(
-                        label = method,
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
-                    )
-                }
-            }
-
-            protein.organism?.let { organism ->
-                Spacer(modifier = Modifier.height(10.dp))
+                // PDB ID + Favorite 버튼 (아이폰과 동일)
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Public,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    // PDB ID with category color background (아이폰과 동일)
                     Text(
-                        text = organism,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = protein.id.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(protein.category.color),
+                        modifier = Modifier
+                            .background(
+                                color = Color(protein.category.color).copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                    
+                    // Favorite 버튼 (아이폰과 동일)
+                    IconButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.Favorite,
+                            contentDescription = "Toggle favorite",
+                            tint = if (isFavorite) Color(0xFFFF69B4) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                
+                // Name (아이폰과 동일: semibold, headline)
+                Text(
+                    text = protein.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                // Description (아이폰과 동일: 2줄, caption)
+                Text(
+                    text = protein.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                // Category (아이폰과 동일: icon + category name)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = protein.category.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(protein.category.color)
                     )
                 }
             }
@@ -641,7 +645,7 @@ private fun CategorySelectionSection(
             // Total count text (아이폰과 동일 - All 버튼과 Choose a Category 사이)
             val totalCount = categoryCounts.values.sum()
             Text(
-                text = "Total: $totalCount proteins across all categories",
+                text = "Total: ${formatNumber(totalCount)} proteins across all categories",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -785,7 +789,7 @@ private fun CategoryFilterRow(
                     onClick = onCustomSearch
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ManageSearch,
+                        imageVector = Icons.Filled.ManageSearch,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.secondary
                     )
@@ -1051,7 +1055,7 @@ private fun CategoryCard(
                 )
                 
                 Text(
-                    text = "$proteinCount proteins",
+                    text = "${formatNumber(proteinCount)} proteins",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1076,6 +1080,8 @@ private fun CategoryCard(
 private fun SelectedCategoryView(
     category: ProteinCategory,
     proteinCount: Int,
+    totalCount: Int,
+    isSampleData: Boolean,
     onBack: () -> Unit
 ) {
     Card(
@@ -1108,11 +1114,41 @@ private fun SelectedCategoryView(
                 }
             }
             
-            Text(
-                text = "$proteinCount proteins found",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 전체 개수 대비 현재 로드된 개수 표시
+                val countText = if (totalCount > 0 && totalCount > proteinCount) {
+                    "Showing ${formatNumber(proteinCount)} of ${formatNumber(totalCount)} proteins"
+                } else if (totalCount > 0) {
+                    "Showing ${formatNumber(proteinCount)} of ${formatNumber(totalCount)} proteins"
+                } else {
+                    "${formatNumber(proteinCount)} proteins found"
+                }
+                
+                Text(
+                    text = countText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                // 샘플 데이터 배지
+                if (isSampleData) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "Sample Data",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
             
             Text(
                 text = category.description,
@@ -1120,6 +1156,21 @@ private fun SelectedCategoryView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
             )
+            
+            // 샘플 데이터 안내 메시지
+            if (isSampleData) {
+                Text(
+                    text = "💡 Tap to load real data from RCSB PDB",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(category.color).copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
+}
+
+// 숫자를 포맷팅하는 헬퍼 함수 (천 단위 콤마)
+private fun formatNumber(number: Int): String {
+    return String.format("%,d", number)
 }

@@ -1,9 +1,12 @@
 package com.avas.proteinviewer.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,9 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.avas.proteinviewer.data.preferences.PerformanceSettings
 import com.avas.proteinviewer.domain.model.MenuItemType
+import com.avas.proteinviewer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +33,7 @@ fun MenuDetailScreen(
                 title = { Text(menuItem.title) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -55,475 +61,940 @@ fun MenuDetailScreen(
 
 @Composable
 private fun AboutView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // App Icon and Title
+        // 앱 아이콘 및 이름
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Info,
+                Icons.Default.Science,
                 contentDescription = "App Icon",
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(60.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "ProteinViewer",
+                    text = context.getString(R.string.about_app_name),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Version 1.0.0",
+                    text = context.getString(R.string.about_version),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         
-        Divider()
+                HorizontalDivider()
         
-        // App Description
-        Text(
-            text = "Professional 3D Protein Structure Visualization",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+        // 앱 설명
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = context.getString(R.string.about_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = context.getString(R.string.about_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
         
-        Text(
-            text = "ProteinViewer is a powerful tool for visualizing and analyzing protein structures in 3D. Built with modern Android technologies and OpenGL ES 3.0 for high-performance rendering.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        // 주요 기능
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = context.getString(R.string.about_features_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FeatureRow(
+                    icon = Icons.Default.ViewInAr,
+                    title = context.getString(R.string.about_feature_1_title),
+                    description = context.getString(R.string.about_feature_1_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.Palette,
+                    title = context.getString(R.string.about_feature_2_title),
+                    description = context.getString(R.string.about_feature_2_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.ColorLens,
+                    title = context.getString(R.string.about_feature_3_title),
+                    description = context.getString(R.string.about_feature_3_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.TouchApp,
+                    title = context.getString(R.string.about_feature_4_title),
+                    description = context.getString(R.string.about_feature_4_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.Info,
+                    title = context.getString(R.string.about_feature_5_title),
+                    description = context.getString(R.string.about_feature_5_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.Search,
+                    title = context.getString(R.string.about_feature_6_title),
+                    description = context.getString(R.string.about_feature_6_desc)
+                )
+                FeatureRow(
+                    icon = Icons.Default.Speed,
+                    title = context.getString(R.string.about_feature_7_title),
+                    description = context.getString(R.string.about_feature_7_desc)
+                )
+            }
+        }
         
-        // Features
-        Text(
-            text = "Key Features:",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+                HorizontalDivider()
         
-        FeatureItem("3D Protein Visualization", "Interactive 3D rendering with multiple styles")
-        FeatureItem("Advanced Analysis", "Detailed protein structure analysis")
-        FeatureItem("Cross-Platform", "Consistent experience across devices")
-        FeatureItem("Educational Tools", "Perfect for learning and research")
-        
-        // Contact Information
-        Text(
-            text = "Contact Information:",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        Text(
-            text = "For support, feedback, or questions, please contact us through the app store or visit our website.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        // 개발자 정보
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = context.getString(R.string.about_developer_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = context.getString(R.string.about_developer_name),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = context.getString(R.string.about_copyright),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
 
 @Composable
 private fun UserGuideView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text(
-            text = "User Guide",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        // 기본 사용법
+        GuideSectionCard(
+            title = context.getString(R.string.guide_basic_usage_title),
+            icon = Icons.Default.PlayArrow
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                GuideStepItem(
+                    step = "1",
+                    title = context.getString(R.string.guide_step_1_title),
+                    description = context.getString(R.string.guide_step_1_desc)
+                )
+                GuideStepItem(
+                    step = "2",
+                    title = context.getString(R.string.guide_step_2_title),
+                    description = context.getString(R.string.guide_step_2_desc)
+                )
+                GuideStepItem(
+                    step = "3",
+                    title = context.getString(R.string.guide_step_3_title),
+                    description = context.getString(R.string.guide_step_3_desc)
+                )
+            }
+        }
         
-        GuideSection(
-            title = "Getting Started",
-            content = "1. Enter a PDB ID in the search field\n2. Tap 'Load Protein' to download the structure\n3. Use the 3D viewer to explore the protein\n4. Switch between different rendering styles"
-        )
+        // 뷰어 모드 사용법
+        GuideSectionCard(
+            title = context.getString(R.string.guide_viewer_mode_title),
+            icon = Icons.Default.RemoveRedEye
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                GuideStepItem(
+                    step = "1",
+                    title = context.getString(R.string.guide_viewer_step_1_title),
+                    description = context.getString(R.string.guide_viewer_step_1_desc)
+                )
+                GuideStepItem(
+                    step = "2",
+                    title = context.getString(R.string.guide_viewer_step_2_title),
+                    description = context.getString(R.string.guide_viewer_step_2_desc)
+                )
+                GuideStepItem(
+                    step = "3",
+                    title = context.getString(R.string.guide_viewer_step_3_title),
+                    description = context.getString(R.string.guide_viewer_step_3_desc)
+                )
+                GuideStepItem(
+                    step = "4",
+                    title = context.getString(R.string.guide_viewer_step_4_title),
+                    description = context.getString(R.string.guide_viewer_step_4_desc)
+                )
+            }
+        }
         
-        GuideSection(
-            title = "Navigation",
-            content = "• Drag to rotate the 3D model\n• Pinch to zoom in/out\n• Use the style buttons to change rendering\n• Tap on elements to highlight them"
-        )
+        // 인터랙션 가이드
+        GuideSectionCard(
+            title = context.getString(R.string.guide_interaction_title),
+            icon = Icons.Default.TouchApp
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                InteractionGuideItem(
+                    gesture = context.getString(R.string.guide_gesture_drag),
+                    description = context.getString(R.string.guide_gesture_drag_desc),
+                    icon = Icons.Default.Refresh
+                )
+                InteractionGuideItem(
+                    gesture = context.getString(R.string.guide_gesture_pinch),
+                    description = context.getString(R.string.guide_gesture_pinch_desc),
+                    icon = Icons.Default.ZoomIn
+                )
+                InteractionGuideItem(
+                    gesture = context.getString(R.string.guide_gesture_double_tap),
+                    description = context.getString(R.string.guide_gesture_double_tap_desc),
+                    icon = Icons.Default.Autorenew
+                )
+                InteractionGuideItem(
+                    gesture = context.getString(R.string.guide_gesture_long_press),
+                    description = context.getString(R.string.guide_gesture_long_press_desc),
+                    icon = Icons.Default.Info
+                )
+            }
+        }
         
-        GuideSection(
-            title = "Rendering Styles",
-            content = "• Ribbon: Shows protein backbone structure\n• Spheres: Shows individual atoms\n• Sticks: Shows bonds between atoms\n• Cartoon: Simplified representation"
-        )
-        
-        GuideSection(
-            title = "Color Schemes",
-            content = "• Chain: Different colors for each chain\n• Element: Colors based on atom types\n• Secondary Structure: Colors for α-helix, β-sheet, etc.\n• Uniform: Single color for all elements"
-        )
+        // 팁과 요령
+        GuideSectionCard(
+            title = context.getString(R.string.guide_tips_title),
+            icon = Icons.Default.Lightbulb
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                TipItem(
+                    icon = Icons.Default.Star,
+                    title = context.getString(R.string.guide_tip_1_title),
+                    description = context.getString(R.string.guide_tip_1_desc)
+                )
+                TipItem(
+                    icon = Icons.Default.Settings,
+                    title = context.getString(R.string.guide_tip_2_title),
+                    description = context.getString(R.string.guide_tip_2_desc)
+                )
+                TipItem(
+                    icon = Icons.Default.Palette,
+                    title = context.getString(R.string.guide_tip_3_title),
+                    description = context.getString(R.string.guide_tip_3_desc)
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun FeaturesView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text(
-            text = "Key Features",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+        // 3D 시각화 기능
+        FeatureCardWithList(
+            title = context.getString(R.string.features_3d_viz_title),
+            icon = Icons.Default.ViewInAr,
+            color = Color(0xFF2196F3), // Blue
+            features = listOf(
+                context.getString(R.string.features_3d_viz_1),
+                context.getString(R.string.features_3d_viz_2),
+                context.getString(R.string.features_3d_viz_3),
+                context.getString(R.string.features_3d_viz_4)
+            )
         )
         
-        FeatureCard(
-            icon = Icons.Default.Visibility,
-            title = "3D Visualization",
-            description = "High-quality 3D rendering with multiple visualization styles including ribbon, spheres, sticks, and cartoon representations."
-        )
-        
-        FeatureCard(
-            icon = Icons.Default.Analytics,
-            title = "Structure Analysis",
-            description = "Detailed analysis of protein structures including secondary structure elements, binding sites, and molecular properties."
-        )
-        
-        FeatureCard(
+        // 렌더링 스타일
+        FeatureCardWithList(
+            title = context.getString(R.string.features_rendering_title),
             icon = Icons.Default.Palette,
-            title = "Color Schemes",
-            description = "Multiple color schemes to highlight different aspects of protein structures including chain-based, element-based, and secondary structure coloring."
+            color = Color(0xFF4CAF50), // Green
+            features = listOf(
+                context.getString(R.string.features_rendering_1),
+                context.getString(R.string.features_rendering_2),
+                context.getString(R.string.features_rendering_3),
+                context.getString(R.string.features_rendering_4)
+            )
         )
         
-        FeatureCard(
+        // 색상 모드
+        FeatureCardWithList(
+            title = context.getString(R.string.features_color_title),
+            icon = Icons.Default.ColorLens,
+            color = Color(0xFF9C27B0), // Purple
+            features = listOf(
+                context.getString(R.string.features_color_1),
+                context.getString(R.string.features_color_2),
+                context.getString(R.string.features_color_3),
+                context.getString(R.string.features_color_4)
+            )
+        )
+        
+        // 인터랙션 기능
+        FeatureCardWithList(
+            title = context.getString(R.string.features_interaction_title),
             icon = Icons.Default.TouchApp,
-            title = "Interactive Controls",
-            description = "Intuitive touch controls for rotating, zooming, and exploring protein structures with smooth animations."
+            color = Color(0xFFFF9800), // Orange
+            features = listOf(
+                context.getString(R.string.features_interaction_1),
+                context.getString(R.string.features_interaction_2),
+                context.getString(R.string.features_interaction_3),
+                context.getString(R.string.features_interaction_4)
+            )
         )
         
-        FeatureCard(
-            icon = Icons.Default.Storage,
-            title = "Offline Support",
-            description = "Download and store protein structures locally for offline viewing and analysis."
+        // 하이라이트 기능
+        FeatureCardWithList(
+            title = context.getString(R.string.features_highlight_title),
+            icon = Icons.Default.Star,
+            color = Color(0xFFF44336), // Red
+            features = listOf(
+                context.getString(R.string.features_highlight_1),
+                context.getString(R.string.features_highlight_2),
+                context.getString(R.string.features_highlight_3),
+                context.getString(R.string.features_highlight_4)
+            )
         )
         
-        FeatureCard(
-            icon = Icons.Default.School,
-            title = "Educational Tools",
-            description = "Perfect for students, researchers, and educators with detailed information panels and analysis tools."
+        // 정보 제공
+        FeatureCardWithList(
+            title = context.getString(R.string.features_info_title),
+            icon = Icons.Default.Info,
+            color = Color(0xFF009688), // Teal
+            features = listOf(
+                context.getString(R.string.features_info_1),
+                context.getString(R.string.features_info_2),
+                context.getString(R.string.features_info_3),
+                context.getString(R.string.features_info_4)
+            )
+        )
+        
+        // 성능 최적화
+        FeatureCardWithList(
+            title = context.getString(R.string.features_performance_title),
+            icon = Icons.Default.Speed,
+            color = Color(0xFF3F51B5), // Indigo
+            features = listOf(
+                context.getString(R.string.features_performance_1),
+                context.getString(R.string.features_performance_2),
+                context.getString(R.string.features_performance_3),
+                context.getString(R.string.features_performance_4)
+            )
         )
     }
 }
 
 @Composable
 private fun SettingsView() {
+    val context = LocalContext.current
+    val performanceSettings = remember { PerformanceSettings(context) }
+    
+    // Settings 상태 관찰
+    val enableOptimization by performanceSettings.enableOptimization.collectAsState()
+    val maxAtomsLimit by performanceSettings.maxAtomsLimit.collectAsState()
+    val samplingRatio by performanceSettings.samplingRatio.collectAsState()
+    
+    // 설정 변경 감지하여 로그 출력
+    LaunchedEffect(enableOptimization, maxAtomsLimit, samplingRatio) {
+        android.util.Log.d("SettingsView", "⚙️ Settings changed: enableOptimization=$enableOptimization, maxAtomsLimit=$maxAtomsLimit, samplingRatio=$samplingRatio")
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // Header
         Text(
             text = "Settings",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         
-        Text(
-            text = "Performance Optimization",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+        // Performance Optimization Section
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = context.getString(R.string.settings_performance_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = context.getString(R.string.settings_performance_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            // Enable Optimization Toggle
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = context.getString(R.string.settings_enable_optimization),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        Switch(
+                            checked = enableOptimization,
+                            onCheckedChange = { performanceSettings.setEnableOptimization(it) }
+                        )
+                    }
+                    
+                    Text(
+                        text = context.getString(R.string.settings_enable_optimization_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Max Atoms Limit Slider (only show when optimization is enabled)
+            if (enableOptimization) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = context.getString(R.string.settings_max_atoms_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            Text(
+                                text = maxAtomsLimit.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Slider(
+                            value = maxAtomsLimit.toFloat(),
+                            onValueChange = { performanceSettings.setMaxAtomsLimit(it.toInt()) },
+                            valueRange = 1000f..10000f,
+                            steps = 17 // (10000-1000)/500 - 1
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "1000",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = context.getString(R.string.settings_fast_rendering),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = "10000",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = context.getString(R.string.settings_high_quality),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        Text(
+                            text = context.getString(R.string.settings_max_atoms_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Sampling Ratio Slider
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = context.getString(R.string.settings_sampling_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            Text(
+                                text = String.format("%.1f%%", samplingRatio * 100),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Slider(
+                            value = samplingRatio,
+                            onValueChange = { performanceSettings.setSamplingRatio(it) },
+                            valueRange = 0.05f..0.5f,
+                            steps = 44 // (0.5-0.05)/0.01 - 1
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "5%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = context.getString(R.string.settings_fast_processing),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = "50%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = context.getString(R.string.settings_high_quality),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        Text(
+                            text = context.getString(R.string.settings_sampling_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
         
-        Text(
-            text = "Adjust rendering performance for large protein structures. Lower settings provide faster rendering, while higher settings offer better quality.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        // Performance Guide Section
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Performance Guide",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            PerformanceGuideItem(
+                icon = Icons.Default.Speed,
+                title = "Fast Rendering",
+                description = "500-1000 atoms, 5-10% sampling",
+                color = Color(0xFF4CAF50) // Green
+            )
+            
+            PerformanceGuideItem(
+                icon = Icons.Default.Balance,
+                title = "Balanced",
+                description = "1500-2500 atoms, 10-20% sampling",
+                color = Color(0xFFFF9800) // Orange
+            )
+            
+            PerformanceGuideItem(
+                icon = Icons.Default.Star,
+                title = "High Quality",
+                description = "3000-5000 atoms, 20-50% sampling",
+                color = Color(0xFF2196F3) // Blue
+            )
+        }
         
-        // Performance Settings Cards
-        SettingsCard(
-            title = "Enable Performance Optimization",
-            description = "When enabled, limits the number of atoms in large proteins to improve performance.",
-            isEnabled = true
-        )
-        
-        SettingsCard(
-            title = "Max Atoms Limit",
-            description = "Maximum number of atoms to render. Lower values provide faster rendering.",
-            value = "5000"
-        )
-        
-        SettingsCard(
-            title = "Sampling Ratio",
-            description = "Ratio of atoms to sample from each chain. Lower values provide faster processing.",
-            value = "25%"
-        )
-        
-        // Performance Guide
-        Text(
-            text = "Performance Guide",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        PerformanceGuideItem(
-            icon = Icons.Default.Speed,
-            title = "Fast Rendering",
-            description = "500-1000 atoms, 5-10% sampling",
-            color = Color.Green
-        )
-        
-        PerformanceGuideItem(
-            icon = Icons.Default.Balance,
-            title = "Balanced",
-            description = "1500-2500 atoms, 10-20% sampling",
-            color = Color(0xFFFF9800) // Orange color
-        )
-        
-        PerformanceGuideItem(
-            icon = Icons.Default.Star,
-            title = "High Quality",
-            description = "3000-5000 atoms, 20-50% sampling",
-            color = Color.Blue
-        )
+        // Reset Settings Section
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = context.getString(R.string.settings_reset_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Button(
+                onClick = {
+                    performanceSettings.resetToDefaults()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reset",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = context.getString(R.string.settings_reset_button),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun HelpView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Text(
-            text = "Help & FAQ",
+            text = context.getString(R.string.help_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         
-        FAQItem(
-            question = "The app runs slowly",
-            answer = "Large protein structures may take longer to load. Try starting with smaller proteins or adjust performance settings."
-        )
-        
-        FAQItem(
-            question = "3D model doesn't rotate",
-            answer = "Use drag gestures in viewer mode to rotate the model. Make sure you're in viewer mode, not info mode."
-        )
-        
-        FAQItem(
-            question = "Colors don't change",
-            answer = "Select your desired color mode from Color Schemes and wait a moment for the changes to apply."
-        )
-        
-        FAQItem(
-            question = "Cannot load protein",
-            answer = "Check your internet connection and ensure you've entered a valid PDB ID."
-        )
-        
-        FAQItem(
-            question = "Need additional help",
-            answer = "If problems persist or you have other questions, please contact us through the app info page."
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            FAQItem(
+                question = context.getString(R.string.help_faq_1_q),
+                answer = context.getString(R.string.help_faq_1_a)
+            )
+            
+            FAQItem(
+                question = context.getString(R.string.help_faq_2_q),
+                answer = context.getString(R.string.help_faq_2_a)
+            )
+            
+            FAQItem(
+                question = context.getString(R.string.help_faq_3_q),
+                answer = context.getString(R.string.help_faq_3_a)
+            )
+            
+            FAQItem(
+                question = context.getString(R.string.help_faq_4_q),
+                answer = context.getString(R.string.help_faq_4_a)
+            )
+            
+            FAQItem(
+                question = context.getString(R.string.help_faq_5_q),
+                answer = context.getString(R.string.help_faq_5_a)
+            )
+        }
     }
 }
 
 @Composable
 private fun PrivacyView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Text(
-            text = "Privacy Policy",
+            text = context.getString(R.string.privacy_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         
-        PrivacySection(
-            title = "1. Information We Collect",
-            content = "ProteinViewer does not collect personal information from users.\n\n• PDB ID: Public identifier for downloading protein structure data, not personal information.\n• App usage data: All data generated within the app is stored only on your device.\n• Network requests: Only API calls for downloading protein structure data are made."
-        )
-        
-        PrivacySection(
-            title = "2. How We Use Information",
-            content = "• Protein structure visualization and 3D rendering\n• Educational and research data provision\n• Local data processing for app functionality improvement\n• In-app feature provision for user experience enhancement"
-        )
-        
-        PrivacySection(
-            title = "3. Information Protection & Security",
-            content = "• All data is stored only on your device.\n• No personal information is transmitted to external servers.\n• Only public data is requested when making PDB API calls.\n• All local data is deleted when the app is uninstalled."
-        )
-        
-        PrivacySection(
-            title = "4. Third-Party Services",
-            content = "• RCSB PDB (data.rcsb.org): Protein structure data provision\n• PDBe (www.ebi.ac.uk): Additional protein information provision\n• UniProt (rest.uniprot.org): Protein function information provision\n\nThese services are all public APIs and do not require personal information."
-        )
-        
-        PrivacySection(
-            title = "5. User Rights",
-            content = "• Data deletion: All data can be deleted by uninstalling the app.\n• Data modification: Information entered within the app can be modified at any time.\n• Contact: For privacy-related inquiries, please use the app info page."
-        )
-        
-        PrivacySection(
-            title = "6. Policy Changes",
-            content = "The privacy policy may be changed as needed, and changes will be announced within the app. Last updated: January 9, 2025"
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_1_title),
+                content = context.getString(R.string.privacy_section_1_content)
+            )
+            
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_2_title),
+                content = context.getString(R.string.privacy_section_2_content)
+            )
+            
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_3_title),
+                content = context.getString(R.string.privacy_section_3_content)
+            )
+            
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_4_title),
+                content = context.getString(R.string.privacy_section_4_content)
+            )
+            
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_5_title),
+                content = context.getString(R.string.privacy_section_5_content)
+            )
+            
+            PrivacySection(
+                title = context.getString(R.string.privacy_section_6_title),
+                content = context.getString(R.string.privacy_section_6_content)
+            )
+        }
     }
 }
 
 @Composable
 private fun TermsView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Text(
-            text = "Terms of Service",
+            text = context.getString(R.string.terms_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         
-        TermsSection(
-            title = "Service Usage",
-            content = "ProteinViewer is a paid app. Payment through the Google Play Store is required to download and use the app."
-        )
-        
-        TermsSection(
-            title = "Payment & Subscription",
-            content = "• App purchases are processed through the Google Play Store.\n• One-time payment provides access to all app features.\n• No additional payments after app purchase.\n• Refunds are limited according to Google Play Store policy."
-        )
-        
-        TermsSection(
-            title = "Service Scope",
-            content = "• 3D protein structure visualization\n• Advanced rendering options\n• Protein analysis tools\n• Offline data storage\n• Customer support service\n• All features are included with app purchase."
-        )
-        
-        TermsSection(
-            title = "Refund Policy",
-            content = "• App purchase refunds are processed according to Google Play Store policy.\n• Please request refunds directly through the Google Play Store.\n• Google's refund policy: https://support.google.com/googleplay/answer/2479637\n• Developers have no refund processing authority; Google manages all refunds."
-        )
-        
-        TermsSection(
-            title = "App Updates & Support",
-            content = "• App updates are provided free of charge.\n• New features can be used without additional payment.\n• 30-day advance notice will be given before app support discontinuation.\n• We are not responsible for data loss due to support discontinuation."
-        )
-        
-        TermsSection(
-            title = "Liability Limitation",
-            content = "Developers are not responsible for damages caused by app usage. This applies equally to paid app usage."
-        )
-        
-        TermsSection(
-            title = "App Changes",
-            content = "App features may be changed without prior notice. Major feature changes will be announced through app updates."
-        )
-        
-        TermsSection(
-            title = "Contact & Support",
-            content = "For service-related inquiries, please contact us through the app info page. Last updated: January 9, 2025"
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TermsSection(
+                title = context.getString(R.string.terms_section_1_title),
+                content = context.getString(R.string.terms_section_1_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_2_title),
+                content = context.getString(R.string.terms_section_2_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_3_title),
+                content = context.getString(R.string.terms_section_3_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_4_title),
+                content = context.getString(R.string.terms_section_4_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_5_title),
+                content = context.getString(R.string.terms_section_5_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_6_title),
+                content = context.getString(R.string.terms_section_6_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_7_title),
+                content = context.getString(R.string.terms_section_7_content)
+            )
+            
+            TermsSection(
+                title = context.getString(R.string.terms_section_8_title),
+                content = context.getString(R.string.terms_section_8_content)
+            )
+        }
     }
 }
 
 @Composable
 private fun LicenseView() {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Text(
-            text = "License Information",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        // MIT 라이센스 헤더
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = context.getString(R.string.license_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = context.getString(R.string.license_copyright),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         
-        Text(
-            text = "This app uses the following open source libraries and frameworks:",
-            style = MaterialTheme.typography.bodyMedium
-        )
+                HorizontalDivider()
         
-        LicenseItem(
-            name = "Android Jetpack Compose",
-            license = "Apache License 2.0",
-            description = "Modern Android UI toolkit"
-        )
+        // 라이센스 본문
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = context.getString(R.string.license_permission),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = context.getString(R.string.license_notice),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = context.getString(R.string.license_warranty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
         
-        LicenseItem(
-            name = "OpenGL ES 3.0",
-            license = "Khronos Group License",
-            description = "3D graphics rendering"
-        )
+                HorizontalDivider()
         
-        LicenseItem(
-            name = "Retrofit",
-            license = "Apache License 2.0",
-            description = "HTTP client for API calls"
-        )
+        // 오픈소스 라이브러리
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = context.getString(R.string.license_libraries_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LibraryLicenseItem(
+                    name = context.getString(R.string.license_lib_1_name),
+                    description = context.getString(R.string.license_lib_1_desc),
+                    license = context.getString(R.string.license_lib_1_license)
+                )
+                LibraryLicenseItem(
+                    name = context.getString(R.string.license_lib_2_name),
+                    description = context.getString(R.string.license_lib_2_desc),
+                    license = context.getString(R.string.license_lib_2_license)
+                )
+                LibraryLicenseItem(
+                    name = context.getString(R.string.license_lib_3_name),
+                    description = context.getString(R.string.license_lib_3_desc),
+                    license = context.getString(R.string.license_lib_3_license)
+                )
+            }
+        }
         
-        LicenseItem(
-            name = "OkHttp",
-            license = "Apache License 2.0",
-            description = "HTTP client library"
-        )
+                HorizontalDivider()
         
-        LicenseItem(
-            name = "Hilt",
-            license = "Apache License 2.0",
-            description = "Dependency injection"
-        )
-        
-        LicenseItem(
-            name = "Kotlin Coroutines",
-            license = "Apache License 2.0",
-            description = "Asynchronous programming"
-        )
-        
-        Divider()
-        
-        Text(
-            text = "Protein Data",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        Text(
-            text = "Protein structure data is provided by:\n• RCSB Protein Data Bank (rcsb.org)\n• PDBe (ebi.ac.uk)\n• UniProt (uniprot.org)\n\nAll protein data is publicly available and used in accordance with their respective terms of use.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        // 앱 정보
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = context.getString(R.string.license_app_info_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LicenseInfoRowItem(
+                    title = context.getString(R.string.license_info_app_name),
+                    value = "ProteinApp"
+                )
+                LicenseInfoRowItem(
+                    title = context.getString(R.string.license_info_version),
+                    value = "1.0.0"
+                )
+                LicenseInfoRowItem(
+                    title = context.getString(R.string.license_info_build),
+                    value = "1"
+                )
+                LicenseInfoRowItem(
+                    title = context.getString(R.string.license_info_platform),
+                    value = "Android 8.0+"
+                )
+                LicenseInfoRowItem(
+                    title = context.getString(R.string.license_info_last_updated),
+                    value = context.getString(R.string.license_info_last_updated_value)
+                )
+            }
+        }
     }
 }
 
 // Helper Composable Functions
 
 @Composable
-private fun FeatureItem(title: String, description: String) {
+private fun FeatureRow(icon: ImageVector, title: String, description: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
         Icon(
-            Icons.Default.Check,
+            imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.primary
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = description,
@@ -596,54 +1067,6 @@ private fun GuideSection(title: String, content: String) {
     }
 }
 
-@Composable
-private fun SettingsCard(
-    title: String,
-    description: String,
-    isEnabled: Boolean = false,
-    value: String? = null
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (isEnabled) {
-                    Switch(
-                        checked = true,
-                        onCheckedChange = { }
-                    )
-                } else if (value != null) {
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun PerformanceGuideItem(
@@ -770,5 +1193,269 @@ private fun LicenseItem(name: String, license: String, description: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+// User Guide Components
+
+@Composable
+private fun GuideSectionCard(
+    title: String,
+    icon: ImageVector,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            content()
+        }
+    }
+}
+
+@Composable
+private fun GuideStepItem(step: String, title: String, description: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = androidx.compose.foundation.shape.CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = step,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun InteractionGuideItem(gesture: String, description: String, icon: ImageVector) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = gesture,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun TipItem(icon: ImageVector, title: String, description: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = Color(0xFFFF9800) // Orange color
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardWithList(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    features: List<String>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 헤더
+            Row(
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = color.copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = color
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            // 기능 목록
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                features.forEach { feature ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = color
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = feature,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryLicenseItem(name: String, description: String, license: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = license,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun LicenseInfoRowItem(title: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

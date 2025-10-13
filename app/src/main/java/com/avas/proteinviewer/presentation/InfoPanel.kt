@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -401,7 +402,7 @@ fun InfoPanel(
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
                                 
-                                Divider()
+                                HorizontalDivider()
                                 
                                 // 아이폰 스타일: 시퀀스 정보
                                 Column(
@@ -435,7 +436,7 @@ fun InfoPanel(
                                     )
                                 }
                                 
-                                Divider()
+                                HorizontalDivider()
                                 
                                 // 아이폰 스타일: 구조적 특성
                                 Column(
@@ -1621,7 +1622,7 @@ fun InfoPanel(
 
                                 // 아미노산 시퀀스
                                 if (caAtoms.isNotEmpty()) {
-                                    Divider()
+                                    HorizontalDivider()
                                     
                                     Column(
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1669,7 +1670,7 @@ fun InfoPanel(
 
                                 // 리간드 정보
                                 if (ligands.isNotEmpty()) {
-                                    Divider()
+                                    HorizontalDivider()
                                     
                                     Column(
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2333,7 +2334,7 @@ fun InfoPanel(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Icon(
-                                            Icons.Default.Note,
+                                            Icons.AutoMirrored.Filled.Note,
                                             contentDescription = null,
                                             tint = Color(0xFF5856D6),
                                             modifier = Modifier.size(24.dp)

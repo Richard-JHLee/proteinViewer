@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -129,7 +130,7 @@ fun ProteinViewerScreen(
                     .size(40.dp)
             ) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back to Info",
                     tint = Color.Black
                 )
@@ -510,7 +511,7 @@ private fun SecondaryOptionsBar(
     ) {
         // Rotation Toggle (회전 활성화/비활성화)
         OptionsSliderItem(
-            icon = Icons.Default.RotateRight,
+            icon = Icons.AutoMirrored.Filled.RotateRight,
             label = "Rotate",
             isToggle = true,
             toggleValue = rotationEnabled,
@@ -551,7 +552,7 @@ private fun SecondaryOptionsBar(
         // Ribbon Width (리본 모드일 때만 표시)
         if (renderStyle == RenderStyle.RIBBON) {
             OptionsSliderItem(
-                icon = Icons.Default.ArrowForward,
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
                 label = "Width",
                 sliderValue = ribbonWidth,
                 sliderRange = 1.0f..8.0f,
@@ -669,7 +670,7 @@ private fun OptionsSliderItem(
 // 아이콘 매핑 함수들
 private fun getStyleIcon(style: RenderStyle): ImageVector {
     return when (style) {
-        RenderStyle.RIBBON -> Icons.Default.ShowChart // waveform.path.ecg
+        RenderStyle.RIBBON -> Icons.AutoMirrored.Filled.ShowChart // waveform.path.ecg
         RenderStyle.SPHERES -> Icons.Default.Circle // circle.fill
         RenderStyle.STICKS -> Icons.Default.ViewHeadline // line.3.horizontal
         RenderStyle.CARTOON -> Icons.Default.WaterfallChart // waveform.path

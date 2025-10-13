@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,12 +25,12 @@ enum class MenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val description: String
 ) {
-    PROTEIN_LIBRARY("Protein Library", Icons.Default.LibraryBooks, "Browse protein database"),
+    PROTEIN_LIBRARY("Protein Library", Icons.AutoMirrored.Filled.LibraryBooks, "Browse protein database"),
     ABOUT("About", Icons.Default.Info, "App information and version"),
     USER_GUIDE("User Guide", Icons.Default.Book, "User guide"),
     FEATURES("Features", Icons.Default.Star, "Key features"),
     SETTINGS("Settings", Icons.Default.Settings, "App settings"),
-    HELP("Help", Icons.Default.Help, "Help and FAQ"),
+    HELP("Help", Icons.AutoMirrored.Filled.Help, "Help and FAQ"),
     PRIVACY("Privacy Policy", Icons.Default.PrivacyTip, "Privacy Policy"),
     TERMS("Terms of Service", Icons.Default.Description, "Terms of Service"),
     LICENSE("License", Icons.Default.Policy, "License information")
@@ -117,7 +118,7 @@ fun SideMenuContent(
                 }
             }
             
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             
             Spacer(modifier = Modifier.height(8.dp))
             

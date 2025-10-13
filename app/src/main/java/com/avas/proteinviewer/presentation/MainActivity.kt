@@ -5,13 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.avas.proteinviewer.domain.model.MenuItemType
+import com.avas.proteinviewer.domain.model.ResearchDetailType
 import com.avas.proteinviewer.presentation.theme.ProteinViewerTheme
+import com.avas.proteinviewer.presentation.ResearchDetailScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -113,6 +116,7 @@ fun ProteinViewerApp() {
                     selectedCategory = uiState.selectedCategory,
                     showCategoryGrid = true,
                     categoryCounts = uiState.categoryProteinCounts.mapKeys { it.key.displayName },
+                    categoryDataSource = uiState.categoryDataSource,
                     favoriteIds = uiState.favorites,
                     hasMoreResults = uiState.hasMoreData,
                     isLoadingResults = uiState.isLoading && uiState.showProteinLibrary,
@@ -120,13 +124,122 @@ fun ProteinViewerApp() {
                     loadingMessage = uiState.loadingProgress.takeIf { it.isNotBlank() },
                     onSearch = viewModel::searchProteins,
                     onSearchBasedDataLoad = viewModel::performSearchBasedDataLoad,
-                    onProteinClick = viewModel::selectProtein,
+                    onProteinClick = { proteinId ->
+                        // 아이폰과 동일: 단백질 정보를 찾아서 Detail 모달 표시
+                        val protein = uiState.searchResults.find { it.id == proteinId }
+                        if (protein != null) {
+                            viewModel.selectProteinFromLibrary(protein)
+                        }
+                    },
                     onCategorySelect = viewModel::selectCategory,
                     onShowAllCategories = viewModel::showAllCategories,
                     onDismiss = { viewModel.toggleProteinLibrary() },
-                    onToggleFavorite = { /* TODO: hook into favorites once implemented */ },
-                    onLoadMore = { /* TODO: hook into pagination once implemented */ }
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onLoadMore = viewModel::loadMore
                 )
+                
+                // 아이폰과 동일: Protein Detail 모달 (InfoSheet)
+                if (uiState.showProteinDetail && uiState.selectedProteinForDetail != null && !uiState.showResearchDetail) {
+                    ProteinDetailSheet(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissProteinDetail() },
+                        onView3D = { proteinId ->
+                            viewModel.loadProteinFor3DViewing(proteinId)
+                        },
+                        onLoadDiseaseAssociations = { proteinId ->
+                            viewModel.loadDiseaseAssociations(proteinId)
+                            viewModel.loadExperimentalDetails(proteinId) // Additional Information도 로드
+                        },
+                        onLoadResearchStatus = { proteinId ->
+                            viewModel.loadResearchStatus(proteinId)
+                        },
+                        onLoadFunctionDetails = { proteinId, description ->
+                            viewModel.loadFunctionDetails(proteinId, description)
+                        },
+                        onLoadPrimaryStructure = { proteinId ->
+                            viewModel.loadPrimaryStructure(proteinId)
+                        },
+                        onLoadSecondaryStructure = { proteinId ->
+                            viewModel.loadSecondaryStructure(proteinId)
+                        },
+                        onLoadTertiaryStructure = { proteinId ->
+                            viewModel.loadTertiaryStructure(proteinId)
+                        },
+                        onLoadQuaternaryStructure = { proteinId ->
+                            viewModel.loadQuaternaryStructure(proteinId)
+                        },
+           onLoadRelatedProteins = { proteinId ->
+               viewModel.loadRelatedProteins(proteinId)
+           },
+           onShowResearchDetail = { researchType ->
+               viewModel.showResearchDetail(researchType)
+           }
+                    )
+                }
+                
+                // 아이폰과 동일: Function Details 모달
+                if (uiState.showFunctionDetails && uiState.selectedProteinForDetail != null) {
+                    FunctionDetailsScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissFunctionDetails() }
+                    )
+                }
+                
+                // 아이폰과 동일: Primary Structure 모달
+                if (uiState.showPrimaryStructure && uiState.selectedProteinForDetail != null) {
+                    PrimaryStructureScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissPrimaryStructure() }
+                    )
+                }
+                
+                // 아이폰과 동일: Secondary Structure 모달
+                if (uiState.showSecondaryStructure && uiState.selectedProteinForDetail != null) {
+                    SecondaryStructureScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissSecondaryStructure() }
+                    )
+                }
+                
+                // 아이폰과 동일: Tertiary Structure 모달
+                if (uiState.showTertiaryStructure && uiState.selectedProteinForDetail != null) {
+                    TertiaryStructureScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissTertiaryStructure() }
+                    )
+                }
+                
+                // 아이폰과 동일: Quaternary Structure 모달
+                if (uiState.showQuaternaryStructure && uiState.selectedProteinForDetail != null) {
+                    QuaternaryStructureScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissQuaternaryStructure() }
+                    )
+                }
+                
+                // 아이폰과 동일: Related Proteins 모달
+                if (uiState.showRelatedProteins && uiState.selectedProteinForDetail != null) {
+                    RelatedProteinsScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        uiState = uiState,
+                        onDismiss = { viewModel.dismissRelatedProteins() }
+                    )
+                }
+                
+                // 아이폰과 동일: Research Detail 모달
+                if (uiState.showResearchDetail && uiState.selectedProteinForDetail != null && uiState.researchDetailType != null) {
+                    ResearchDetailScreen(
+                        protein = uiState.selectedProteinForDetail!!,
+                        researchType = uiState.researchDetailType!!,
+                        onDismiss = { viewModel.dismissResearchDetail() }
+                    )
+                }
             }
             uiState.isLoading -> {
                 LoadingScreen(progress = uiState.loadingProgress)

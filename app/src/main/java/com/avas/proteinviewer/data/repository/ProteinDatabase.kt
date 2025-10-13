@@ -34,10 +34,19 @@ class ProteinDatabase @Inject constructor(
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
     
+    // 샘플 데이터 상태 추적 (카테고리별로 샘플 데이터인지 실제 API 데이터인지)
+    private val _categoryDataSource = MutableStateFlow<Map<ProteinCategory, DataSource>>(emptyMap())
+    val categoryDataSource: StateFlow<Map<ProteinCategory, DataSource>> = _categoryDataSource.asStateFlow()
+    
     // 페이지네이션 상태 관리
     private val categoryPages = mutableMapOf<ProteinCategory, Int>()
     private val categoryHasMore = mutableMapOf<ProteinCategory, Boolean>()
     private val loadedCategories = mutableSetOf<ProteinCategory>()
+    
+    enum class DataSource {
+        SAMPLE,  // 샘플 데이터
+        API      // 실제 API 데이터
+    }
     
     private val itemsPerPage = 30
     
@@ -57,14 +66,17 @@ class ProteinDatabase @Inject constructor(
     private fun loadBasicSampleData() {
         android.util.Log.d("ProteinDatabase", "🔄 Starting to load basic sample data...")
         val allSamples = mutableListOf<ProteinInfo>()
+        val sampleSources = mutableMapOf<ProteinCategory, DataSource>()
         
         for (category in ProteinCategory.values()) {
             val samples = apiService.getSampleProteins(category)
             android.util.Log.d("ProteinDatabase", "📦 Category ${category.displayName}: ${samples.size} samples")
             allSamples.addAll(samples)
+            sampleSources[category] = DataSource.SAMPLE // 모든 카테고리를 샘플 데이터로 표시
         }
         
         _proteins.value = allSamples
+        _categoryDataSource.value = sampleSources
         android.util.Log.d("ProteinDatabase", "✅ Loaded ${allSamples.size} basic sample proteins for all categories")
     }
     
@@ -148,6 +160,11 @@ class ProteinDatabase @Inject constructor(
                 categoryHasMore[category] = newProteins.size >= limit
                 loadedCategories.add(category)
                 
+                // 실제 API 데이터로 표시
+                val currentSources = _categoryDataSource.value.toMutableMap()
+                currentSources[category] = DataSource.API
+                _categoryDataSource.value = currentSources
+                
                 android.util.Log.d("ProteinDatabase", "✅ ${category.displayName}: ${proteinInfos.size}개 실제 단백질 로드 완료")
             } else {
                 android.util.Log.w("ProteinDatabase", "⚠️ ${category.displayName} 실제 데이터 없음, 샘플 데이터 유지")
@@ -157,6 +174,11 @@ class ProteinDatabase @Inject constructor(
                 currentProteins.addAll(sampleProteins)
                 _proteins.value = currentProteins
                 categoryHasMore[category] = true
+                
+                // 샘플 데이터로 표시
+                val currentSources = _categoryDataSource.value.toMutableMap()
+                currentSources[category] = DataSource.SAMPLE
+                _categoryDataSource.value = currentSources
             }
             
         } catch (e: Exception) {
@@ -169,6 +191,11 @@ class ProteinDatabase @Inject constructor(
             _proteins.value = currentProteins
             _errorMessage.value = "Using sample data for ${category.displayName} (API error: ${e.message})"
             categoryHasMore[category] = true
+            
+            // 샘플 데이터로 표시
+            val currentSources = _categoryDataSource.value.toMutableMap()
+            currentSources[category] = DataSource.SAMPLE
+            _categoryDataSource.value = currentSources
         }
         
         _isLoading.value = false

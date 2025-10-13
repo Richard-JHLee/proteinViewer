@@ -25,12 +25,15 @@ data class ProteinUiState(
     val focusedElement: String? = null, // 아이폰과 동일: "Chain A" 등
     val showSideMenu: Boolean = false,
     val showProteinLibrary: Boolean = false,
+    val showProteinDetail: Boolean = false, // 아이폰 showingInfoSheet와 동일
+    val selectedProteinForDetail: ProteinInfo? = null, // Detail 모달에 표시할 단백질
     val selectedInfoTab: InfoTab = InfoTab.OVERVIEW,
     val viewMode: ViewMode = ViewMode.INFO,
     val previousViewMode: ViewMode? = null, // 이전 모드 추적
     // 아이폰 ProteinDatabase와 동일한 카테고리 관련 상태
     val selectedCategory: ProteinCategory? = null,
     val categoryProteinCounts: Map<ProteinCategory, Int> = emptyMap(),
+    val categoryDataSource: Map<ProteinCategory, com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource> = emptyMap(),
     val isLoadingCategoryCounts: Boolean = false,
     val showingLoadingPopup: Boolean = false,
     val currentPage: Int = 1,
@@ -40,7 +43,49 @@ data class ProteinUiState(
     val searchText: String = "",
     val allProteinsByCategory: Map<ProteinCategory, List<ProteinInfo>> = emptyMap(),
     val loadedCategories: Set<ProteinCategory> = emptySet(),
-    val isLoadingInfoTab: Boolean = false
+    val isLoadingInfoTab: Boolean = false,
+    // Disease Association & Research Status (아이폰과 동일)
+    val diseaseAssociations: List<DiseaseAssociation> = emptyList(),
+    val diseaseSummary: DiseaseSummary? = null,
+    val isDiseaseLoading: Boolean = false,
+    val diseaseError: String? = null,
+    val researchStatus: ResearchStatus? = null,
+    val researchSummary: ResearchSummary? = null,
+    val isResearchLoading: Boolean = false,
+    val researchError: String? = null,
+    // Function Details (아이폰과 동일)
+    val functionDetails: FunctionDetails? = null,
+    val isFunctionLoading: Boolean = false,
+    val functionError: String? = null,
+    val showFunctionDetails: Boolean = false,
+    // Structure Levels (아이폰과 동일)
+    val showPrimaryStructure: Boolean = false,
+    val primaryStructureData: PrimaryStructureData? = null,
+    val isPrimaryStructureLoading: Boolean = false,
+    val primaryStructureError: String? = null,
+    val showSecondaryStructure: Boolean = false,
+    val secondaryStructureData: List<SecondaryStructureData> = emptyList(),
+    val isSecondaryStructureLoading: Boolean = false,
+    val secondaryStructureError: String? = null,
+    val showTertiaryStructure: Boolean = false,
+    val tertiaryStructureData: TertiaryStructureData? = null,
+    val isTertiaryStructureLoading: Boolean = false,
+    val tertiaryStructureError: String? = null,
+    val showQuaternaryStructure: Boolean = false,
+    val quaternaryStructureData: QuaternaryStructureData? = null,
+    val isQuaternaryStructureLoading: Boolean = false,
+    val quaternaryStructureError: String? = null,
+    // Related Proteins (아이폰과 동일)
+    val showRelatedProteins: Boolean = false,
+    val relatedProteins: List<RelatedProtein> = emptyList(),
+    val isRelatedProteinsLoading: Boolean = false,
+    val relatedProteinsError: String? = null,
+    // Experimental Details (아이폰과 동일)
+    val experimentalDetails: ExperimentalDetails? = null,
+    val isExperimentalDetailsLoading: Boolean = false,
+    // Research Detail (아이폰과 동일)
+    val showResearchDetail: Boolean = false,
+    val researchDetailType: ResearchDetailType? = null
 )
 
 enum class InfoTab {
@@ -50,7 +95,13 @@ enum class InfoTab {
 @HiltViewModel
 class ProteinViewModel @Inject constructor(
     private val repository: ProteinRepository,
-    private val proteinDatabase: com.avas.proteinviewer.data.repository.ProteinDatabase
+    private val proteinDatabase: com.avas.proteinviewer.data.repository.ProteinDatabase,
+    private val diseaseAPIService: com.avas.proteinviewer.data.api.DiseaseAPIService,
+    private val researchAPIService: com.avas.proteinviewer.data.api.ResearchAPIService,
+    private val functionAPIService: com.avas.proteinviewer.data.api.FunctionAPIService,
+    private val structureAPIService: com.avas.proteinviewer.data.api.StructureAPIService,
+    private val relatedProteinsAPIService: com.avas.proteinviewer.data.api.RelatedProteinsAPIService,
+    private val experimentalDetailsAPIService: com.avas.proteinviewer.data.api.ExperimentalDetailsAPIService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProteinUiState())
@@ -70,36 +121,42 @@ class ProteinViewModel @Inject constructor(
             
             try {
                 val defaultId = "1CRN"
+                // 초기 로딩 시에는 PDB 구조를 로드하지 않음 (3D 뷰어를 보여주지 않으므로)
+                // val structure = repository.loadPDBStructure(defaultId) { progress ->
+                //     _uiState.update { it.copy(loadingProgress = progress) }
+                // }
+                
+                // PDB 구조 다운로드 및 파싱
                 val structure = repository.loadPDBStructure(defaultId) { progress ->
                     _uiState.update { it.copy(loadingProgress = progress) }
                 }
                 
-                val detail = repository.getProteinDetail(defaultId).first()
-                
-                // ProteinInfo 생성
+                // 기본 ProteinInfo 생성
                 val proteinInfo = ProteinInfo(
-                    id = detail.id,
-                    name = detail.name,
-                    category = ProteinCategory.ENZYMES, // 기본값
-                    description = detail.description,
-                    organism = detail.organism,
-                    resolution = detail.resolution?.toFloat(),
-                    experimentalMethod = detail.experimentalMethod,
-                    depositionDate = detail.depositionDate,
-                    molecularWeight = detail.molecularWeight?.toFloat()
+                    id = defaultId,
+                    name = "Crambin",
+                    category = ProteinCategory.ENZYMES,
+                    description = "Plant seed protein from Crambe abyssinica",
+                    organism = "Crambe abyssinica",
+                    resolution = 1.5f,
+                    experimentalMethod = "X-RAY DIFFRACTION",
+                    depositionDate = "1981-01-01",
+                    molecularWeight = 5000f
                 )
                 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         loadingProgress = "",
-                        structure = structure,
-                        selectedProtein = detail,
+                        structure = structure, // 3D 구조 로드 완료
+                        selectedProtein = null, // ProteinDetail은 API에서 가져와야 함
                         currentProteinId = defaultId,
-                        currentProteinName = detail.name,
+                        currentProteinName = proteinInfo.name,
                         currentProteinInfo = proteinInfo
                     )
                 }
+                
+                android.util.Log.d("ProteinViewModel", "Default protein loaded successfully: $defaultId")
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -137,33 +194,68 @@ class ProteinViewModel @Inject constructor(
         }
     }
 
-    fun selectProtein(proteinId: String) {
+    // 아이폰과 동일: Protein Library에서 단백질 선택 시 Detail 모달만 표시
+    fun selectProteinFromLibrary(proteinInfo: ProteinInfo) {
+        android.util.Log.d("ProteinViewModel", "📋 단백질 선택: ${proteinInfo.id} - Detail 모달 표시")
+        _uiState.update {
+            it.copy(
+                showProteinDetail = true,
+                selectedProteinForDetail = proteinInfo
+                // Protein Library는 닫지 않음 (아이폰과 동일)
+            )
+        }
+    }
+    
+    // Detail 모달 닫기
+    fun dismissProteinDetail() {
+        _uiState.update {
+            it.copy(
+                showProteinDetail = false,
+                selectedProteinForDetail = null
+            )
+        }
+    }
+    
+    // 아이폰과 동일: Detail 모달에서 "View 3D" 버튼 클릭 시
+    fun loadProteinFor3DViewing(proteinId: String) {
         viewModelScope.launch {
-            _uiState.update { 
+            // Detail 모달 닫기
+            _uiState.update {
                 it.copy(
-                    isLoading = true, 
-                    loadingProgress = "Loading protein $proteinId...",
-                    showProteinLibrary = false
-                ) 
+                    showProteinDetail = false,
+                    selectedProteinForDetail = null,
+                    showProteinLibrary = false, // Protein Library도 닫기
+                    isLoading = true,
+                    loadingProgress = "Loading 3D structure for $proteinId..."
+                )
             }
             
             try {
+                // PDB 구조 다운로드 및 파싱
                 val structure = repository.loadPDBStructure(proteinId) { progress ->
                     _uiState.update { it.copy(loadingProgress = progress) }
                 }
                 
                 val detail = repository.getProteinDetail(proteinId).first()
                 
-                // 구조 로딩 완료 - 즉시 Info 모드로 전환
+                // API에서 ProteinInfo도 가져오기 (Info 탭에 표시될 상세 정보)
+                val proteinInfo = try {
+                    repository.searchProteinByID(proteinId)
+                } catch (e: Exception) {
+                    null
+                }
+                
+                // 구조 로딩 완료 - 메인 화면으로 이동
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         loadingProgress = "",
-                        structure = structure,
+                        structure = structure, // 3D 구조 로드 완료
                         selectedProtein = detail,
                         currentProteinId = proteinId,
                         currentProteinName = detail.name,
-                        viewMode = ViewMode.INFO // Info 모드로 전환
+                        currentProteinInfo = proteinInfo, // API 상세 정보 업데이트
+                        viewMode = ViewMode.INFO // Info 모드로
                     )
                 }
             } catch (e: Exception) {
@@ -176,6 +268,11 @@ class ProteinViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    // 기존 selectProtein은 유지 (다른 곳에서 사용될 수 있음)
+    fun selectProtein(proteinId: String) {
+        loadProteinFor3DViewing(proteinId)
     }
     
     /**
@@ -339,42 +436,89 @@ class ProteinViewModel @Inject constructor(
     fun selectCategory(category: ProteinCategory?) {
         _uiState.update { 
             it.copy(
-                selectedCategory = category
+                selectedCategory = category,
+                currentPage = 1, // 페이지 리셋
+                hasMoreData = true // 더보기 활성화
             ) 
         }
         
         // 아이폰과 동일: 카테고리 선택 시 해당 카테고리의 단백질 로드
         if (category != null) {
             viewModelScope.launch {
-                _uiState.update { it.copy(isLoading = true) }
+                _uiState.update { it.copy(isLoading = true, loadingProgress = "Loading ${category.displayName}...") }
                 
                 try {
-                    // TODO: 카테고리별 단백질 검색 API 호출
-                    // 현재는 일반 검색으로 대체
-                    repository.searchProteins(category.displayName)
-                        .catch { e ->
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    error = e.message ?: "Failed to load proteins"
-                                )
-                            }
+                    // 아이폰과 동일: 카테고리별 API 검색 (페이지네이션 지원)
+                    val limit = 30 // 아이폰과 동일: 30개씩
+                    val skip = 0 // 첫 페이지
+                    
+                    android.util.Log.d("ProteinViewModel", "🔍 [${category.displayName}] 카테고리 검색 (limit: $limit, skip: $skip)")
+                    
+                    // Repository 인터페이스를 통한 2단계 검색
+                    val (pdbIds, totalCount) = repository.searchProteinIdsByCategory(category, limit, skip)
+                    android.util.Log.d("ProteinViewModel", "✅ PDB IDs 받음: ${pdbIds.size}개, 전체: $totalCount")
+                    
+                    if (pdbIds.isNotEmpty()) {
+                        // Repository를 통해 상세 정보 가져오기
+                        val proteins = repository.getProteinsByIds(pdbIds)
+                        
+                        // 데이터 소스를 API로 업데이트
+                        val updatedDataSource = _uiState.value.categoryDataSource.toMutableMap()
+                        updatedDataSource[category] = com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource.API
+                        
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                loadingProgress = "",
+                                searchResults = proteins,
+                                hasMoreData = pdbIds.size >= limit, // 30개 이상이면 더 있음
+                                categoryDataSource = updatedDataSource
+                            )
                         }
-                        .collect { proteins ->
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    searchResults = proteins.take(30) // 아이폰과 동일: 30개씩
-                                )
-                            }
+                        
+                        android.util.Log.d("ProteinViewModel", "✅ [${category.displayName}] ${proteins.size}개 단백질 로드 완료 (API 데이터)")
+                    } else {
+                        // 결과 없음: 샘플 데이터 사용
+                        val sampleProteins = repository.searchProteinsByCategory(category, 30)
+                        
+                        // 데이터 소스를 SAMPLE로 업데이트
+                        val updatedDataSource = _uiState.value.categoryDataSource.toMutableMap()
+                        updatedDataSource[category] = com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource.SAMPLE
+                        
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                loadingProgress = "",
+                                searchResults = sampleProteins,
+                                hasMoreData = false,
+                                categoryDataSource = updatedDataSource
+                            )
                         }
+                        
+                        android.util.Log.d("ProteinViewModel", "⚠️ [${category.displayName}] 결과 없음, 샘플 데이터 사용")
+                    }
                 } catch (e: Exception) {
+                    android.util.Log.e("ProteinViewModel", "❌ [${category.displayName}] 로드 실패: ${e.message}")
+                    
+                    // 에러 시 샘플 데이터 사용
+                    val sampleProteins = repository.searchProteinsByCategory(category, 30)
+                    
+                    // 데이터 소스를 SAMPLE로 업데이트
+                    val updatedDataSource = _uiState.value.categoryDataSource.toMutableMap()
+                    updatedDataSource[category] = com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource.SAMPLE
+                    
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "Failed to load proteins"
+                            loadingProgress = "",
+                            searchResults = sampleProteins,
+                            hasMoreData = false,
+                            error = e.message,
+                            categoryDataSource = updatedDataSource
                         )
                     }
+                    
+                    android.util.Log.d("ProteinViewModel", "⚠️ [${category.displayName}] 에러로 인한 샘플 데이터 사용")
                 }
             }
         }
@@ -390,6 +534,75 @@ class ProteinViewModel @Inject constructor(
     
     fun hideCategoryGrid() {
         _uiState.update { it.copy() }
+    }
+    
+    // 아이폰과 동일한 Load More 기능
+    fun loadMore() {
+        val category = _uiState.value.selectedCategory ?: return
+        val currentPage = _uiState.value.currentPage
+        
+        if (_uiState.value.isLoadingMore || !_uiState.value.hasMoreData) {
+            return
+        }
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true) }
+            
+            try {
+                val limit = 30 // 아이폰과 동일: 30개씩
+                val skip = currentPage * limit // 다음 페이지
+                
+                android.util.Log.d("ProteinViewModel", "🔄 Load More: [${category.displayName}] (page: ${currentPage + 1}, skip: $skip)")
+                
+                // Repository를 통한 2단계 검색
+                val (pdbIds, totalCount) = repository.searchProteinIdsByCategory(category, limit, skip)
+                android.util.Log.d("ProteinViewModel", "✅ Load More PDB IDs 받음: ${pdbIds.size}개")
+                
+                if (pdbIds.isNotEmpty()) {
+                    val newProteins = repository.getProteinsByIds(pdbIds)
+                    
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            searchResults = it.searchResults + newProteins, // 기존 리스트에 추가
+                            currentPage = currentPage + 1,
+                            hasMoreData = pdbIds.size >= limit // 30개 이상이면 더 있음
+                        )
+                    }
+                    
+                    android.util.Log.d("ProteinViewModel", "✅ Load More 완료: ${newProteins.size}개 추가, 총 ${_uiState.value.searchResults.size}개")
+                } else {
+                    // 더 이상 결과 없음
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            hasMoreData = false
+                        )
+                    }
+                    android.util.Log.d("ProteinViewModel", "⚠️ Load More: 더 이상 데이터 없음")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Load More 실패: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        error = e.message
+                    )
+                }
+            }
+        }
+    }
+    
+    // 아이폰과 동일한 Favorites 토글 기능
+    fun toggleFavorite(proteinId: String) {
+        viewModelScope.launch {
+            try {
+                proteinDatabase.toggleFavorite(proteinId)
+                android.util.Log.d("ProteinViewModel", "❤️ Favorite 토글: $proteinId")
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Favorite 토글 실패: ${e.message}")
+            }
+        }
     }
     
     // 아이폰과 동일한 카테고리 카운트 로딩
@@ -478,6 +691,16 @@ class ProteinViewModel @Inject constructor(
                     )
                 }
                 android.util.Log.d("ProteinViewModel", "📦 단백질 목록 업데이트: ${proteins.size}개")
+            }
+        }
+        
+        viewModelScope.launch {
+            // 데이터 소스 관찰 (샘플 데이터인지 실제 API 데이터인지)
+            proteinDatabase.categoryDataSource.collect { dataSources ->
+                _uiState.update { 
+                    it.copy(categoryDataSource = dataSources)
+                }
+                android.util.Log.d("ProteinViewModel", "📍 데이터 소스 업데이트: $dataSources")
             }
         }
         
@@ -632,4 +855,454 @@ class ProteinViewModel @Inject constructor(
         val color: Int,
         val icon: String
     )
+    
+    // MARK: - Disease Association & Research Status (아이폰과 동일)
+    
+    /**
+     * 아이폰 DetailedInfoSectionView.loadExperimentalDetails()와 동일
+     * Additional Information 섹션에 표시할 실험 상세 정보 로드
+     */
+    fun loadExperimentalDetails(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading experimental details for: $proteinId")
+            
+            _uiState.update {
+                it.copy(isExperimentalDetailsLoading = true)
+            }
+            
+            try {
+                val details = experimentalDetailsAPIService.fetchExperimentalDetails(proteinId)
+                
+                _uiState.update {
+                    it.copy(
+                        experimentalDetails = details,
+                        isExperimentalDetailsLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Experimental details loaded")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Experimental details failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(isExperimentalDetailsLoading = false)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 아이폰 DiseaseAssociationView.loadDiseaseAssociations()와 동일
+     * Detail 모달이 열릴 때 호출
+     */
+    fun loadDiseaseAssociations(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading disease associations for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isDiseaseLoading = true,
+                    diseaseError = null
+                )
+            }
+            
+            try {
+                val diseases = diseaseAPIService.fetchDiseaseAssociations(proteinId)
+                val summary = diseaseAPIService.createDiseaseSummary(diseases)
+                
+                _uiState.update {
+                    it.copy(
+                        diseaseAssociations = diseases,
+                        diseaseSummary = summary,
+                        isDiseaseLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Disease associations loaded: ${diseases.size} diseases")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Disease associations failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isDiseaseLoading = false,
+                        diseaseError = e.message ?: "Failed to load disease data"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 아이폰 ResearchStatusViewModel.loadResearchStatus()와 동일
+     * Detail 모달이 열릴 때 호출
+     */
+    fun loadResearchStatus(proteinId: String) {
+        viewModelScope.launch {
+            // 항상 새로 로드 (캐시 없음)
+            _uiState.update {
+                it.copy(
+                    isResearchLoading = true,
+                    researchError = null,
+                    researchStatus = null, // 이전 데이터 초기화
+                    researchSummary = null
+                )
+            }
+            
+            try {
+                val research = researchAPIService.fetchResearchStatus(proteinId)
+                val summary = researchAPIService.createResearchSummary(research)
+                
+                _uiState.update {
+                    it.copy(
+                        researchStatus = research,
+                        researchSummary = summary,
+                        isResearchLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Research status loaded: ${research.publications} publications, ${research.clinicalTrials} trials")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Research status failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isResearchLoading = false,
+                        researchError = e.message ?: "Failed to load research data"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 아이폰 FunctionDetailsView와 동일
+     * Function Summary에서 "View Details" 선택 시 호출
+     */
+    fun loadFunctionDetails(proteinId: String, proteinDescription: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading function details for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isFunctionLoading = true,
+                    functionError = null,
+                    showFunctionDetails = true
+                )
+            }
+            
+            try {
+                val details = functionAPIService.fetchFunctionDetails(proteinId, proteinDescription)
+                
+                _uiState.update {
+                    it.copy(
+                        functionDetails = details,
+                        isFunctionLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Function details loaded: ${details.goTerms.size} GO terms, ${details.ecNumbers.size} EC numbers")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Function details failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isFunctionLoading = false,
+                        functionError = e.message ?: "Failed to load function details"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Function Details 모달 닫기
+     */
+    fun dismissFunctionDetails() {
+        _uiState.update {
+            it.copy(
+                showFunctionDetails = false,
+                functionDetails = null,
+                functionError = null
+            )
+        }
+    }
+    
+    // MARK: - Structure Levels (아이폰과 동일)
+    
+    /**
+     * Primary Structure 로드
+     */
+    fun loadPrimaryStructure(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading primary structure for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isPrimaryStructureLoading = true,
+                    primaryStructureError = null,
+                    showPrimaryStructure = true
+                )
+            }
+            
+            try {
+                val data = structureAPIService.fetchPrimaryStructure(proteinId)
+                
+                _uiState.update {
+                    it.copy(
+                        primaryStructureData = data,
+                        isPrimaryStructureLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Primary structure loaded: ${data.chains.size} chains")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Primary structure failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isPrimaryStructureLoading = false,
+                        primaryStructureError = e.message ?: "Failed to load primary structure"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun dismissPrimaryStructure() {
+        _uiState.update {
+            it.copy(
+                showPrimaryStructure = false,
+                primaryStructureData = null,
+                primaryStructureError = null
+            )
+        }
+    }
+    
+    /**
+     * Secondary Structure 로드
+     */
+    fun loadSecondaryStructure(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading secondary structure for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isSecondaryStructureLoading = true,
+                    secondaryStructureError = null,
+                    showSecondaryStructure = true
+                )
+            }
+            
+            try {
+                val data = structureAPIService.fetchSecondaryStructure(proteinId)
+                
+                _uiState.update {
+                    it.copy(
+                        secondaryStructureData = data,
+                        isSecondaryStructureLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Secondary structure loaded: ${data.size} elements")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Secondary structure failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isSecondaryStructureLoading = false,
+                        secondaryStructureError = e.message ?: "Failed to load secondary structure"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun dismissSecondaryStructure() {
+        _uiState.update {
+            it.copy(
+                showSecondaryStructure = false,
+                secondaryStructureData = emptyList(),
+                secondaryStructureError = null
+            )
+        }
+    }
+    
+    /**
+     * Tertiary Structure 로드
+     */
+    fun loadTertiaryStructure(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading tertiary structure for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isTertiaryStructureLoading = true,
+                    tertiaryStructureError = null,
+                    showTertiaryStructure = true
+                )
+            }
+            
+            try {
+                val data = structureAPIService.fetchTertiaryStructure(proteinId)
+                
+                _uiState.update {
+                    it.copy(
+                        tertiaryStructureData = data,
+                        isTertiaryStructureLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Tertiary structure loaded")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Tertiary structure failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isTertiaryStructureLoading = false,
+                        tertiaryStructureError = e.message ?: "Failed to load tertiary structure"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun dismissTertiaryStructure() {
+        _uiState.update {
+            it.copy(
+                showTertiaryStructure = false,
+                tertiaryStructureData = null,
+                tertiaryStructureError = null
+            )
+        }
+    }
+    
+    /**
+     * Quaternary Structure 로드
+     */
+    fun loadQuaternaryStructure(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading quaternary structure for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isQuaternaryStructureLoading = true,
+                    quaternaryStructureError = null,
+                    showQuaternaryStructure = true
+                )
+            }
+            
+            try {
+                val data = structureAPIService.fetchQuaternaryStructure(proteinId)
+                
+                _uiState.update {
+                    it.copy(
+                        quaternaryStructureData = data,
+                        isQuaternaryStructureLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Quaternary structure loaded")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Quaternary structure failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isQuaternaryStructureLoading = false,
+                        quaternaryStructureError = e.message ?: "Failed to load quaternary structure"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun dismissQuaternaryStructure() {
+        _uiState.update {
+            it.copy(
+                showQuaternaryStructure = false,
+                quaternaryStructureData = null,
+                quaternaryStructureError = null
+            )
+        }
+    }
+    
+    /**
+     * 아이폰 RelatedProteinsView와 동일
+     * Additional Information의 "View Details" 클릭 시 호출
+     */
+    fun loadRelatedProteins(proteinId: String) {
+        viewModelScope.launch {
+            android.util.Log.d("ProteinViewModel", "🔍 Loading related proteins for: $proteinId")
+            
+            _uiState.update {
+                it.copy(
+                    isRelatedProteinsLoading = true,
+                    relatedProteinsError = null,
+                    showRelatedProteins = true
+                )
+            }
+            
+            try {
+                // 실제 API 호출
+                val category = _uiState.value.selectedProteinForDetail?.category ?: ProteinCategory.ENZYMES
+                val relatedProteins = relatedProteinsAPIService.fetchRelatedProteins(proteinId, category)
+                
+                _uiState.update {
+                    it.copy(
+                        relatedProteins = relatedProteins,
+                        isRelatedProteinsLoading = false
+                    )
+                }
+                
+                android.util.Log.d("ProteinViewModel", "✅ Related proteins loaded: ${relatedProteins.size} proteins")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("ProteinViewModel", "❌ Related proteins failed: ${e.message}")
+                
+                _uiState.update {
+                    it.copy(
+                        isRelatedProteinsLoading = false,
+                        relatedProteinsError = e.message ?: "Failed to load related proteins"
+                    )
+                }
+            }
+        }
+    }
+    
+    fun dismissRelatedProteins() {
+        _uiState.update {
+            it.copy(
+                showRelatedProteins = false,
+                relatedProteins = emptyList(),
+                relatedProteinsError = null
+            )
+        }
+    }
+    
+    // MARK: - Research Detail Functions (아이폰과 동일)
+    
+    fun showResearchDetail(researchType: ResearchDetailType) {
+        _uiState.update {
+            it.copy(
+                showResearchDetail = true,
+                researchDetailType = researchType
+            )
+        }
+    }
+    
+    fun dismissResearchDetail() {
+        _uiState.update {
+            it.copy(
+                showResearchDetail = false,
+                researchDetailType = null
+            )
+        }
+    }
 }

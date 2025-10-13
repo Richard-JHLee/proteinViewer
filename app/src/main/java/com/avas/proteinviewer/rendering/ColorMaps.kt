@@ -4,15 +4,15 @@ import android.graphics.Color
 import com.avas.proteinviewer.domain.model.SecondaryStructure
 
 object ColorMaps {
-    // CPK 색상 체계 (아이폰과 동일한 구현)
+    // CPK 색상 체계 (아이폰과 100% 동일한 구현)
     fun cpk(element: String): Int = when (element.uppercase()) {
-        // 기본 원소들 (아이폰과 동일한 색상)
-        "H" -> Color.rgb(255, 255, 255)  // 흰색
-        "C" -> Color.rgb(50, 50, 50)     // 진한 회색/검정
-        "N" -> Color.rgb(48, 80, 248)    // 파랑
-        "O" -> Color.rgb(255, 13, 13)   // 빨강
-        "S" -> Color.rgb(255, 200, 50)  // 노랑
-        "P" -> Color.rgb(255, 128, 0)   // 주황색
+        // 기본 원소들 (아이폰 PDB.swift atomicColor와 100% 동일)
+        "H" -> Color.rgb(255, 255, 255)  // 흰색 (1.0, 1.0, 1.0)
+        "C" -> Color.rgb(51, 51, 51)     // 진한 회색 (0.2, 0.2, 0.2)
+        "N" -> Color.rgb(51, 51, 255)    // 파란색 (0.2, 0.2, 1.0)
+        "O" -> Color.rgb(255, 51, 51)    // 빨간색 (1.0, 0.2, 0.2)
+        "S" -> Color.rgb(255, 255, 51)   // 노란색 (1.0, 1.0, 0.2)
+        "P" -> Color.rgb(255, 128, 0)    // 주황색 (1.0, 0.5, 0.0)
         
         // 추가 원소들
         "F" -> Color.rgb(200, 200, 200)  // 연한 회색
@@ -46,7 +46,7 @@ object ColorMaps {
         "KR" -> Color.rgb(255, 200, 50)  // 노랑
         "XE" -> Color.rgb(255, 200, 50)  // 노랑
         "RN" -> Color.rgb(255, 200, 50) // 노랑
-        else -> Color.rgb(200, 200, 200) // 기본 회색
+        else -> Color.rgb(204, 0, 204) // 아이폰과 동일: 보라색 (0.8, 0.0, 0.8)
     }
     
     // Secondary 구조 기반 색상 (제안된 구조에 맞춤)
