@@ -24,6 +24,14 @@ abstract class AppModule {
     companion object {
         @Provides
         @Singleton
+        fun provideProteinRepositoryImpl(
+            apiService: PDBAPIService
+        ): ProteinRepositoryImpl {
+            return ProteinRepositoryImpl(apiService)
+        }
+        
+        @Provides
+        @Singleton
         fun provideProteinDatabase(
             apiService: PDBAPIService
         ): ProteinDatabase {

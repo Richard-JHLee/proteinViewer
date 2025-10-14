@@ -51,6 +51,10 @@ fun ProteinViewerApp() {
     var selectedSideMenuItem by remember { mutableStateOf<MenuItem?>(null) }
     
     ModalNavigationDrawer(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         drawerState = drawerState,
         gesturesEnabled = false, // 스와이프 제스처 비활성화 (햄버거 버튼으로만 열림)
         drawerContent = {

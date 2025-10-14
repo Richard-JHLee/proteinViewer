@@ -101,7 +101,8 @@ class ProteinViewModel @Inject constructor(
     private val functionAPIService: com.avas.proteinviewer.data.api.FunctionAPIService,
     private val structureAPIService: com.avas.proteinviewer.data.api.StructureAPIService,
     private val relatedProteinsAPIService: com.avas.proteinviewer.data.api.RelatedProteinsAPIService,
-    private val experimentalDetailsAPIService: com.avas.proteinviewer.data.api.ExperimentalDetailsAPIService
+    private val experimentalDetailsAPIService: com.avas.proteinviewer.data.api.ExperimentalDetailsAPIService,
+    private val savedStateHandle: androidx.lifecycle.SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProteinUiState())
