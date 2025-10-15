@@ -819,9 +819,11 @@ class ProteinViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 android.util.Log.e("ProteinViewModel", "❌ 검색 실패: ${e.message}")
+                val isKorean = java.util.Locale.getDefault().language.equals("ko", ignoreCase = true)
+                val errorText = if (isKorean) "검색 실패: ${e.message}" else "Search failed: ${e.message}"
                 _uiState.update {
                     it.copy(
-                        error = "검색 실패: ${e.message}",
+                        error = errorText,
                         showingLoadingPopup = false
                     )
                 }

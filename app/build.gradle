@@ -9,14 +9,23 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = file("../avas-upload.jks")
+            storePassword = "Gus13868592*"
+            keyAlias = "jhlee"
+            keyPassword = "Gus13868592*"
+            storeType = "PKCS12"
+        }
+    }
     namespace 'com.avas.proteinviewer'
     compileSdk 36
 
     defaultConfig {
         applicationId "com.avas.proteinviewer"
         minSdk 26
-        targetSdk 34
-        versionCode 1
+        targetSdk 35
+        versionCode 8
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -35,6 +44,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     

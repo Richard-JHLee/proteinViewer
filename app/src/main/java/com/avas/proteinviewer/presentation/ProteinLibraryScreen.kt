@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -179,9 +180,11 @@ fun ProteinLibraryScreen(
             // Protein List - 카테고리/검색/즐겨찾기 결과 표시
             val shouldShowList = selectedCategory != null || searchQuery.isNotEmpty() || showFavoritesOnly
             if (shouldShowList) {
-                if (displayedProteins.isEmpty()) {
+                val isSampleList = selectedCategory != null && (categoryDataSource[selectedCategory] == com.avas.proteinviewer.data.repository.ProteinDatabase.DataSource.SAMPLE)
+                if (displayedProteins.isEmpty() || isSampleList) {
                     val emptyMessage = when {
                         showFavoritesOnly -> "No saved proteins yet"
+                        isSampleList -> stringResource(id = com.avas.proteinviewer.R.string.unable_to_load_data)
                         selectedCategory != null -> "No proteins found in this category"
                         else -> "No proteins found"
                     }
@@ -189,11 +192,20 @@ fun ProteinLibraryScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = emptyMessage,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = emptyMessage,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (isSampleList) {
+                                Text(
+                                    text = stringResource(id = com.avas.proteinviewer.R.string.unable_to_load_data_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -1063,7 +1075,7 @@ private fun CategoryCard(
             
             // 설명
             Text(
-                text = category.description,
+                text = localizedCategoryDescription(category),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -1151,7 +1163,7 @@ private fun SelectedCategoryView(
             }
             
             Text(
-                text = category.description,
+                text = localizedCategoryDescription(category),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
@@ -1173,4 +1185,22 @@ private fun SelectedCategoryView(
 // 숫자를 포맷팅하는 헬퍼 함수 (천 단위 콤마)
 private fun formatNumber(number: Int): String {
     return String.format("%,d", number)
+}
+
+@Composable
+private fun localizedCategoryDescription(category: ProteinCategory): String {
+    return when (category) {
+        ProteinCategory.ENZYMES -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_enzymes)
+        ProteinCategory.STRUCTURAL -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_structural)
+        ProteinCategory.DEFENSE -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_defense)
+        ProteinCategory.TRANSPORT -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_transport)
+        ProteinCategory.HORMONES -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_hormones)
+        ProteinCategory.STORAGE -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_storage)
+        ProteinCategory.RECEPTORS -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_receptors)
+        ProteinCategory.MEMBRANE -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_membrane)
+        ProteinCategory.MOTOR -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_motor)
+        ProteinCategory.SIGNALING -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_signaling)
+        ProteinCategory.CHAPERONES -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_chaperones)
+        ProteinCategory.METABOLIC -> stringResource(id = com.avas.proteinviewer.R.string.category_desc_metabolic)
+    }
 }

@@ -17,23 +17,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.R
 
 enum class MenuItem(
-    val title: String,
+    val titleRes: Int,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val description: String
+    val descriptionRes: Int
 ) {
-    PROTEIN_LIBRARY("Protein Library", Icons.AutoMirrored.Filled.LibraryBooks, "Browse protein database"),
-    ABOUT("About", Icons.Default.Info, "App information and version"),
-    USER_GUIDE("User Guide", Icons.Default.Book, "User guide"),
-    FEATURES("Features", Icons.Default.Star, "Key features"),
-    SETTINGS("Settings", Icons.Default.Settings, "App settings"),
-    HELP("Help", Icons.AutoMirrored.Filled.Help, "Help and FAQ"),
-    PRIVACY("Privacy Policy", Icons.Default.PrivacyTip, "Privacy Policy"),
-    TERMS("Terms of Service", Icons.Default.Description, "Terms of Service"),
-    LICENSE("License", Icons.Default.Policy, "License information")
+    PROTEIN_LIBRARY(com.avas.proteinviewer.R.string.library_title, Icons.AutoMirrored.Filled.LibraryBooks, com.avas.proteinviewer.R.string.desc_browse_protein_db),
+    ABOUT(com.avas.proteinviewer.R.string.about, Icons.Default.Info, com.avas.proteinviewer.R.string.desc_app_info_version),
+    USER_GUIDE(com.avas.proteinviewer.R.string.user_guide, Icons.Default.Book, com.avas.proteinviewer.R.string.desc_user_guide),
+    FEATURES(com.avas.proteinviewer.R.string.features, Icons.Default.Star, com.avas.proteinviewer.R.string.desc_features),
+    SETTINGS(com.avas.proteinviewer.R.string.settings, Icons.Default.Settings, com.avas.proteinviewer.R.string.desc_settings),
+    HELP(com.avas.proteinviewer.R.string.help, Icons.AutoMirrored.Filled.Help, com.avas.proteinviewer.R.string.desc_help_faq),
+    PRIVACY(com.avas.proteinviewer.R.string.privacy_title, Icons.Default.PrivacyTip, com.avas.proteinviewer.R.string.desc_privacy),
+    TERMS(com.avas.proteinviewer.R.string.terms_title, Icons.Default.Description, com.avas.proteinviewer.R.string.desc_terms),
+    LICENSE(com.avas.proteinviewer.R.string.license_title, Icons.Default.Policy, com.avas.proteinviewer.R.string.desc_license)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +94,7 @@ fun SideMenuContent(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "3D Protein Visualization",
+                            text = stringResource(id = R.string.app_tagline),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
@@ -110,7 +111,7 @@ fun SideMenuContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close menu",
+                            contentDescription = stringResource(id = R.string.close_menu),
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
@@ -171,7 +172,7 @@ fun SideMenuContent(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "All rights reserved",
+                        text = stringResource(id = R.string.all_rights_reserved),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
@@ -259,14 +260,14 @@ private fun MenuItem(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = item.title,
+                    text = stringResource(id = item.titleRes),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                     color = contentColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = item.description,
+                    text = stringResource(id = item.descriptionRes),
                     style = MaterialTheme.typography.bodySmall,
                     color = descriptionColor
                 )

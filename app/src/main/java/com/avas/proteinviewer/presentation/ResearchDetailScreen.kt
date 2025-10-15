@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.avas.proteinviewer.domain.model.*
 import com.avas.proteinviewer.data.api.ResearchDetailAPIService
 import kotlinx.coroutines.launch
@@ -355,7 +356,7 @@ private fun PublicationCard(publication: ResearchPublication) {
                             modifier = Modifier.padding(top = 4.dp)
                         ) {
                             Text(
-                                text = if (isAbstractExpanded) "접기" else "더보기",
+                                text = if (isAbstractExpanded) stringResource(id = com.avas.proteinviewer.R.string.collapse) else stringResource(id = com.avas.proteinviewer.R.string.see_more),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Color(0xFF007AFF)
                             )

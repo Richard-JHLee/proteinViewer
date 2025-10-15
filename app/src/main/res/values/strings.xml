@@ -333,4 +333,44 @@
     <string name="settings_fast_processing">Fast Processing</string>
     <string name="settings_reset_title">Reset Settings</string>
     <string name="settings_reset_button">Reset to Defaults</string>
+    
+    <!-- Localization: generic UI labels used in code -->
+    <string name="structure_levels_short">1→4 levels</string>
+    <string name="collapse">Collapse</string>
+    <string name="see_more">See more</string>
+    
+    <!-- Category descriptions (English default) -->
+    <string name="category_desc_enzymes">Proteins that catalyze biochemical reactions</string>
+    <string name="category_desc_structural">Proteins that maintain cellular and tissue structure</string>
+    <string name="category_desc_defense">Proteins involved in immunity and defense</string>
+    <string name="category_desc_transport">Proteins responsible for transporting substances</string>
+    <string name="category_desc_hormones">Hormonal proteins involved in signaling</string>
+    <string name="category_desc_storage">Proteins that store nutrients and ions</string>
+    <string name="category_desc_receptors">Receptor proteins that receive chemical signals</string>
+    <string name="category_desc_membrane">Proteins that form and regulate cell membranes</string>
+    <string name="category_desc_motor">Motor proteins that generate mechanical force</string>
+    <string name="category_desc_signaling">Proteins involved in intercellular signal transduction</string>
+    <string name="category_desc_chaperones">Chaperone proteins that assist protein folding</string>
+    <string name="category_desc_metabolic">Proteins involved in metabolic processes</string>
+
+    <!-- Sidebar / General UI -->
+    <string name="app_tagline">3D Protein Visualization</string>
+    <string name="close_menu">Close menu</string>
+    <string name="all_rights_reserved">All rights reserved</string>
+    <string name="sample_data">Sample Data</string>
+
+    <!-- Sidebar menu descriptions -->
+    <string name="desc_browse_protein_db">Browse protein database</string>
+    <string name="desc_app_info_version">App information and version</string>
+    <string name="desc_user_guide">User guide</string>
+    <string name="desc_features">Key features</string>
+    <string name="desc_settings">App settings</string>
+    <string name="desc_help_faq">Help and FAQ</string>
+    <string name="desc_privacy">Privacy Policy</string>
+    <string name="desc_terms">Terms of Service</string>
+    <string name="desc_license">License information</string>
+
+    <!-- Library empty/error states -->
+    <string name="unable_to_load_data">Unable to load data.</string>
+    <string name="unable_to_load_data_hint">Please check your network and try again.</string>
 </resources>

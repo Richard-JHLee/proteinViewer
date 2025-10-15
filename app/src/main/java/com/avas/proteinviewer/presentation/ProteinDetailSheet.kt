@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.avas.proteinviewer.domain.model.ProteinInfo
@@ -448,7 +449,7 @@ private fun FunctionSection(
         // Structure 버튼
         MetricPillButton(
             title = "Structure",
-            value = "1→4 단계",
+            value = stringResource(id = com.avas.proteinviewer.R.string.structure_levels_short),
             icon = Icons.Default.GridOn,
             isSelected = selectedButton == SelectedButton.STRUCTURE,
             tint = Color(protein.category.color),
